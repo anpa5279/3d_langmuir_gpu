@@ -26,6 +26,7 @@ end
 params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0)
 
 # Automatically distributes among available processors
+
 arch = Distributed(GPU())
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
@@ -88,6 +89,7 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 function progress(simulation)
+    rank = simulation.model.grid.architecture.local_rank
     u, v, w = simulation.model.velocities
 
     # Print a progress message
@@ -95,7 +97,6 @@ function progress(simulation)
                     iteration(simulation),
                     prettytime(time(simulation)),
                     prettytime(simulation.Δt),
-                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                     prettytime(simulation.run_wall_time))
 
     @info msg
@@ -108,11 +109,11 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output,
-                        schedule = TimeInterval(output_interval),
-                        filename = "langmuir_turbulence_fields_$rank.jld2",
-                        overwrite_existing = true)
+
+simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
+                                                      schedule = TimeInterval(output_interval),
+                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                      overwrite_existing = true)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -124,23 +125,21 @@ b = model.tracers.b
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-if rank == 0
-    simulation.output_writers[:averages] =
-        JLD2OutputWriter(model, (; U, V, B, wu, wv),
-                            schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                            filename = "langmuir_turbulence_averages_$rank.jld2",
-                            overwrite_existing = true)
-end
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, wv),
+                                                        schedule = AveragedTimeInterval(output_interval, window=2minutes),
+                                                        filename = "langmuir_turbulence_averages_$rank.jld2",
+                                                        overwrite_existing = true)
+
 run!(simulation)
 
 time_series = (;
-    w = FieldTimeSeries("langmuir_turbulence_fields.jld2", "w"),
-    u = FieldTimeSeries("langmuir_turbulence_fields.jld2", "u"),
-    B = FieldTimeSeries("langmuir_turbulence_averages.jld2", "B"),
-    U = FieldTimeSeries("langmuir_turbulence_averages.jld2", "U"),
-    V = FieldTimeSeries("langmuir_turbulence_averages.jld2", "V"),
-    wu = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wu"),
-    wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
+    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
+    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
+    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
+    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
+    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
+    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"),
+    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"))
                         
 times = time_series.w.times
 
