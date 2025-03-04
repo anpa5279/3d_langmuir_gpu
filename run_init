@@ -2,7 +2,7 @@
 
 #PBS -A UCUB0166 
 #PBS -N test
-#PBS -q main
+#PBS -q develop
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=0:30:00
