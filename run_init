@@ -13,15 +13,14 @@ rm -rf *.toml
 touch Project.toml
 
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+export JULIA_NUM_PRECOMPILE_TASKS=32
+export JULIA_NUM_THREADS=32
 
 # Load critical modules
 module --force purge
 module load ncarenv nvhpc cuda cray-mpich/8.1.29
 
 # Utter mystical incantations to perform various miracles
-export MPICH_GPU_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
@@ -32,7 +31,7 @@ cat > launch.sh << EoF_s
 
 export LOCAL_RANK=\${PMI_LOCAL_RANK}
 export GLOBAL_RANK=\${PMI_RANK}
-export CUDA_VISIBLE_DEVICES=\$(expr \${LOCAL_RANK} % 4)
+export CUDA_VISIBLE_DEVICES=\$(expr \${LOCAL_RANK} % 32)
 
 echo "Global Rank \${GLOBAL_RANK} / Local Rank \${LOCAL_RANK} / CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES} / \$(hostname)"
 
