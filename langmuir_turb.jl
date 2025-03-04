@@ -19,11 +19,15 @@ mutable struct Params
     τx::Float64 # m² s⁻², surface kinematic momentum flux
     Jᵇ::Float64 # m² s⁻³, surface buoyancy flux
     N²::Float64 # s⁻², initial and bottom buoyancy gradient
-    initial_mixed_layer_depth::Float64 #m
+    initial_mixed_layer_depth::Float64 #m 
+    Q::Float64      # W m⁻², surface _heat_ flux
+    ρₒ::Float64     # kg m⁻³, average density at the surface of the world ocean
+    cᴾ::Float64     # J K⁻¹ kg⁻¹, typical heat capacity for seawater
+    dTdz::Float64   # K m⁻¹, temperature gradient
 end
 
 #defaults, these can be changed directly below
-params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0)
+params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0, 200.0, 1026.0, 3991.0, 0.01)
 
 # Automatically distributes among available processors
 
@@ -35,43 +39,55 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
+                                                                    haline_contraction = 8e-4))
+
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
+                                bottom = GradientBoundaryCondition(params.dTdz))
+
+@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+
+evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
+
+S_bcs = FieldBoundaryConditions(top=evaporation_bc)
+
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
-@show wavenumber, frequency
 
 # The vertical scale over which the Stokes drift of a monochromatic surface wave
 # decays away from the surface is `1/2wavenumber`, or
 const vertical_scale = params.wavelength / 4π
-@show vertical_scale
 
 # Stokes drift velocity at the surface
 const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
-@show Uˢ
 
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 @inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
-u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
-@show u_boundary_conditions
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
+@show u_bcs
 
-b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
                                                 bottom = GradientBoundaryCondition(params.N²))
-@show b_boundary_conditions
+@show b_bcs
 
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = :b,
+                            tracers = (:T, :S, :b),
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs, b=b_bcs))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
+
+# Temperature initial condition: a stable density gradient with random noise superposed.
+@inline Tᵢ(x, y, z) = 20 + params.dTdz * z + params.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
 @inline stratification(z) = z < - params.initial_mixed_layer_depth ? params.N² * z : params.N² * (-params.initial_mixed_layer_depth)
 
@@ -81,38 +97,12 @@ u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35, b=bᵢ)
 
 simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
-
-#function progress(simulation)
-#    rank = simulation.model.grid.architecture.local_rank
-#    u, v, w = simulation.model.velocities
-#function progress(simulation)
-#    rank = simulation.model.grid.architecture.local_rank
-#    u, v, w = simulation.model.velocities
-
-    # Print a progress message
-#    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-#                    iteration(simulation),
-#                    prettytime(time(simulation)),
-#                    prettytime(simulation.Δt),
-#                    prettytime(simulation.run_wall_time))
-#    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-#                    iteration(simulation),
-#                    prettytime(time(simulation)),
-#                    prettytime(simulation.Δt),
-#                    prettytime(simulation.run_wall_time))
-
-#   @info msg
-
-#    return nothing
-#end
-
-#simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
@@ -125,7 +115,6 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
 
 u, v, w = model.velocities
 b = model.tracers.b
-
 
     U = Average(u, dims=(1, 2))
     V = Average(v, dims=(1, 2))
@@ -143,6 +132,8 @@ run!(simulation)
 time_series = (;
     w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
     u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
+    T = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "T"),
+    S = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "S"),
     B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
     U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
     V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
