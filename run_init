@@ -6,8 +6,7 @@
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=0:30:00
-#PBS -l select=1:ncpus=1:mpiprocs=1:ngpus=1:mem=10GB 
-#PBS -l gpu_type=a100
+#PBS -l select=1:ncpus=32:mpiprocs=32:ompthreads=1
 
 # Updating code
 rm -rf *.toml
@@ -55,5 +54,5 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 # 4. Build MPI and CUDA in advance for yucks
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
-mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 32 -ppn 32 ./launch.sh julia --project langmuir_turb.jl
 
