@@ -88,21 +88,21 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
-function progress(simulation)
-    rank = simulation.model.grid.architecture.local_rank
-    u, v, w = simulation.model.velocities
+#function progress(simulation)
+#    rank = simulation.model.grid.architecture.local_rank
+#    u, v, w = simulation.model.velocities
 
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                    iteration(simulation),
-                    prettytime(time(simulation)),
-                    prettytime(simulation.Δt),
-                    prettytime(simulation.run_wall_time))
+#    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+#                    iteration(simulation),
+#                    prettytime(time(simulation)),
+#                    prettytime(simulation.Δt),
+#                    prettytime(simulation.run_wall_time))
 
-    @info msg
+#    @info msg
 
-    return nothing
-end
+#    return nothing
+#end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
