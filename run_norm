@@ -6,16 +6,16 @@
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=0:30:00
-#PBS -l select=1:ncpus=1:mpiprocs=4:ngpus=4:mem=384GB 
+#PBS -l select=1:ncpus=1:mpiprocs=4:ngpus=4:mem=10GB 
 #PBS -l gpu_type=a100
 
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=1
-export JULIA_NUM_THREADS=1
+export JULIA_NUM_PRECOMPILE_TASKS=64
+export JULIA_NUM_THREADS=64
 
 # Load critical modules
-module reset
-module load ncarenv nvhpc cuda cray-mpich
+module --force purge
+module load ncarenv nvhpc cuda cray-mpich/8.1.29
 
 # Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
@@ -40,4 +40,4 @@ EoF_s
 chmod +x launch.sh
 
 # Finally, let's run this thing
-mpiexec -n 1 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
