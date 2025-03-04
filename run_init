@@ -8,10 +8,6 @@
 #PBS -l walltime=0:30:00
 #PBS -l select=1:ncpus=32:mpiprocs=32:ompthreads=1
 
-# Updating code
-rm -rf *.toml
-touch Project.toml
-
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=32
 export JULIA_NUM_THREADS=32
