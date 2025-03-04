@@ -27,7 +27,7 @@ params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.
 
 # Automatically distributes among available processors
 
-arch = Distributed(CPU())
+arch = Distributed(GPU())
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
@@ -91,6 +91,9 @@ conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 #function progress(simulation)
 #    rank = simulation.model.grid.architecture.local_rank
 #    u, v, w = simulation.model.velocities
+#function progress(simulation)
+#    rank = simulation.model.grid.architecture.local_rank
+#    u, v, w = simulation.model.velocities
 
     # Print a progress message
 #    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
@@ -98,13 +101,18 @@ conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 #                    prettytime(time(simulation)),
 #                    prettytime(simulation.Δt),
 #                    prettytime(simulation.run_wall_time))
+#    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+#                    iteration(simulation),
+#                    prettytime(time(simulation)),
+#                    prettytime(simulation.Δt),
+#                    prettytime(simulation.run_wall_time))
 
-#    @info msg
+#   @info msg
 
 #    return nothing
 #end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+#simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
