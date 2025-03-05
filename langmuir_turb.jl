@@ -45,11 +45,11 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
 
-@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+#@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 
-evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
+#evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
 
-S_bcs = FieldBoundaryConditions(top=evaporation_bc)
+#S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
@@ -77,11 +77,11 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :S, :b),
+                            tracers = (:T, :b),
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs, b=b_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, b=b_bcs)) #  :S,  S=S_bcs,
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
@@ -97,7 +97,7 @@ u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35, b=bᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, b=bᵢ) #S=35,
 
 simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 @show simulation
@@ -133,7 +133,7 @@ time_series = (;
     w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
     u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
     T = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "T"),
-    S = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "S"),
+    #S = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "S"),
     B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
     U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
     V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
