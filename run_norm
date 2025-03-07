@@ -42,12 +42,10 @@ EoF_s
 
 chmod +x launch.sh
 
-# 2. Add some packages to the environment that we need to use
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("Printf")'
 # 3. Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
-# 4. Build MPI and CUDA in advance for yucks
-julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
+# 2. Add some packages to the environment that we need to use
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("Printf")'
 # Finally, let's run this thing
 mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
 

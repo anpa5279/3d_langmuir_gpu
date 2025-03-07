@@ -23,7 +23,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below
-params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0)
+params = Params(32, 32, 32, 128.0, 128.0, 64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0)
 
 # Automatically distributes among available processors
 
