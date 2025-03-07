@@ -14,9 +14,8 @@ export JULIA_NUM_PRECOMPILE_TASKS=64
 export JULIA_NUM_THREADS=64
 
 # Load critical modules
-module load ncarenv
-module reset
-module load nvhpc cuda cray-mpich/8.1.29
+module purge
+module load ncarenv/23.09 nvhpc/24.1 cuda/12.2.1 cray-mpich/8.1.27
 
 # Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
@@ -24,7 +23,6 @@ export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
-which mpiexec
 # Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
 cat > launch.sh << EoF_s
 #! /bin/bash
