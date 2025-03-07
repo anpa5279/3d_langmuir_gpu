@@ -132,14 +132,14 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, w
 
 run!(simulation)
 
-time_series = (;
-    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
-    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
-    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
-    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
-    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
-    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"),
-    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"))
+#time_series = (;
+#    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
+#    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
+#    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
+#    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
+#    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
+#    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"),
+#    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"))
                         
 # times = time_series.w.times
 
