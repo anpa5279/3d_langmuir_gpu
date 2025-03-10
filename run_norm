@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#PBS -A UCUB0166 
+#PBS -A ucsg0002 
 #PBS -N test
 #PBS -q develop
 #PBS -j oe

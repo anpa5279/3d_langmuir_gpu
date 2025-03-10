@@ -5,6 +5,7 @@ using Oceananigans.Units: minute, minutes, hours
 using JLD2
 
 # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
+times = Float64[]
 
 for i in 0:3
     println("Loading rank $i")
@@ -12,45 +13,69 @@ for i in 0:3
     fld_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
     averages_file="outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2"
 
-    fld = jldopen(fld_file)
-    averages = jldopen(averages_file)
-
-    println(fld)
-    println(averages)
-
-    time_series = fld["timeseries"]
-    average = averages["timeseries"]
-    #grid = fld["grid"]
-    #coriolis = fld["coriolis"]
-    #serialized = fld["serialized"]
-
-    println("Loaded rank $i")
+    f = jldopen(fld_file)
+    a = jldopen(averages_file)
 
     if i == 0
-        w = time_series["w"]
-        u = time_series["u"]
+        loc = collect(keys(f["timeseries"]["t"]))
+        times = f["timeseries"]["t"][loc[end]]
+        collect(keys(f["timeseries"]["w"]))
+    end 
 
-        println(w)
+
+    # if i == 0
+    #     grid_data = fld["grid"]
+    #     grid = RectilinearGrid(; size=(grid_data["Nx"], grid_data["Ny"], grid_data["Nz"]),
+    #                             extent=(grid_data["Lx"], grid_data["Ly"], grid_data["Lz"]))
+
+    #     temp_times = collect(keys(f["timeseries"]["t"]))
+    #     for j in length(temp_times)
+    #         push!(times, f["timeseries"]["t"][temp_times[j]])
+    #     end 
+    #     fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+    # end 
+    # println("Loaded rank $i")
+
+    # set!(fts, fld_file, "w")
+    # set!(fts, fld_file, "u")
+    # set!(fts, averages_file, "B")
+    # set!(fts, averages_file, "U")
+    # set!(fts, averages_file, "V")
+    # set!(fts, averages_file, "wu")
+    # set!(fts, averages_file, "wv")
+
+
+    close(f)
+    close(a)
+    #w = FieldTimeSeries(fld_file, "w")
+    #u = FieldTimeSeries(fld_file, "u")
+    #B = FieldTimeSeries(averages_file, "B")
+    #U = FieldTimeSeries(averages_file, "U")
+    #V = FieldTimeSeries(averages_file, "V")
+    #wu = FieldTimeSeries(averages_file, "wu")
+    #wv = FieldTimeSeries(averages_file, "wv")
+
+    #if i == 0
+    #    w = time_series["w"]
+    #    u = time_series["u"]
+
+        #println(w)
 
         #to compute averages later:
-        B = average["B"]
-        U = average["U"]
-        V = average["V"]
-        wu = average["wu"]
-        wv = average["wv"]
-    else
-        w = cat(w, time_series["w"], dims=4)
-        u = cat(u, time_series["u"], dims=4)
-        B = cat(B, average["B"], dims=4)
-        U = cat(U, average["U"], dims=4)
-        V = cat(V, average["V"], dims=4)
-        wu = cat(wu, average["wu"], dims=4)
-        wv = cat(wv, average["wv"], dims=4)
-    end
-
-    println("Concatenated rank $i")
-    close(fld)
-    close(averages)
+        #B = average["B"]
+        #U = average["U"]
+        #V = average["V"]
+        #wu = average["wu"]
+        #wv = average["wv"]
+    #else
+        #w = cat(w, time_series["w"], dims=4)
+        #u = cat(u, time_series["u"], dims=4)
+        #B = cat(B, average["B"], dims=4)
+        #U = cat(U, average["U"], dims=4)
+        #V = cat(V, average["V"], dims=4)
+        #wu = cat(wu, average["wu"], dims=4)
+        #wv = cat(wv, average["wv"], dims=4)
+    #end
 end
 
 times = w.times
