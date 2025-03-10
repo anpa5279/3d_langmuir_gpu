@@ -1,12 +1,27 @@
-time_series = (;
-    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
-    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
-    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
-    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
-    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
-    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"),
-    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"))
-                        
+using Pkg
+using CairoMakie
+using Oceananigans
+using JLD2
+
+for i in 0:3
+    fields_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
+    averages_file="outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2"
+
+    fields = load(fields_file)
+    averages = load(averages_file)
+
+    #println(fields)
+    #println(averages)
+
+    time_series = (;
+        w = FieldTimeSeries("outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2", "w"),
+        u = FieldTimeSeries("outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2", "u"),
+        B = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "B"),
+        U = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "U"),
+        V = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "V"),
+        wv = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "wv"))
+end
+
 times = time_series.w.times
 
 n = Observable(1)
