@@ -1,28 +1,59 @@
 using Pkg
 using CairoMakie
 using Oceananigans
+using Oceananigans.Units: minute, minutes, hours
 using JLD2
 
+# running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
+
 for i in 0:3
-    fields_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
+    println("Loading rank $i")
+
+    fld_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
     averages_file="outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2"
 
-    fields = load(fields_file)
-    averages = load(averages_file)
+    fld = jldopen(fld_file)
+    averages = jldopen(averages_file)
 
-    #println(fields)
-    #println(averages)
+    println(fld)
+    println(averages)
 
-    time_series = (;
-        w = FieldTimeSeries("outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2", "w"),
-        u = FieldTimeSeries("outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2", "u"),
-        B = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "B"),
-        U = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "U"),
-        V = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "V"),
-        wv = FieldTimeSeries("outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2", "wv"))
+    time_series = fld["timeseries"]
+    average = averages["timeseries"]
+    #grid = fld["grid"]
+    #coriolis = fld["coriolis"]
+    #serialized = fld["serialized"]
+
+    println("Loaded rank $i")
+
+    if i == 0
+        w = time_series["w"]
+        u = time_series["u"]
+
+        println(w)
+
+        #to compute averages later:
+        B = average["B"]
+        U = average["U"]
+        V = average["V"]
+        wu = average["wu"]
+        wv = average["wv"]
+    else
+        w = cat(w, time_series["w"], dims=4)
+        u = cat(u, time_series["u"], dims=4)
+        B = cat(B, average["B"], dims=4)
+        U = cat(U, average["U"], dims=4)
+        V = cat(V, average["V"], dims=4)
+        wu = cat(wu, average["wu"], dims=4)
+        wv = cat(wv, average["wv"], dims=4)
+    end
+
+    println("Concatenated rank $i")
+    close(fld)
+    close(averages)
 end
 
-times = time_series.w.times
+times = w.times
 
 n = Observable(1)
 
@@ -50,21 +81,21 @@ ax_wxy = Axis(fig[1, 1:2];
             xlabel = "x (m)",
             ylabel = "y (m)",
             aspect = DataAspect(),
-            limits = ((0, grid.Lx), (0, grid.Ly)),
+            limits = ((0, Lx), (0, Ly)),
             title = wxy_title)
 
 ax_wxz = Axis(fig[2, 1:2];
             xlabel = "x (m)",
             ylabel = "z (m)",
             aspect = AxisAspect(2),
-            limits = ((0, grid.Lx), (-grid.Lz, 0)),
+            limits = ((0, Lx), (-Lz, 0)),
             title = wxz_title)
 
 ax_uxz = Axis(fig[3, 1:2];
             xlabel = "x (m)",
             ylabel = "z (m)",
             aspect = AxisAspect(2),
-            limits = ((0, grid.Lx), (-grid.Lz, 0)),
+            limits = ((0, Lx), (-Lz, 0)),
             title = uxz_title)
 
 
