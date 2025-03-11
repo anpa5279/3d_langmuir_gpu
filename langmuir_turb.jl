@@ -4,8 +4,6 @@ using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Printf
-using CairoMakie
 
 mutable struct Params
     Nx::Int
@@ -111,21 +109,23 @@ fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusi
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields_$rank.jld2",
-                                                      overwrite_existing = true)
+                                                      overwrite_existing = true,
+                                                      with_halos = true)
 
 u, v, w = model.velocities
 b = model.tracers.b
 
-    U = Average(u, dims=(1, 2))
-    V = Average(v, dims=(1, 2))
-    B = Average(b, dims=(1, 2))
+U = Average(u, dims=(1, 2))
+V = Average(v, dims=(1, 2))
+B = Average(b, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
-                                                        overwrite_existing = true)
+                                                        overwrite_existing = true,
+                                                        with_halos = true)
 
 run!(simulation)
 
@@ -234,6 +234,6 @@ time_series = (;
 
 # frames = 1:length(times)
 
-# record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-#     n[] = i
-# end
+record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+    n[] = i
+end

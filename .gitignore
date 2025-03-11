@@ -2,4 +2,4 @@
 *.sh
 test.o*
 *.jld2
-error_archive/*
+outputs/
