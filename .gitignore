@@ -4,5 +4,5 @@ outputs_temp/
 outputs/
 outputs.tar.gz
 *.sh
-*.mp4
+langmuir_turbulence.mp4
 test.o*
