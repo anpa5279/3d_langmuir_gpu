@@ -9,8 +9,8 @@
 #PBS -l gpu_type=a100
 
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=32
-export JULIA_NUM_THREADS=32
+export JULIA_NUM_PRECOMPILE_TASKS=64
+export JULIA_NUM_THREADS=64
 
 # Load critical modules
 module --force purge
