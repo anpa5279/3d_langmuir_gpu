@@ -6,19 +6,6 @@ using JLD2
 
 # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
 Nranks = 1
-times = Float64[]
-w = []
-u = []
-B = []
-U = []
-V = []
-wu = []
-wv = []
-
-Lx = 0.0
-Ly = 0.0
-Lz = 0.0
-grid = nothing
 
 for i in 0:Nranks-1
     println("Loading rank $i")
@@ -32,9 +19,24 @@ for i in 0:Nranks-1
     loc = collect(keys(f["timeseries"]["t"]))
 
     if i == 0
+        global grid = RectilinearGrid(size = (Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"]), extent = (Nranks * f["grid"]["Lx"], f["grid"]["Ly"], f["grid"]["Lz"]))
+        global Lx = Nranks * f["grid"]["Lx"]
+        global Ly = f["grid"]["Ly"]
+        global Lz = f["grid"]["Lz"]
+        global times = Vector{Float64}(undef, length(loc))
+        global w = Array{Float64}(undef, Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"], length(loc))
+        global u = []
+        global B = []
+        global U = []
+        global V = []
+        global wu = []
+        global wv = []
         for j in 1:length(loc)
-            push!(times, f["timeseries"]["t"][loc[j]])
-            push!(w, f["timeseries"]["w"][loc[j]])
+            println(f["timeseries"]["t"][loc[j]])
+            times[j] = f["timeseries"]["t"][loc[j]]
+            w[:, :, :, j] = f["timeseries"]["w"][loc[j]]
+            #push!(times, f["timeseries"]["t"][loc[j]])
+            #push!(w, f["timeseries"]["w"][loc[j]])
             push!(u, f["timeseries"]["u"][loc[j]])
             push!(B, a["timeseries"]["B"][loc[j]])
             push!(U, a["timeseries"]["U"][loc[j]])
@@ -42,10 +44,6 @@ for i in 0:Nranks-1
             push!(wu, a["timeseries"]["wu"][loc[j]])
             push!(wv, a["timeseries"]["wv"][loc[j]])
         end
-        global grid = RectilinearGrid(size = (Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"]), extent = (Nranks * f["grid"]["Lx"], f["grid"]["Ly"], f["grid"]["Lz"]))
-        global Lx = Nranks * f["grid"]["Lx"]
-        global Ly = f["grid"]["Ly"]
-        global Lz = f["grid"]["Lz"]
     else 
         for j in 1:length(loc)
             push!(w, f["timeseries"]["w"][loc[j]])
@@ -62,9 +60,10 @@ for i in 0:Nranks-1
     close(a)
     
 end
+println(size(w))
 println(grid)
 println(Lx)
-println(times)
+println(size(times))
 
 n = Observable(1)
 
