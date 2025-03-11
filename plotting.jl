@@ -7,7 +7,42 @@ using JLD2
 # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
 Nranks = 1
 
-for i in 0:Nranks-1
+fld_file="outputs/langmuir_turbulence_fields_0_rank0.jld2"
+    averages_file="outputs/langmuir_turbulence_averages_0_rank0.jld2"
+
+f = jldopen(fld_file)
+a = jldopen(averages_file)
+
+loc = collect(keys(f["timeseries"]["t"]))
+
+grid = RectilinearGrid(size = (Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"]), extent = (Nranks * f["grid"]["Lx"], f["grid"]["Ly"], f["grid"]["Lz"]))
+Lx = Nranks * f["grid"]["Lx"]
+Ly = f["grid"]["Ly"]
+Lz = f["grid"]["Lz"]
+times = Vector{Float64}(undef, length(loc))
+global w = Array{Float64}(undef, Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"], length(loc))
+global u = []
+global B = []
+global U = []
+global V = []
+global wu = []
+global wv = []
+
+for j in 1:length(loc)
+    times[j] = f["timeseries"]["t"][loc[j]]
+    w[:, :, :, j] = f["timeseries"]["w"][loc[j]][4:end-3, 4:end-3, 4:end-4]
+    push!(u, f["timeseries"]["u"][loc[j]])
+    push!(B, a["timeseries"]["B"][loc[j]])
+    push!(U, a["timeseries"]["U"][loc[j]])
+    push!(V, a["timeseries"]["V"][loc[j]])
+    push!(wu, a["timeseries"]["wu"][loc[j]])
+    push!(wv, a["timeseries"]["wv"][loc[j]])
+end 
+
+close(f)
+close(a)
+
+for i in 1:Nranks-1
     println("Loading rank $i")
 
     fld_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
@@ -18,42 +53,14 @@ for i in 0:Nranks-1
 
     loc = collect(keys(f["timeseries"]["t"]))
 
-    if i == 0
-        global grid = RectilinearGrid(size = (Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"]), extent = (Nranks * f["grid"]["Lx"], f["grid"]["Ly"], f["grid"]["Lz"]))
-        global Lx = Nranks * f["grid"]["Lx"]
-        global Ly = f["grid"]["Ly"]
-        global Lz = f["grid"]["Lz"]
-        global times = Vector{Float64}(undef, length(loc))
-        global w = Array{Float64}(undef, Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"], length(loc))
-        global u = []
-        global B = []
-        global U = []
-        global V = []
-        global wu = []
-        global wv = []
-        for j in 1:length(loc)
-            println(f["timeseries"]["t"][loc[j]])
-            times[j] = f["timeseries"]["t"][loc[j]]
-            w[:, :, :, j] = f["timeseries"]["w"][loc[j]]
-            #push!(times, f["timeseries"]["t"][loc[j]])
-            #push!(w, f["timeseries"]["w"][loc[j]])
-            push!(u, f["timeseries"]["u"][loc[j]])
-            push!(B, a["timeseries"]["B"][loc[j]])
-            push!(U, a["timeseries"]["U"][loc[j]])
-            push!(V, a["timeseries"]["V"][loc[j]])
-            push!(wu, a["timeseries"]["wu"][loc[j]])
-            push!(wv, a["timeseries"]["wv"][loc[j]])
-        end
-    else 
-        for j in 1:length(loc)
-            push!(w, f["timeseries"]["w"][loc[j]])
-            push!(u, f["timeseries"]["u"][loc[j]])
-            push!(B, a["timeseries"]["B"][loc[j]])
-            push!(U, a["timeseries"]["U"][loc[j]])
-            push!(V, a["timeseries"]["V"][loc[j]])
-            push!(wu, a["timeseries"]["wu"][loc[j]])
-            push!(wv, a["timeseries"]["wv"][loc[j]])
-        end
+    for j in 1:length(loc)
+        push!(w, f["timeseries"]["w"][loc[j]])
+        push!(u, f["timeseries"]["u"][loc[j]])
+        push!(B, a["timeseries"]["B"][loc[j]])
+        push!(U, a["timeseries"]["U"][loc[j]])
+        push!(V, a["timeseries"]["V"][loc[j]])
+        push!(wu, a["timeseries"]["wu"][loc[j]])
+        push!(wv, a["timeseries"]["wv"][loc[j]])
     end 
 
     close(f)
@@ -160,3 +167,5 @@ frames = 1:length(times)
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
     n[] = i
 end
+
+
