@@ -48,5 +48,5 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 # 4. Build MPI and CUDA in advance for yucks
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
-mpiexec -n 32 -ppn 32 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
 
