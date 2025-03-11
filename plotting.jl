@@ -16,66 +16,31 @@ for i in 0:3
     f = jldopen(fld_file)
     a = jldopen(averages_file)
 
+    loc = collect(keys(f["timeseries"]["t"]))
+
     if i == 0
-        loc = collect(keys(f["timeseries"]["t"]))
         times = f["timeseries"]["t"][loc[end]]
-        collect(keys(f["timeseries"]["w"]))
+        p = i
+        println("First time: ", times)
     end 
 
+    for j in 1:length(loc)
+        println(j)
+        #println(f["timeseries"]["w"][loc[j]])
+        push!(w[j + p], f["timeseries"]["w"][loc[j]])
+        push!(u[j + p], f["timeseries"]["u"][loc[j]])
+        push!(B[j + p], a["timeseries"]["B"][loc[j]])
+        push!(U[j + p], a["timeseries"]["U"][loc[j]])
+        push!(V[j + p], a["timeseries"]["V"][loc[j]])
+        push!(wu[j + p], a["timeseries"]["wu"][loc[j]])
+        push!(wv[j + p], a["timeseries"]["wv"][loc[j]])
+    end
 
-    # if i == 0
-    #     grid_data = fld["grid"]
-    #     grid = RectilinearGrid(; size=(grid_data["Nx"], grid_data["Ny"], grid_data["Nz"]),
-    #                             extent=(grid_data["Lx"], grid_data["Ly"], grid_data["Lz"]))
-
-    #     temp_times = collect(keys(f["timeseries"]["t"]))
-    #     for j in length(temp_times)
-    #         push!(times, f["timeseries"]["t"][temp_times[j]])
-    #     end 
-    #     fts = FieldTimeSeries{Face, Center, Center}(grid, times)
-    # end 
-    # println("Loaded rank $i")
-
-    # set!(fts, fld_file, "w")
-    # set!(fts, fld_file, "u")
-    # set!(fts, averages_file, "B")
-    # set!(fts, averages_file, "U")
-    # set!(fts, averages_file, "V")
-    # set!(fts, averages_file, "wu")
-    # set!(fts, averages_file, "wv")
-
+    p = length(loc) + p * i
 
     close(f)
     close(a)
-    #w = FieldTimeSeries(fld_file, "w")
-    #u = FieldTimeSeries(fld_file, "u")
-    #B = FieldTimeSeries(averages_file, "B")
-    #U = FieldTimeSeries(averages_file, "U")
-    #V = FieldTimeSeries(averages_file, "V")
-    #wu = FieldTimeSeries(averages_file, "wu")
-    #wv = FieldTimeSeries(averages_file, "wv")
-
-    #if i == 0
-    #    w = time_series["w"]
-    #    u = time_series["u"]
-
-        #println(w)
-
-        #to compute averages later:
-        #B = average["B"]
-        #U = average["U"]
-        #V = average["V"]
-        #wu = average["wu"]
-        #wv = average["wv"]
-    #else
-        #w = cat(w, time_series["w"], dims=4)
-        #u = cat(u, time_series["u"], dims=4)
-        #B = cat(B, average["B"], dims=4)
-        #U = cat(U, average["U"], dims=4)
-        #V = cat(V, average["V"], dims=4)
-        #wu = cat(wu, average["wu"], dims=4)
-        #wv = cat(wv, average["wv"], dims=4)
-    #end
+    
 end
 
 times = w.times
@@ -124,18 +89,18 @@ ax_uxz = Axis(fig[3, 1:2];
             title = uxz_title)
 
 
-wₙ = @lift time_series.w[$n]
-uₙ = @lift time_series.u[$n]
-Bₙ = @lift view(time_series.B[$n], 1, 1, :)
-Uₙ = @lift view(time_series.U[$n], 1, 1, :)
-Vₙ = @lift view(time_series.V[$n], 1, 1, :)
-wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
-wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
+wₙ = @lift gridw[$n]
+uₙ = @lift gridu[$n]
+Bₙ = @lift view(gridB[$n], 1, 1, :)
+Uₙ = @lift view(gridU[$n], 1, 1, :)
+Vₙ = @lift view(gridV[$n], 1, 1, :)
+wuₙ = @lift view(gridwu[$n], 1, 1, :)
+wvₙ = @lift view(gridwv[$n], 1, 1, :)
 
 k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
-wxyₙ = @lift view(time_series.w[$n], :, :, k)
-wxzₙ = @lift view(time_series.w[$n], :, 1, :)
-uxzₙ = @lift view(time_series.u[$n], :, 1, :)
+wxyₙ = @lift view(gridw[$n], :, :, k)
+wxzₙ = @lift view(gridw[$n], :, 1, :)
+uxzₙ = @lift view(gridu[$n], :, 1, :)
 
 wlims = (-0.03, 0.03)
 ulims = (-0.05, 0.05)

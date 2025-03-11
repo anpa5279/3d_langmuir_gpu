@@ -86,24 +86,6 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
-#function progress(simulation)
-#    rank = simulation.model.grid.architecture.local_rank
-#    u, v, w = simulation.model.velocities
-
-    # Print a progress message
-#    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-#                    iteration(simulation),
-#                    prettytime(time(simulation)),
-#                    prettytime(simulation.Δt),
-#                    prettytime(simulation.run_wall_time))
-
-#   @info msg
-
-#    return nothing
-#end
-
-#simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
-
 output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
@@ -132,13 +114,13 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, w
 run!(simulation)
 
 time_series = (;
-    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"; grid=grid),
-    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"; grid=grid),
-    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"; grid=grid),
-    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"; grid=grid),
-    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"; grid=grid),
-    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"; grid=grid),
-    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"; grid=grid))
+    w = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "w"),
+    u = FieldTimeSeries("langmuir_turbulence_fields_$rank.jld2", "u"),
+    B = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "B"),
+    U = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "U"),
+    V = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "V"),
+    wu = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wu"),
+    wv = FieldTimeSeries("langmuir_turbulence_averages_$rank.jld2", "wv"))
                         
 times = time_series.w.times
 
