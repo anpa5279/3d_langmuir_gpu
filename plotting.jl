@@ -5,9 +5,22 @@ using Oceananigans.Units: minute, minutes, hours
 using JLD2
 
 # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
+Nranks = 1
 times = Float64[]
+w = []
+u = []
+B = []
+U = []
+V = []
+wu = []
+wv = []
 
-for i in 0:3
+Lx = 0.0
+Ly = 0.0
+Lz = 0.0
+grid = nothing
+
+for i in 0:Nranks-1
     println("Loading rank $i")
 
     fld_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
@@ -19,31 +32,39 @@ for i in 0:3
     loc = collect(keys(f["timeseries"]["t"]))
 
     if i == 0
-        times = f["timeseries"]["t"][loc[end]]
-        p = i
-        println("First time: ", times)
+        for j in 1:length(loc)
+            push!(times, f["timeseries"]["t"][loc[j]])
+            push!(w, f["timeseries"]["w"][loc[j]])
+            push!(u, f["timeseries"]["u"][loc[j]])
+            push!(B, a["timeseries"]["B"][loc[j]])
+            push!(U, a["timeseries"]["U"][loc[j]])
+            push!(V, a["timeseries"]["V"][loc[j]])
+            push!(wu, a["timeseries"]["wu"][loc[j]])
+            push!(wv, a["timeseries"]["wv"][loc[j]])
+        end
+        global grid = RectilinearGrid(size = (Nranks * f["grid"]["Nx"], f["grid"]["Ny"], f["grid"]["Nz"]), extent = (Nranks * f["grid"]["Lx"], f["grid"]["Ly"], f["grid"]["Lz"]))
+        global Lx = Nranks * f["grid"]["Lx"]
+        global Ly = f["grid"]["Ly"]
+        global Lz = f["grid"]["Lz"]
+    else 
+        for j in 1:length(loc)
+            push!(w, f["timeseries"]["w"][loc[j]])
+            push!(u, f["timeseries"]["u"][loc[j]])
+            push!(B, a["timeseries"]["B"][loc[j]])
+            push!(U, a["timeseries"]["U"][loc[j]])
+            push!(V, a["timeseries"]["V"][loc[j]])
+            push!(wu, a["timeseries"]["wu"][loc[j]])
+            push!(wv, a["timeseries"]["wv"][loc[j]])
+        end
     end 
-
-    for j in 1:length(loc)
-        println(j)
-        #println(f["timeseries"]["w"][loc[j]])
-        push!(w[j + p], f["timeseries"]["w"][loc[j]])
-        push!(u[j + p], f["timeseries"]["u"][loc[j]])
-        push!(B[j + p], a["timeseries"]["B"][loc[j]])
-        push!(U[j + p], a["timeseries"]["U"][loc[j]])
-        push!(V[j + p], a["timeseries"]["V"][loc[j]])
-        push!(wu[j + p], a["timeseries"]["wu"][loc[j]])
-        push!(wv[j + p], a["timeseries"]["wv"][loc[j]])
-    end
-
-    p = length(loc) + p * i
 
     close(f)
     close(a)
     
 end
-
-times = w.times
+println(grid)
+println(Lx)
+println(times)
 
 n = Observable(1)
 
@@ -89,18 +110,18 @@ ax_uxz = Axis(fig[3, 1:2];
             title = uxz_title)
 
 
-wₙ = @lift gridw[$n]
-uₙ = @lift gridu[$n]
-Bₙ = @lift view(gridB[$n], 1, 1, :)
-Uₙ = @lift view(gridU[$n], 1, 1, :)
-Vₙ = @lift view(gridV[$n], 1, 1, :)
-wuₙ = @lift view(gridwu[$n], 1, 1, :)
-wvₙ = @lift view(gridwv[$n], 1, 1, :)
+wₙ = @lift w[$n]
+uₙ = @lift u[$n]
+Bₙ = @lift view(B[$n], 1, 1, :)
+Uₙ = @lift view(U[$n], 1, 1, :)
+Vₙ = @lift view(V[$n], 1, 1, :)
+wuₙ = @lift view(wu[$n], 1, 1, :)
+wvₙ = @lift view(wv[$n], 1, 1, :)
 
 k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
-wxyₙ = @lift view(gridw[$n], :, :, k)
-wxzₙ = @lift view(gridw[$n], :, 1, :)
-uxzₙ = @lift view(gridu[$n], :, 1, :)
+wxyₙ = @lift view(w[$n], :, :, k)
+wxzₙ = @lift view(w[$n], :, 1, :)
+uxzₙ = @lift view(u[$n], :, 1, :)
 
 wlims = (-0.03, 0.03)
 ulims = (-0.05, 0.05)
