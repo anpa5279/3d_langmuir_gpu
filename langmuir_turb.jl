@@ -26,6 +26,7 @@ params = Params(32, 32, 32, 128.0, 128.0, 64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1
 # Automatically distributes among available processors
 
 arch = Distributed(GPU())
+@show arch
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
