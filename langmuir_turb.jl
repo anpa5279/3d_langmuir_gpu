@@ -36,12 +36,10 @@ grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(par
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
-@show wavenumber, frequency
 
 # The vertical scale over which the Stokes drift of a monochromatic surface wave
 # decays away from the surface is `1/2wavenumber`, or
 const vertical_scale = params.wavelength / 4π
-@show vertical_scale
 
 # Stokes drift velocity at the surface
 const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹

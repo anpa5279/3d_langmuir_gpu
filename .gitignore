@@ -1,7 +1,8 @@
 core
 daf
-outputs_temp
-outputs
+outputs_temp/
+outputs/
 outputs.tar.gz
 *.sh
 *.mp4
+test.o*
