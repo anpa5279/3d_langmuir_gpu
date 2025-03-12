@@ -1,5 +1,6 @@
 using Pkg
 using CairoMakie
+using Printf
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
 
@@ -7,11 +8,12 @@ function plot()
     # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
     Nranks = 4
 
-    fld_file="outputs/langmuir_turbulence_fields_0_rank0.jld2"
-    averages_file="outputs/langmuir_turbulence_averages_0_rank0.jld2"
+    fld_file="outputs/langmuir_turbulence_fields_0.jld2"
+    averages_file="outputs/langmuir_turbulence_averages_0.jld2"
 
     w_temp = FieldTimeSeries(fld_file, "w")
     u_temp = FieldTimeSeries(fld_file, "u")
+    T_temp = FieldTimeSeries(fld_file, "T")
     B_temp = FieldTimeSeries(averages_file, "B")
     U_temp = FieldTimeSeries(averages_file, "U")
     V_temp = FieldTimeSeries(averages_file, "V")
@@ -32,6 +34,7 @@ function plot()
 
     w_data = Array{Float64}(undef, (Nx, Ny, Nz + 1, Nt)) #because face value
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
+    T_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
@@ -44,8 +47,9 @@ function plot()
     wv_data .= 0
 
     p = 1
-    w_data[p:u_temp.grid.Nx, :, :, :] .= w_temp.data
-    u_data[p:u_temp.grid.Nx, :, :, :] .= u_temp.data
+    w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
+    u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
+    T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
     B_data .= B_data .+ B_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
@@ -58,11 +62,12 @@ function plot()
 
         println("Loading rank $i")
 
-        fld_file="outputs/langmuir_turbulence_fields_$(i)_rank$(i).jld2"
-        averages_file="outputs/langmuir_turbulence_averages_$(i)_rank$(i).jld2"
+        fld_file="outputs/langmuir_turbulence_fields_$(i).jld2"
+        averages_file="outputs/langmuir_turbulence_averages_$(i).jld2"
 
         w_temp = FieldTimeSeries(fld_file, "w")
         u_temp = FieldTimeSeries(fld_file, "u")
+        T_temp = FieldTimeSeries(fld_file, "T")
         B_temp = FieldTimeSeries(averages_file, "B")
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
@@ -71,6 +76,7 @@ function plot()
         
         w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
         u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
+        T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
         B_data .= B_data .+ B_temp.data
         U_data .= U_data .+ U_temp.data
         V_data .= V_data .+ V_temp.data
@@ -87,6 +93,7 @@ function plot()
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
+    T = FieldTimeSeries{Face, Center, Center}(grid, times)
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -95,6 +102,7 @@ function plot()
 
     w .= w_data
     u .= u_data
+    T .= T_data
     B .= B_data
     U .= U_data
     V .= V_data
@@ -148,6 +156,7 @@ function plot()
 
     wₙ = @lift w[$n]
     uₙ = @lift u[$n]
+    Tₙ = @lift interior(T[$n],  :, 1, :)
     Bₙ = @lift view(B[$n], 1, 1, :)
     Uₙ = @lift view(U[$n], 1, 1, :)
     Vₙ = @lift view(V[$n], 1, 1, :)
@@ -195,6 +204,39 @@ function plot()
     frames = 1:length(times)
 
     record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+        n[] = i
+    end
+
+    fig = Figure(size = (1000, 400))
+
+    axis_kwargs = (xlabel="x (m)",
+                ylabel="z (m)",
+                aspect = AxisAspect(Lx/Lz),
+                limits = ((0, Lx), (-Lz, 0)))
+
+    ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
+    ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
+
+    title = @lift @sprintf("t = %s", prettytime(times[$n]))
+
+    wlims = (-0.05, 0.05)
+    Tlims = (19.7, 19.99)
+
+    hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = wlims)
+    Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
+
+    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
+    Colorbar(fig[2, 4], hm_T; label = "ᵒC")
+
+    fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
+
+    fig
+
+    frames = intro:length(times)
+
+    @info "Making a motion picture of ocean wind mixing and convection..."
+
+    record(fig, "temperature.mp4", frames, framerate=8) do i
         n[] = i
     end
 

@@ -37,27 +37,24 @@ println("Hello from process $rank out of $Nranks")
 
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
-
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
                                                                     haline_contraction = 8e-4))
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
 
-#@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 
-#evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
+evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
 
-#S_bcs = FieldBoundaryConditions(top=evaporation_bc)
+S_bcs = FieldBoundaryConditions(top=evaporation_bc)
+@show S_bcs
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
-@show wavenumber, frequency
 
 # The vertical scale over which the Stokes drift of a monochromatic surface wave
 # decays away from the surface is `1/2wavenumber`, or
 const vertical_scale = params.wavelength / 4π
-@show vertical_scale
 
 # Stokes drift velocity at the surface
 const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
@@ -69,20 +66,15 @@ const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
 @show u_bcs
 
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
-                                                bottom = GradientBoundaryCondition(params.N²))
-@show b_bcs
-
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :b),
-                            buoyancy = BuoyancyTracer(),
+                            tracers = (:T, :S),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, b=b_bcs)) #  :S,  S=S_bcs,
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bc)) #  :S,  S=S_bcs,
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
