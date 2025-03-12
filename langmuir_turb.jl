@@ -75,7 +75,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             tracers = (:T, :S),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bc)) #  :S,  S=S_bcs,
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) #  :S,  S=S_bcs,
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
