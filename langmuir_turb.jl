@@ -2,7 +2,7 @@ using Pkg
 using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
-using Oceananigans.Units: minute, minutes, hours
+using Oceananigans.Units: minute, minutes, hours, hour
 using Oceananigans.BuoyancyFormulations: g_Earth
 
 mutable struct Params
