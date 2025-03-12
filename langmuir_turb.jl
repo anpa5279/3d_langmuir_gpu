@@ -43,7 +43,9 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.�
 
 @inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 
-evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=1e-3 / hour)
+const evaporation_rate = 1e-3 / hour # m s⁻¹
+
+evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters= evaporation_rate)
 
 S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 @show S_bcs
@@ -91,7 +93,7 @@ u★ = sqrt(abs(params.τx))
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35) #S=35,
 
-simulation = Simulation(model, Δt=45.0, stop_time=4hours)
+simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
