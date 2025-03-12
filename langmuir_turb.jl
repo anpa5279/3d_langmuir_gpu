@@ -39,7 +39,7 @@ grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(par
 @show grid
 
 B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
-                                bottom = GradientBoundaryCondition(para,s.N²))
+                                bottom = GradientBoundaryCondition(params.N²))
 
 buoyancy = BuoyancyForce(SeawaterBuoyancy)
 
