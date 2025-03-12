@@ -41,14 +41,6 @@ grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(par
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
 
-@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
-
-const evaporation_rate = 1e-3 / hour # m s⁻¹
-
-evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters= evaporation_rate)
-
-S_bcs = FieldBoundaryConditions(top=evaporation_bc)
-@show S_bcs
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
@@ -72,10 +64,10 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :S),
+                            tracers = (:T, ::b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) #  :S,  S=S_bcs,
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
@@ -91,7 +83,7 @@ u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35) #S=35,
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
 simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
