@@ -14,7 +14,7 @@ function plot()
     w_temp = FieldTimeSeries(fld_file, "w")
     u_temp = FieldTimeSeries(fld_file, "u")
     T_temp = FieldTimeSeries(fld_file, "T")
-    B_temp = FieldTimeSeries(averages_file, "B")
+    S_temp = FieldTimeSeries(fld_file, "S")
     U_temp = FieldTimeSeries(averages_file, "U")
     V_temp = FieldTimeSeries(averages_file, "V")
     wu_temp = FieldTimeSeries(averages_file, "wu")
@@ -30,17 +30,16 @@ function plot()
     grid = RectilinearGrid(size = (Nx, Ny, Nz), extent = (Lx, Ly, Lz))
     times = u_temp.times
 
-    println(Nx)
-
     w_data = Array{Float64}(undef, (Nx, Ny, Nz + 1, Nt)) #because face value
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     T_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
-    B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
+    S_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
+    #B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
     wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
-    B_data .= 0
+    #B_data .= 0
     U_data .= 0
     V_data .= 0
     wu_data .= 0
@@ -50,7 +49,8 @@ function plot()
     w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
     u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
     T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
-    B_data .= B_data .+ B_temp.data
+    S_data[p:p + S_temp.grid.Nx - 1, :, :, :] .= S_temp.data
+    # B_data .= B_data .+ B_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
     wu_data .= wu_data .+ wu_temp.data
@@ -68,7 +68,7 @@ function plot()
         w_temp = FieldTimeSeries(fld_file, "w")
         u_temp = FieldTimeSeries(fld_file, "u")
         T_temp = FieldTimeSeries(fld_file, "T")
-        B_temp = FieldTimeSeries(averages_file, "B")
+        S_temp = FieldTimeSeries(fld_file, "S")
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
         wu_temp = FieldTimeSeries(averages_file, "wu")
@@ -77,7 +77,7 @@ function plot()
         w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
         u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
         T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
-        B_data .= B_data .+ B_temp.data
+        S_data[p:p + S_temp.grid.Nx - 1, :, :, :] .= S_temp.data
         U_data .= U_data .+ U_temp.data
         V_data .= V_data .+ V_temp.data
         wu_data .= wu_data .+ wu_temp.data
@@ -85,7 +85,8 @@ function plot()
         
     end
 
-    B_data = B_data ./ Nranks
+    #averaging
+    #B_data = B_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
@@ -94,7 +95,8 @@ function plot()
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
     T = FieldTimeSeries{Face, Center, Center}(grid, times)
-    B = FieldTimeSeries{Center, Center, Center}(grid, times)
+    S = FieldTimeSeries{Face, Center, Center}(grid, times)
+    #B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
     wu = FieldTimeSeries{Center, Center, Face}(grid, times)
@@ -103,7 +105,8 @@ function plot()
     w .= w_data
     u .= u_data
     T .= T_data
-    B .= B_data
+    S .= S_data
+    #B .= B_data
     U .= U_data
     V .= V_data
     wu .= wu_data
@@ -116,11 +119,18 @@ function plot()
     wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
     uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 
+    xT, yT, zT = nodes(T)
+
+    axis_kwargs = (xlabel="x (m)",
+                ylabel="z (m)",
+                aspect = AxisAspect(Lx/Lz),
+                limits = ((0, Lx), (-Lz, 0)))
+
     fig = Figure(size = (850, 850))
 
-    ax_B = Axis(fig[1, 4];
-                xlabel = "Buoyancy (m s⁻²)",
-                ylabel = "z (m)")
+    #ax_B = Axis(fig[1, 4];
+    #            xlabel = "Buoyancy (m s⁻²)",
+    #            ylabel = "z (m)")
 
     ax_U = Axis(fig[2, 4];
                 xlabel = "Velocities (m s⁻¹)",
@@ -132,32 +142,27 @@ function plot()
                     ylabel = "z (m)",
                     limits = ((-3.5e-5, 3.5e-5), nothing))
 
-    ax_wxy = Axis(fig[1, 1:2];
+    ax_wxy = Axis(fig[1, 4];
                 xlabel = "x (m)",
                 ylabel = "y (m)",
                 aspect = DataAspect(),
                 limits = ((0, Lx), (0, Ly)),
                 title = wxy_title)
 
-    ax_wxz = Axis(fig[2, 1:2];
-                xlabel = "x (m)",
-                ylabel = "z (m)",
-                aspect = AxisAspect(2),
-                limits = ((0, Lx), (-Lz, 0)),
-                title = wxz_title)
+    ax_wxz = Axis(fig[2, 1:2]; title = wxz_title, axis_kwargs...)
 
-    ax_uxz = Axis(fig[3, 1:2];
-                xlabel = "x (m)",
-                ylabel = "z (m)",
-                aspect = AxisAspect(2),
-                limits = ((0, Lx), (-Lz, 0)),
-                title = uxz_title)
+    ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
 
+    ax_T  = Axis(fig[1, 1:2]; title = "Temperature", axis_kwargs...)
+
+    ax_S  = Axis(fig[4, 1:2]; title = "Salinity", axis_kwargs...)
+    title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
     wₙ = @lift w[$n]
     uₙ = @lift u[$n]
     Tₙ = @lift interior(T[$n],  :, 1, :)
-    Bₙ = @lift view(B[$n], 1, 1, :)
+    Sₙ = @lift interior(S[$n],  :, 1, :)
+    #Bₙ = @lift view(B[$n], 1, 1, :)
     Uₙ = @lift view(U[$n], 1, 1, :)
     Vₙ = @lift view(V[$n], 1, 1, :)
     wuₙ = @lift view(wu[$n], 1, 1, :)
@@ -170,8 +175,10 @@ function plot()
 
     wlims = (-0.03, 0.03)
     ulims = (-0.05, 0.05)
+    Tlims = (19.7, 19.99)
+    Slims = (35, 35.005)
 
-    lines!(ax_B, Bₙ)
+    #lines!(ax_B, Bₙ)
 
     lines!(ax_U, Uₙ; label = L"\bar{u}")
     lines!(ax_U, Vₙ; label = L"\bar{v}")
@@ -181,11 +188,14 @@ function plot()
     lines!(ax_fluxes, wvₙ; label = L"mean $wv$")
     axislegend(ax_fluxes; position = :rb)
 
+    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
+    Colorbar(fig[1, 3], hm_T; label = "ᵒC")
+
     hm_wxy = heatmap!(ax_wxy, wxyₙ;
                     colorrange = wlims,
                     colormap = :balance)
 
-    Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
+    Colorbar(fig[1, 5], hm_wxy; label = "m s⁻¹")
 
     hm_wxz = heatmap!(ax_wxz, wxzₙ;
                     colorrange = wlims,
@@ -198,45 +208,15 @@ function plot()
                     colormap = :balance)
 
     Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
+    
+    hm_S = heatmap!(ax_S, xT, zT, Sₙ; colormap = :haline, colorrange = Slims)
+    Colorbar(fig[4, 3], hm_S; label = "g / kg")
 
     fig
 
     frames = 1:length(times)
 
-    record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-        n[] = i
-    end
-
-    fig = Figure(size = (1000, 400))
-
-    axis_kwargs = (xlabel="x (m)",
-                ylabel="z (m)",
-                aspect = AxisAspect(Lx/Lz),
-                limits = ((0, Lx), (-Lz, 0)))
-
-    ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
-    ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
-
-    title = @lift @sprintf("t = %s", prettytime(times[$n]))
-
-    wlims = (-0.05, 0.05)
-    Tlims = (19.7, 19.99)
-
-    hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = wlims)
-    Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
-
-    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[2, 4], hm_T; label = "ᵒC")
-
-    fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
-
-    fig
-
-    frames = intro:length(times)
-
-    @info "Making a motion picture of ocean wind mixing and convection..."
-
-    record(fig, "temperature.mp4", frames, framerate=8) do i
+    record(fig, "langmuir_turbulence_temp.mp4", frames, framerate=8) do i
         n[] = i
     end
 
