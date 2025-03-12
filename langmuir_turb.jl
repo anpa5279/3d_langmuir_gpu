@@ -110,13 +110,15 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       with_halos = false)
 
 u, v, w = model.velocities
+b = model.tracers.b
 
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
+B = Average(b, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, wu, wv),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
