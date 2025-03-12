@@ -97,8 +97,6 @@ function plot()
     wu_data = wu_data ./ Nranks
     wv_data = wv_data ./ Nranks
 
-    @show B_data
-
     #calculating buoyancy from temperature and salinity
     #beta = 7.80e-4
     #alpha = 1.67e-4
@@ -127,7 +125,6 @@ function plot()
     wu .= wu_data
     wv .= wv_data
 
-    @show B
     #begin plotting
     n = Observable(1)
 
@@ -142,18 +139,18 @@ function plot()
                 aspect = AxisAspect(Lx/Lz),
                 limits = ((0, Lx), (-Lz, 0)))
 
-    fig = Figure(size = (850, 850))
+    fig = Figure(size = (850, 1150))
 
-    ax_B = Axis(fig[1, 4];
+    ax_B = Axis(fig[1, 4:5];
                 xlabel = "Buoyancy (m s⁻²)", xtickformat = "{:.3f}", xticklabelrotation = pi/4,
                 ylabel = "z (m)")
     
-    ax_U = Axis(fig[2, 4];
+    ax_U = Axis(fig[2, 4:5];
                 xlabel = "Velocities (m s⁻¹)",
                 ylabel = "z (m)",
                 limits = ((-0.07, 0.07), nothing))
 
-    ax_fluxes = Axis(fig[3, 4];
+    ax_fluxes = Axis(fig[3, 4:5];
                     xlabel = "Momentum fluxes (m² s⁻²)", xticklabelrotation = pi/4,
                     ylabel = "z (m)",
                     limits = ((-3.5e-5, 3.5e-5), nothing))

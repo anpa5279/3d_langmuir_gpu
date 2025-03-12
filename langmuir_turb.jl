@@ -98,7 +98,7 @@ u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35) #S=35,
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35, b=bᵢ) #S=35,
 
 simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
