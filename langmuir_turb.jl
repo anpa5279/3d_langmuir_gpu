@@ -37,7 +37,6 @@ println("Hello from process $rank out of $Nranks")
 
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
-                                                                    haline_contraction = 8e-4))
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
