@@ -97,6 +97,8 @@ function plot()
     wu_data = wu_data ./ Nranks
     wv_data = wv_data ./ Nranks
 
+    @show B_data
+
     #calculating buoyancy from temperature and salinity
     #beta = 7.80e-4
     #alpha = 1.67e-4
@@ -125,6 +127,7 @@ function plot()
     wu .= wu_data
     wv .= wv_data
 
+    @show B
     #begin plotting
     n = Observable(1)
 
