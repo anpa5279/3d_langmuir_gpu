@@ -216,7 +216,7 @@ function plot()
 
     frames = 1:length(times)
 
-    record(fig, "langmuir_turbulence_temp.mp4", frames, framerate=8) do i
+    record(fig, "langmuir_turbulence_temp_sal.mp4", frames, framerate=8) do i
         n[] = i
     end
 
