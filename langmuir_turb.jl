@@ -4,6 +4,7 @@ using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, hour
 using Oceananigans.BuoyancyFormulations: g_Earth
+using OceanBioME
 
 mutable struct Params
     Nx::Int
