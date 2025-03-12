@@ -118,7 +118,7 @@ u, v, w = model.velocities
 #calculating buoyancy from temperature and salinity
 beta = 7.80e-4
 alpha = 1.67e-4
-b = g_Earth * (alpha * T - beta * S)
+b = g_Earth * (alpha * model.tracers.T - beta * model.tracers.S)
 
 B = Average(b, dims=(1, 2))
 U = Average(u, dims=(1, 2))

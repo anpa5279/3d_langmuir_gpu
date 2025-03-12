@@ -92,15 +92,15 @@ function plot()
     #calculating buoyancy from temperature and salinity
     beta = 7.80e-4
     alpha = 1.67e-4
-    B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
-    B_data = g_Earth * (alpha * T_data - beta * S_data)
+    B_temp = Array{Float64}(undef, (1, 1, Nz, Nt))
+    B_temp = g_Earth * (alpha * T_data - beta * S_data)
+    B_data = mean(B_temp, dims=(1, 2))
     
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
     T = FieldTimeSeries{Face, Center, Center}(grid, times)
     S = FieldTimeSeries{Face, Center, Center}(grid, times)
-    B_temp = FieldTimeSeries{Center, Center, Center}(grid, times)
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -111,18 +111,12 @@ function plot()
     u .= u_data
     T .= T_data
     S .= S_data
-    B_temp .= B_data
+    B .= B_data
     U .= U_data
     V .= V_data
     wu .= wu_data
     wv .= wv_data
 
-    #B = Average(B_temp, dims=(1, 2))
-    @show keys(B_data)
-    @show keys(U_data)
-    @show keys(U)
-    @show B
-    @show U
     #begin plotting
     n = Observable(1)
 
