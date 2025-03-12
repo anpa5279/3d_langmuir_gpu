@@ -111,10 +111,14 @@ function plot()
 
     #begin plotting
     n = Observable(1)
-
     wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
     wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
     uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
+
+    axis_kwargs = (xlabel="x (m)",
+                ylabel="z (m)",
+                aspect = AxisAspect(Lx/Lz),
+                limits = ((0, Lx), (-Lz, 0)))
 
     fig = Figure(size = (850, 850))
 
@@ -140,18 +144,14 @@ function plot()
                 title = wxy_title)
 
     ax_wxz = Axis(fig[2, 1:2];
-                xlabel = "x (m)",
-                ylabel = "z (m)",
-                aspect = AxisAspect(2),
-                limits = ((0, Lx), (-Lz, 0)),
-                title = wxz_title)
+                title = wxz_title,
+                axis_kwargs...)
 
     ax_uxz = Axis(fig[3, 1:2];
-                xlabel = "x (m)",
-                ylabel = "z (m)",
-                aspect = AxisAspect(2),
-                limits = ((0, Lx), (-Lz, 0)),
-                title = uxz_title)
+                title = uxz_title,
+                axis_kwargs...)
+
+    ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
 
 
     wₙ = @lift w[$n]
@@ -170,6 +170,7 @@ function plot()
 
     wlims = (-0.03, 0.03)
     ulims = (-0.05, 0.05)
+    Tlims = (19.7, 19.99)
 
     lines!(ax_B, Bₙ)
 
@@ -199,45 +200,14 @@ function plot()
 
     Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
+    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
+    Colorbar(fig[2, 4], hm_T; label = "ᵒC")
+
     fig
 
     frames = 1:length(times)
 
-    record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+    record(fig, "langmuir_turbulence_temp_buoy.mp4", frames, framerate=8) do i
         n[] = i
     end
-
-    fig = Figure(size = (1000, 400))
-
-    axis_kwargs = (xlabel="x (m)",
-                ylabel="z (m)",
-                aspect = AxisAspect(Lx/Lz),
-                limits = ((0, Lx), (-Lz, 0)))
-
-    ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
-    ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
-
-    title = @lift @sprintf("t = %s", prettytime(times[$n]))
-
-    wlims = (-0.05, 0.05)
-    Tlims = (19.7, 19.99)
-
-    hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = wlims)
-    Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
-
-    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[2, 4], hm_T; label = "ᵒC")
-
-    fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
-
-    fig
-
-    frames = intro:length(times)
-
-    @info "Making a motion picture of ocean wind mixing and convection..."
-
-    record(fig, "temperature.mp4", frames, framerate=8) do i
-        n[] = i
-    end
-
 end
