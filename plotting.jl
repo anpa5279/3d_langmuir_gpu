@@ -30,8 +30,6 @@ function plot()
     grid = RectilinearGrid(size = (Nx, Ny, Nz), extent = (Lx, Ly, Lz))
     times = u_temp.times
 
-    println(Nx)
-
     w_data = Array{Float64}(undef, (Nx, Ny, Nz + 1, Nt)) #because face value
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     T_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
@@ -151,7 +149,7 @@ function plot()
                 title = uxz_title,
                 axis_kwargs...)
 
-    ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
+    ax_T  = Axis(fig[4, 1:2]; title = "Temperature", axis_kwargs...)
 
 
     wₙ = @lift w[$n]
@@ -171,6 +169,8 @@ function plot()
     wlims = (-0.03, 0.03)
     ulims = (-0.05, 0.05)
     Tlims = (19.7, 19.99)
+
+    xT, yT, zT = nodes(T)
 
     lines!(ax_B, Bₙ)
 
@@ -201,7 +201,7 @@ function plot()
     Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
     hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[2, 4], hm_T; label = "ᵒC")
+    Colorbar(fig[4, 3], hm_T; label = "ᵒC")
 
     fig
 

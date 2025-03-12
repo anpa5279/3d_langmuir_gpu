@@ -72,8 +72,8 @@ coriolis = FPlane(f=1e-4)
 model = NonhydrostaticModel(; grid,coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            buoyancy = BuoyancyTracer(),
                             tracers = (:T, :b),
+                            buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, T=T_bcs, B=B_bcs))
@@ -92,7 +92,7 @@ u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, b=bᵢ)
 
 simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
