@@ -63,20 +63,20 @@ const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
 @show u_bcs
 
-#B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
-#                                                bottom = GradientBoundaryCondition(params.N²))
-#@show B_bcs
+B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
+                                                bottom = GradientBoundaryCondition(params.N²))
+@show B_bcs
 
 coriolis = FPlane(f=1e-4)
 
 model = NonhydrostaticModel(; grid,coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            buoyancy = SeawaterBuoyancy(),
+                            buoyancy = BuoyancyTracer(),
                             tracers = (:T, :b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)) #B=B_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, B=B_bcs))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
