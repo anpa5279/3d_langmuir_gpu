@@ -1,5 +1,8 @@
-*.exe
-*.sh
-test.o*
-*.jld2
+core
+daf
+outputs_temp/
 outputs/
+outputs.tar.gz
+*.sh
+langmuir_turbulence.mp4
+test.o*
