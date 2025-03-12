@@ -116,17 +116,17 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
 u, v, w = model.velocities
 
 #calculating buoyancy from temperature and salinity
-beta = 7.80e-4
-alpha = 1.67e-4
-b = g_Earth * (alpha * model.tracers.T - beta * model.tracers.S)
+#beta = 7.80e-4
+#alpha = 1.67e-4
+#b = g_Earth * (alpha * model.tracers.T - beta * model.tracers.S)
 
-B = Average(b, dims=(1, 2))
+#B = Average(b, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; B, U, V, wu, wv),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,

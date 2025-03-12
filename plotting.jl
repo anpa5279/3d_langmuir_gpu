@@ -1,4 +1,5 @@
 using Pkg
+using Statistics
 using CairoMakie
 using Printf
 using Oceananigans
@@ -16,6 +17,7 @@ function plot()
     u_temp = FieldTimeSeries(fld_file, "u")
     T_temp = FieldTimeSeries(fld_file, "T")
     S_temp = FieldTimeSeries(fld_file, "S")
+    B_temp = FieldTimeSeries(averages_file, "B")
     U_temp = FieldTimeSeries(averages_file, "U")
     V_temp = FieldTimeSeries(averages_file, "V")
     wu_temp = FieldTimeSeries(averages_file, "wu")
@@ -35,10 +37,12 @@ function plot()
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     T_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     S_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
+    B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
     wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
+    B_data .= 0
     U_data .= 0
     V_data .= 0
     wu_data .= 0
@@ -49,6 +53,7 @@ function plot()
     u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
     T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
     S_data[p:p + S_temp.grid.Nx - 1, :, :, :] .= S_temp.data
+    B_data .= B_data .+ B_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
     wu_data .= wu_data .+ wu_temp.data
@@ -67,6 +72,7 @@ function plot()
         u_temp = FieldTimeSeries(fld_file, "u")
         T_temp = FieldTimeSeries(fld_file, "T")
         S_temp = FieldTimeSeries(fld_file, "S")
+        B_temp = FieldTimeSeries(averages_file, "B")
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
         wu_temp = FieldTimeSeries(averages_file, "wu")
@@ -76,6 +82,7 @@ function plot()
         u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
         T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
         S_data[p:p + S_temp.grid.Nx - 1, :, :, :] .= S_temp.data
+        B_data .= B_data .+ B_temp.data
         U_data .= U_data .+ U_temp.data
         V_data .= V_data .+ V_temp.data
         wu_data .= wu_data .+ wu_temp.data
@@ -84,17 +91,18 @@ function plot()
     end
 
     #averaging
+    B_data = B_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
     wv_data = wv_data ./ Nranks
 
     #calculating buoyancy from temperature and salinity
-    beta = 7.80e-4
-    alpha = 1.67e-4
-    B_temp = Array{Float64}(undef, (1, 1, Nz, Nt))
-    B_temp = g_Earth * (alpha * T_data - beta * S_data)
-    B_data = mean(B_temp, dims=(1, 2))
+    #beta = 7.80e-4
+    #alpha = 1.67e-4
+    #B_temp = Array{Float64}(undef, (1, 1, Nz, Nt))
+    #B_temp = g_Earth * (alpha * T_data - beta * S_data)
+    #B_data = Statistics.mean(B_temp, dims=(1, 2))
     
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
@@ -134,16 +142,16 @@ function plot()
     fig = Figure(size = (850, 850))
 
     ax_B = Axis(fig[1, 4];
-                xlabel = "Buoyancy (m s⁻²)",
+                xlabel = "Buoyancy (m s⁻²)", xtickformat = "{:.3f}", xticklabelrotation = pi/4,
                 ylabel = "z (m)")
-
+    
     ax_U = Axis(fig[2, 4];
                 xlabel = "Velocities (m s⁻¹)",
                 ylabel = "z (m)",
                 limits = ((-0.07, 0.07), nothing))
 
     ax_fluxes = Axis(fig[3, 4];
-                    xlabel = "Momentum fluxes (m² s⁻²)",
+                    xlabel = "Momentum fluxes (m² s⁻²)", xticklabelrotation = pi/4,
                     ylabel = "z (m)",
                     limits = ((-3.5e-5, 3.5e-5), nothing))
 
@@ -158,9 +166,9 @@ function plot()
 
     ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
 
-    ax_T  = Axis(fig[4, 4:5]; title = "Temperature", axis_kwargs...)
+    ax_T  = Axis(fig[4, 1:2]; title = "Temperature", axis_kwargs...)
 
-    ax_S  = Axis(fig[4, 1:2]; title = "Salinity", axis_kwargs...)
+    ax_S  = Axis(fig[4, 4:5]; title = "Salinity", axis_kwargs...)
     title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
     wₙ = @lift w[$n]
@@ -183,7 +191,7 @@ function plot()
     Tlims = (19.7, 19.99)
     Slims = (35, 35.005)
 
-    #lines!(ax_B, Bₙ)
+    lines!(ax_B, Bₙ)
 
     lines!(ax_U, Uₙ; label = L"\bar{u}")
     lines!(ax_U, Vₙ; label = L"\bar{v}")
@@ -194,7 +202,7 @@ function plot()
     axislegend(ax_fluxes; position = :rb)
 
     hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[4, 6], hm_T; label = "ᵒC")
+    Colorbar(fig[4, 3], hm_T; label = "ᵒC")
 
     hm_wxy = heatmap!(ax_wxy, wxyₙ;
                     colorrange = wlims,
@@ -215,7 +223,7 @@ function plot()
     Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
     
     hm_S = heatmap!(ax_S, xT, zT, Sₙ; colormap = :haline, colorrange = Slims)
-    Colorbar(fig[4, 3], hm_S; label = "g / kg")
+    Colorbar(fig[4, 6], hm_S; label = "g / kg")
 
     fig
 
