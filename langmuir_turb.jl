@@ -35,6 +35,8 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
+buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g_Earth)
+
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
@@ -61,10 +63,10 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
 
 coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, ::b),
+                            tracers = (:T, :b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, T=T_bcs))
