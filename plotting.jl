@@ -3,6 +3,7 @@ using CairoMakie
 using Printf
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using Oceananigans.BuoyancyFormulations: g_Earth
 
 function plot()
     # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
@@ -34,12 +35,10 @@ function plot()
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     T_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     S_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
-    #B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
     wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
-    #B_data .= 0
     U_data .= 0
     V_data .= 0
     wu_data .= 0
@@ -50,7 +49,6 @@ function plot()
     u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
     T_data[p:p + T_temp.grid.Nx - 1, :, :, :] .= T_temp.data
     S_data[p:p + S_temp.grid.Nx - 1, :, :, :] .= S_temp.data
-    # B_data .= B_data .+ B_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
     wu_data .= wu_data .+ wu_temp.data
@@ -86,17 +84,21 @@ function plot()
     end
 
     #averaging
-    #B_data = B_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
     wv_data = wv_data ./ Nranks
+
+    #calculating buoyancy from temperature and salinity
+    beta = 7.80e-4
+    alpha = 1.67e-4
+    B_temp = g_Earth * (alpha * T_data - beta * S_data)
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
     T = FieldTimeSeries{Face, Center, Center}(grid, times)
     S = FieldTimeSeries{Face, Center, Center}(grid, times)
-    #B = FieldTimeSeries{Center, Center, Center}(grid, times)
+    B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
     wu = FieldTimeSeries{Center, Center, Face}(grid, times)
@@ -128,9 +130,9 @@ function plot()
 
     fig = Figure(size = (850, 850))
 
-    #ax_B = Axis(fig[1, 4];
-    #            xlabel = "Buoyancy (m s⁻²)",
-    #            ylabel = "z (m)")
+    ax_B = Axis(fig[1, 4];
+                xlabel = "Buoyancy (m s⁻²)",
+                ylabel = "z (m)")
 
     ax_U = Axis(fig[2, 4];
                 xlabel = "Velocities (m s⁻¹)",

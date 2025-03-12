@@ -38,8 +38,7 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
-                                                                    haline_contraction = 8e-4))
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 @show buoyancy
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
