@@ -92,12 +92,15 @@ function plot()
     #calculating buoyancy from temperature and salinity
     beta = 7.80e-4
     alpha = 1.67e-4
-    B_temp = g_Earth * (alpha * T_data - beta * S_data)
+    B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
+    B_data = g_Earth * (alpha * T_data - beta * S_data)
+    
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
     T = FieldTimeSeries{Face, Center, Center}(grid, times)
     S = FieldTimeSeries{Face, Center, Center}(grid, times)
+    B_temp = FieldTimeSeries{Center, Center, Center}(grid, times)
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -108,12 +111,18 @@ function plot()
     u .= u_data
     T .= T_data
     S .= S_data
-    #B .= B_data
+    B_temp .= B_data
     U .= U_data
     V .= V_data
     wu .= wu_data
     wv .= wv_data
 
+    #B = Average(B_temp, dims=(1, 2))
+    @show keys(B_data)
+    @show keys(U_data)
+    @show keys(U)
+    @show B
+    @show U
     #begin plotting
     n = Observable(1)
 
@@ -144,7 +153,7 @@ function plot()
                     ylabel = "z (m)",
                     limits = ((-3.5e-5, 3.5e-5), nothing))
 
-    ax_wxy = Axis(fig[1, 4];
+    ax_wxy = Axis(fig[1, 1:2];
                 xlabel = "x (m)",
                 ylabel = "y (m)",
                 aspect = DataAspect(),
@@ -155,7 +164,7 @@ function plot()
 
     ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
 
-    ax_T  = Axis(fig[1, 1:2]; title = "Temperature", axis_kwargs...)
+    ax_T  = Axis(fig[4, 4:5]; title = "Temperature", axis_kwargs...)
 
     ax_S  = Axis(fig[4, 1:2]; title = "Salinity", axis_kwargs...)
     title = @lift @sprintf("t = %s", prettytime(times[$n]))
@@ -164,7 +173,7 @@ function plot()
     uₙ = @lift u[$n]
     Tₙ = @lift interior(T[$n],  :, 1, :)
     Sₙ = @lift interior(S[$n],  :, 1, :)
-    #Bₙ = @lift view(B[$n], 1, 1, :)
+    Bₙ = @lift view(B[$n], 1, 1, :)
     Uₙ = @lift view(U[$n], 1, 1, :)
     Vₙ = @lift view(V[$n], 1, 1, :)
     wuₙ = @lift view(wu[$n], 1, 1, :)
@@ -191,13 +200,13 @@ function plot()
     axislegend(ax_fluxes; position = :rb)
 
     hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[1, 3], hm_T; label = "ᵒC")
+    Colorbar(fig[4, 6], hm_T; label = "ᵒC")
 
     hm_wxy = heatmap!(ax_wxy, wxyₙ;
                     colorrange = wlims,
                     colormap = :balance)
 
-    Colorbar(fig[1, 5], hm_wxy; label = "m s⁻¹")
+    Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
     hm_wxz = heatmap!(ax_wxz, wxzₙ;
                     colorrange = wlims,
