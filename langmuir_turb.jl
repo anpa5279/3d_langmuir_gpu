@@ -38,8 +38,10 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
-@show buoyancy
+B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ),
+                                bottom = GradientBoundaryCondition(N²))
+
+buoyancy = BuoyancyForce(SeawaterBuoyancy)
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
@@ -77,10 +79,10 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :S),
+                            tracers = (:T, :S, :b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) #  :S,  S=S_bcs,
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs, B=B_bcs)) #  :S,  S=S_bcs,
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
@@ -119,14 +121,15 @@ u, v, w = model.velocities
 #beta = 7.80e-4
 #alpha = 1.67e-4
 #b = g_Earth * (alpha * model.tracers.T - beta * model.tracers.S)
+b = model.tracers.b
 
-#B = Average(b, dims=(1, 2))
+B = Average(b, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, wu, wv),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; B, U, V, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
