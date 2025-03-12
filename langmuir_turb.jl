@@ -40,9 +40,12 @@ grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(par
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
                                                                     haline_contraction = 8e-4))
+@show buoyancy
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
+
+@show T_bcs
 
 @inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 
