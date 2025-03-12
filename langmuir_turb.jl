@@ -35,14 +35,16 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g_Earth)
 
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
+                                                                    haline_contraction = 8e-4))
+@show buoyancy
+
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
-
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
@@ -61,7 +63,11 @@ const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
 @show u_bcs
 
-coriolis = FPlane(f=1e-4) # s⁻¹
+B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
+                                                bottom = GradientBoundaryCondition(params.N²))
+@show B_bcs
+
+coriolis = FPlane(f=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -69,7 +75,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             tracers = (:T, :b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, b=B_bcs))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
