@@ -125,6 +125,8 @@ function plot()
     wu .= wu_data
     wv .= wv_data
 
+    @show B
+
     #begin plotting
     n = Observable(1)
 
