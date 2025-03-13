@@ -3,6 +3,7 @@ using CairoMakie
 using Printf
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using Oceananigans.BuoyancyFormulations: g_Earth
 
 function plot()
     # running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
@@ -88,10 +89,23 @@ function plot()
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
     wv_data = wv_data ./ Nranks
+
+
+    #calculating salinity
+    beta = 7.80e-4
+    alpha = 1.67e-4
+    S_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
+    for i in 1:Nx
+        for j in 1:Ny
+            S_data[i, j, :, :] =  (alpha * T_data[i, j, :, :] - B_data[1, 1, :, :] / g_Earth) / beta
+        end 
+    end 
+
     #putting everything back into FieldTimeSeries
     w = FieldTimeSeries{Center, Center, Face}(grid, times)
     u = FieldTimeSeries{Face, Center, Center}(grid, times)
     T = FieldTimeSeries{Face, Center, Center}(grid, times)
+    S = FieldTimeSeries{Face, Center, Center}(grid, times)
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -101,6 +115,7 @@ function plot()
     w .= w_data
     u .= u_data
     T .= T_data
+    S .= S_data
     B .= B_data
     U .= U_data
     V .= V_data
@@ -118,7 +133,7 @@ function plot()
                 aspect = AxisAspect(Lx/Lz),
                 limits = ((0, Lx), (-Lz, 0)))
 
-    fig = Figure(size = (850, 850))
+    fig = Figure(size = (850, 1150))
 
     ax_B = Axis(fig[1, 4];
                 xlabel = "Buoyancy (m s⁻²)",
@@ -151,10 +166,12 @@ function plot()
 
     ax_T  = Axis(fig[4, 1:2]; title = "Temperature", axis_kwargs...)
 
+    ax_S  = Axis(fig[4, 4:5]; title = "Salinity", axis_kwargs...)
 
     wₙ = @lift w[$n]
     uₙ = @lift u[$n]
     Tₙ = @lift interior(T[$n],  :, 1, :)
+    Sₙ = @lift interior(S[$n],  :, 1, :)
     Bₙ = @lift view(B[$n], 1, 1, :)
     Uₙ = @lift view(U[$n], 1, 1, :)
     Vₙ = @lift view(V[$n], 1, 1, :)
@@ -169,6 +186,7 @@ function plot()
     wlims = (-0.03, 0.03)
     ulims = (-0.05, 0.05)
     Tlims = (19.7, 19.99)
+    Slims = (4.3, 4.35)
 
     xT, yT, zT = nodes(T)
 
@@ -202,6 +220,9 @@ function plot()
 
     hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
     Colorbar(fig[4, 3], hm_T; label = "ᵒC")
+
+    hm_S = heatmap!(ax_S, xT, zT, Sₙ; colormap = :haline, colorrange = Slims) #, colorrange = Slims
+    Colorbar(fig[4, 6], hm_S; label = "g / kg")
 
     fig
 
