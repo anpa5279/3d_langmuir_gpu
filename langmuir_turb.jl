@@ -80,7 +80,7 @@ u★ = sqrt(abs(params.τx))
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time=4hours)
+simulation = Simulation(model, Δt=45.0, stop_time=48hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)

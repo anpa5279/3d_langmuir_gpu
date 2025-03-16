@@ -104,9 +104,9 @@ function plot()
     #begin plotting
     n = Observable(1)
 
-    wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
-    wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
-    uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
+    wxy_title = @lift string("w(x, y, t) at z=0 m and t = ", prettytime(times[$n]))
+    wxz_title = @lift string("w(x, z, t) t = ", prettytime(times[$n]))
+    uxz_title = @lift string("u(x, z, t) t = ", prettytime(times[$n]))
 
     fig = Figure(size = (850, 850))
 
@@ -154,10 +154,13 @@ function plot()
     wuₙ = @lift view(wu[$n], 1, 1, :)
     wvₙ = @lift view(wv[$n], 1, 1, :)
 
-    k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
-    wxyₙ = @lift view(w[$n], :, :, k)
-    wxzₙ = @lift view(w[$n], :, 1, :)
-    uxzₙ = @lift view(u[$n], :, 1, :)
+    #k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -2)
+    #println(k)
+    #println(znodes(grid, Face(); with_halos=true))
+    #println(Nz)
+    wxyₙ = @lift view(w[$n], :, :, Nz)
+    wxzₙ = @lift view(w[$n], :, Ny/2, :)
+    uxzₙ = @lift view(u[$n], :, Ny/2, :)
 
     wlims = (-0.03, 0.03)
     ulims = (-0.05, 0.05)
