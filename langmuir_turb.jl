@@ -27,8 +27,7 @@ end
 #defaults, these can be changed directly below
 params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0, 200.0, 1026.0, 3991.0, 0.01)
 
-# Automatically distributes among available processors
-
+# Automatically distribute among available processors
 arch = Distributed(GPU())
 @show arch
 rank = arch.local_rank
@@ -37,9 +36,6 @@ println("Hello from process $rank out of $Nranks")
 
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
-
-#B_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
-#                                bottom = GradientBoundaryCondition(params.N²))
 
 buoyancy = SeawaterBuoyancy()
 
@@ -82,7 +78,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             tracers = (:T, :S),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) # , b=B_bcs
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) 
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
@@ -90,17 +86,13 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 # Temperature initial condition: a stable density gradient with random noise superposed.
 @inline Tᵢ(x, y, z) = 20 + params.dTdz * z + params.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
-#@inline stratification(z) = z < - params.initial_mixed_layer_depth ? params.N² * z : params.N² * (-params.initial_mixed_layer_depth)
-
-#@inline bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * params.N² * model.grid.Lz
-
 u★ = sqrt(abs(params.τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35) #, b=bᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
+simulation = Simulation(model, Δt=45.0, stop_time = 48hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
@@ -115,15 +107,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       overwrite_existing = true,
                                                       with_halos = false)
 
-u, v, w = model.velocities
-
-#calculating buoyancy from temperature and salinity
-#beta = 7.80e-4
-#alpha = 1.67e-4
-#b = g_Earth * (alpha * model.tracers.T - beta * model.tracers.S)
-#b = model.tracers.b
-
-#B = Average(b, dims=(1, 2))
+u, v, w = model.Velocities
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
