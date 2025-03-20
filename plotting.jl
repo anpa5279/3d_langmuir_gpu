@@ -28,8 +28,6 @@ function plot()
     grid = RectilinearGrid(size = (Nx, Ny, Nz), extent = (Lx, Ly, Lz))
     times = u_temp.times
 
-    println(Nx)
-
     w_data = Array{Float64}(undef, (Nx, Ny, Nz + 1, Nt)) #because face value
     u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     B_data = Array{Float64}(undef, (1, 1, Nz, Nt))
