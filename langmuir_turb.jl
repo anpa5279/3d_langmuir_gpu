@@ -79,7 +79,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 Ξ(z) = randn() * exp(z / 4)
 
 # Temperature initial condition: a stable density gradient 
-Tᵢ(x, y, z) = 20 + params.dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+Tᵢ(x, y, z) = 20 + params.dTdz * z + params.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
 u★ = sqrt(abs(params.τx))
 uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
