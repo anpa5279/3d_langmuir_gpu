@@ -99,7 +99,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       overwrite_existing = true,
                                                       with_halos = false)
 
-u, v, w = model.Velocities
+u, v, w = model.velocities
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
