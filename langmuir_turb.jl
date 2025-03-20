@@ -79,11 +79,11 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 Ξ(z) = randn() * exp(z / 4)
 
 # Temperature initial condition: a stable density gradient 
-@inline Tᵢ(x, y, z) = 20 + params.dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+Tᵢ(x, y, z) = 20 + params.dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
 u★ = sqrt(abs(params.τx))
-@inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
-@inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35)
 
