@@ -44,13 +44,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.�
 
 @show T_bcs
 
-@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
-
-const evaporation_rate = 1e-3 / hour # m s⁻¹
-
-evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters= evaporation_rate)
-
-S_bcs = FieldBoundaryConditions(top=evaporation_bc)
+S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0)) # no salt flux
 @show S_bcs
 
 const wavenumber = 2π / params.wavelength # m⁻¹
@@ -81,18 +75,16 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) 
 @show model
 
-@inline Ξ(z) = randn() * exp(z / 4)
-
-# Temperature initial condition: a stable density gradient with random noise superposed.
-@inline Tᵢ(x, y, z) = 20 + params.dTdz * z + params.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+# Temperature initial condition: a stable density gradient 
+@inline Tᵢ(x, y, z) = 20 + params.dTdz * z 
 
 u★ = sqrt(abs(params.τx))
-@inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
-@inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+@inline uᵢ(x, y, z) = u★
+@inline wᵢ(x, y, z) = u★
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 48hours)
+simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
