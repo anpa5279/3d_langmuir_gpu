@@ -41,7 +41,6 @@ buoyancy = SeawaterBuoyancy()
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
-
 @show T_bcs
 
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0)) # no salt flux

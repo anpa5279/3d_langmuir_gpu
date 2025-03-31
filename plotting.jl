@@ -91,10 +91,10 @@ function plot()
     wv_data = wv_data ./ Nranks
 
     #calculating buoyancy from temperature and salinity
-    beta = 7.80e-4
+    beta = 2.00e-4 #thermal expansion
     alpha = 1.67e-4
     B_temp = Array{Float64}(undef, (1, 1, Nz, Nt))
-    B_temp = g_Earth * (alpha * T_data - beta * S_data)
+    B_temp = g_Earth * (alpha * T_data) #NCAR LES ignores salinity effects - beta * S_data)
     B_data = Statistics.mean(B_temp, dims=(1, 2))
     
     #putting everything back into FieldTimeSeries
