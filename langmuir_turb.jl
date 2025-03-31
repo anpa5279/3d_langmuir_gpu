@@ -15,7 +15,6 @@ mutable struct Params
     amplitude::Float64 # m
     wavelength::Float64 # m
     τx::Float64 # m² s⁻², surface kinematic momentum flux
-    Jᵇ::Float64 # m² s⁻³, surface buoyancy flux
     N²::Float64 # s⁻², initial and bottom buoyancy gradient
     initial_mixed_layer_depth::Float64 #m 
     Q::Float64      # W m⁻², surface _heat_ flux
@@ -25,7 +24,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below
-params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0, 200.0, 1026.0, 3991.0, 0.01)
+params = Params(32, 32, 32, 128.0, 128.0,64.0, 0.8, 60.0, -3.72e-5, 1.936e-5, 33.0, 200.0, 1026.0, 3991.0, 0.01)
 
 # Automatically distribute among available processors
 arch = Distributed(GPU())
@@ -37,14 +36,11 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4, haline_contraction = 0.0))
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4, haline_contraction = 0.0), constant_salinity = 35.0)
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
 @show T_bcs
-
-S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0)) # no salt flux
-@show S_bcs
 
 const wavenumber = 2π / params.wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
@@ -68,10 +64,10 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :S),
+                            tracers = (:T),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
 @show model
 
 # random seed
@@ -84,7 +80,7 @@ u★ = sqrt(abs(params.τx))
 uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, S=35)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
 simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
 @show simulation
