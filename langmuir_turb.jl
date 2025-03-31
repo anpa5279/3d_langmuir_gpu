@@ -37,7 +37,7 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
 @show grid
 
-buoyancy = SeawaterBuoyancy()
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4, haline_contraction = 0.0))
 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Q / (params.ρₒ * params.cᴾ)),
                                 bottom = GradientBoundaryCondition(params.dTdz))
@@ -53,7 +53,7 @@ const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 # decays away from the surface is `1/2wavenumber`, or
 const vertical_scale = params.wavelength / 4π
 
-# Stokes drift velocity at the surface
+# Stokes drift velocity at the surface. updating this last
 const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
 
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
