@@ -79,7 +79,7 @@ end
 z_d = reverse(collect(znodes(grid, Center())))
 global dudz = dstokes_dz(z_d, p.u₁₀)
 @show dudz
-@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale) #dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
 @show ∂z_uˢ
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
