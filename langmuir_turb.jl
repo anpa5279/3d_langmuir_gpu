@@ -78,7 +78,20 @@ function dstokes_dz(z, u₁₀)
 end 
 z_d = reverse(collect(znodes(grid, Center())))
 global dudz = dstokes_dz(z_d, p.u₁₀)
-@show dudz
+#@show dudz
+
+amplitude = 0.8 # m
+wavelength = 60  # m
+wavenumber = 2π / wavelength # m⁻¹
+ frequency = sqrt(g_Earth * wavenumber) # s⁻¹
+
+# The vertical scale over which the Stokes drift of a monochromatic surface wave
+# decays away from the surface is `1/2wavenumber`, or
+const vertical_scale = wavelength / 4π
+
+# Stokes drift velocity at the surface
+const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+
 @inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale) #dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
 @show ∂z_uˢ
 
