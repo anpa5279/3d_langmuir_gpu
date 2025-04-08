@@ -77,8 +77,8 @@ function dstokes_dz(z, u₁₀)
     return dudz
 end 
 z_d = reverse(collect(znodes(grid, Center())))
-global dudz = dstokes_dz(z_d, p.u₁₀)
-#@show dudz
+const dudz = dstokes_dz(z_d, p.u₁₀)
+@show dudz
 
 @inline ∂z_uˢ(z, t) = dudz[Int(round(p.Nz * abs(z/p.Lz) + 1))]
 @show ∂z_uˢ
