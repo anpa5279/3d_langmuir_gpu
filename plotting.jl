@@ -62,6 +62,7 @@ u_temp = FieldTimeSeries(fld_file, "u")
 B_temp = FieldTimeSeries(fld_file, "B")
 U_temp = FieldTimeSeries(averages_file, "U")
 V_temp = FieldTimeSeries(averages_file, "V")
+W_temp = FieldTimeSeries(averages_file, "W")
 wu_temp = FieldTimeSeries(averages_file, "wu")
 wv_temp = FieldTimeSeries(averages_file, "wv")
 
@@ -80,10 +81,12 @@ u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
 B_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
 U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
 V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
+W_data = Array{Float64}(undef, (1, 1, Nz, Nt))
 wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
 wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
 U_data .= 0
 V_data .= 0
+W_data .= 0
 wu_data .= 0
 wv_data .= 0
 
@@ -93,6 +96,7 @@ u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
 B_data .= B_data .+ B_temp.data
 U_data .= U_data .+ U_temp.data
 V_data .= V_data .+ V_temp.data
+W_data .= W_data .+ W_temp.data
 wu_data .= wu_data .+ wu_temp.data
 wv_data .= wv_data .+ wv_temp.data
 
@@ -110,6 +114,7 @@ for i in 1:Nranks-1
     B_temp = FieldTimeSeries(fld_file, "B")
     U_temp = FieldTimeSeries(averages_file, "U")
     V_temp = FieldTimeSeries(averages_file, "V")
+    W_temp = FieldTimeSeries(averages_file, "W")
     wu_temp = FieldTimeSeries(averages_file, "wu")
     wv_temp = FieldTimeSeries(averages_file, "wv")
     
@@ -118,6 +123,7 @@ for i in 1:Nranks-1
     B_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= B_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
+    W_data .= W_data .+ W_temp.data
     wu_data .= wu_data .+ wu_temp.data
     wv_data .= wv_data .+ wv_temp.data
     
