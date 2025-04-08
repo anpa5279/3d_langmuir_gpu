@@ -1,8 +1,10 @@
 using Pkg
+using MPI
 using Statistics
 using CairoMakie
 using Printf
 using Oceananigans
+using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours
 using Oceananigans.BuoyancyFormulations: g_Earth
 
