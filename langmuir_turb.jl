@@ -49,7 +49,7 @@ function stokes_kernel(f, z, u₁₀)
     return 2.0 * α * g_Earth / (fₚ * f) * exp(2.0 * f^2 * z / g_Earth - (fₚ / f)^4)
 end
 function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(z_d))
+    u = Array{Float64}(undef, length(p.Nz))
     a = 0.1
     b = 5000.0
     nf = 3^9
