@@ -76,8 +76,9 @@ function dstokes_dz(z, u₁₀)
     end
     return dudz
 end 
-z_d = reverse(collect(znodes(grid, Face())))
+z_d = reverse(collect(znodes(grid, Center())))
 dudz = dstokes_dz(z_d, p.u₁₀)
+@show dudz
 @inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
@@ -103,6 +104,8 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 
 # random seed
 Ξ(z) = randn() * exp(z / 4)
+
+@inline stratification(z) = z < - p.initial_mixed_layer_depth ? p.N² * z : p.N² * (-p.initial_mixed_layer_depth)
 
 bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * p.N² * p.Lz
 
