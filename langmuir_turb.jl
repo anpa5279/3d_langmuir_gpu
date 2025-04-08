@@ -5,7 +5,7 @@ using CairoMakie
 using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
-using Oceananigans.Units: minute, minutes, hours
+using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 
 mutable struct Params
@@ -28,7 +28,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
+p = Params(32, 32, 32, 128, 128, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
 
 
 
@@ -111,10 +111,10 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 4hours)
+simulation = Simulation(model, Δt=45.0, stop_time = 24hours)
 @show simulation
 
-conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
+conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 
 output_interval = 5minutes
 
