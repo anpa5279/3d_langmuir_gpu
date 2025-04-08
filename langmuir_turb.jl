@@ -80,6 +80,7 @@ z_d = reverse(collect(znodes(grid, Center())))
 global dudz = dstokes_dz(z_d, p.u₁₀)
 @show dudz
 @inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+@show ∂z_uˢ
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
 τx = -(u_f^2)
@@ -132,6 +133,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
 u, v, w = model.velocities
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
+W = Average(w, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
