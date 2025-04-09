@@ -51,7 +51,6 @@ function fluct_squared(a, a_avg)
     return a_fluct2
 end
 
-# running locally: using Pkg; Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("JLD2")
 Nranks = 4
 
 fld_file="outputs/langmuir_turbulence_fields_0.jld2"
@@ -136,17 +135,9 @@ V_data = V_data ./ Nranks
 wu_data = wu_data ./ Nranks
 wv_data = wv_data ./ Nranks
 
-#calculating buoyancy from temperature and salinity
-beta = 2.00e-4 #thermal expansion
-alpha = 1.67e-4
-B_temp = Array{Float64}(undef, (1, 1, Nz, Nt))
-B_temp = g_Earth * (alpha * T_data) #NCAR LES ignores salinity effects - beta * S_data)
-B_data = Statistics.mean(B_temp, dims=(1, 2))
-
 #putting everything back into FieldTimeSeries
 w = FieldTimeSeries{Center, Center, Face}(grid, times)
 u = FieldTimeSeries{Face, Center, Center}(grid, times)
-S = FieldTimeSeries{Face, Center, Center}(grid, times)
 B = FieldTimeSeries{Center, Center, Center}(grid, times)
 U = FieldTimeSeries{Center, Center, Center}(grid, times)
 V = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -156,7 +147,6 @@ wv = FieldTimeSeries{Center, Center, Face}(grid, times)
 w .= w_data
 u .= u_data
 T .= T_data
-S .= S_data
 B .= B_data
 U .= U_data
 V .= V_data
