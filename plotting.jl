@@ -27,7 +27,6 @@ end
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(32, 32, 32, 128, 128, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
 
-#functions
 function plot()
     Nranks = 4
 
@@ -36,7 +35,7 @@ function plot()
 
     w_temp = FieldTimeSeries(fld_file, "w")
     u_temp = FieldTimeSeries(fld_file, "u")
-    B_temp = FieldTimeSeries(fld_file, "b")
+    b_temp = FieldTimeSeries(fld_file, "b")
     U_temp = FieldTimeSeries(averages_file, "U")
     V_temp = FieldTimeSeries(averages_file, "V")
     W_temp = FieldTimeSeries(averages_file, "W")
@@ -58,7 +57,7 @@ function plot()
     b_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
-    W_data = Array{Float64}(undef, (1, 1, Nz, Nt))
+    W_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
     wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
     wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
     U_data .= 0
@@ -67,10 +66,11 @@ function plot()
     wu_data .= 0
     wv_data .= 0
 
-    p = 1
-    w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
-    u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
-    b_data[p:p + b.grid.Nx - 1, :, :, :] .= b.data
+    nn = 1 
+    @show nn
+    w_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
+    u_data[nn:nn + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
+    b_data[nn:nn + b_temp.grid.Nx - 1, :, :, :] .= b_temp.data
     U_data .= U_data .+ U_temp.data
     V_data .= V_data .+ V_temp.data
     W_data .= W_data .+ W_temp.data
@@ -79,7 +79,7 @@ function plot()
 
     for i in 1:Nranks-1
 
-        p = p + u_temp.grid.Nx
+        nn = nn + u_temp.grid.Nx
 
         println("Loading rank $i")
 
@@ -95,9 +95,9 @@ function plot()
         wu_temp = FieldTimeSeries(averages_file, "wu")
         wv_temp = FieldTimeSeries(averages_file, "wv")
         
-        w_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
-        u_data[p:p + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
-        b_data[p:p + w_temp.grid.Nx - 1, :, :, :] .= B_temp.data
+        w_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
+        u_data[nn:nn + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
+        b_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= B_temp.data
         U_data .= U_data .+ U_temp.data
         V_data .= V_data .+ V_temp.data
         W_data .= W_data .+ W_temp.data
@@ -125,7 +125,6 @@ function plot()
 
     w .= w_data
     u .= u_data
-    T .= T_data
     b .= b_data
     B .= B_avg
     U .= U_data
@@ -193,18 +192,6 @@ function plot()
 
     Colorbar(fig[4, 3], ax_uxz; label = "m s⁻¹")
 
-    # temperature vertical plane slice
-    xT, yT, zT = nodes(T)
-    T_title = @lift string("T(x, z, t), t = ", prettytime(times[$n]))   
-    ax_T  = Axis(fig[4, 4:5]; title = T_title, xlabel = "y (m)",
-                ylabel = "z (m)",
-                aspect = DataAspect(),
-                limits = ((0, p.Ly), (-p.Lz, 0)))
-    Tₙ = @lift interior(T[$n],  1, :, :)
-    Tlims = (16.5, 17.0)
-    hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
-    Colorbar(fig[4, 6], hm_T; label = "ᵒC")
-
     # buoyancy with depth
     ax_B = Axis(fig[1, 4:5];
     xlabel = "Buoyancy (m s⁻²)",
@@ -240,7 +227,7 @@ function plot()
 
     record(fig, "langmuir_turbulence_comparison.mp4", frames, framerate=8) do i
         n[] = i
-    end
+    end 
 end 
 
 function fluctuation(a, a_avg)
