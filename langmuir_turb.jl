@@ -2,6 +2,7 @@ using Pkg
 using MPI
 using CUDA
 using Statistics
+using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
@@ -77,12 +78,9 @@ function dstokes_dz(z, u₁₀)
 end 
 z_d = reverse(collect(znodes(grid, Center())))
 const dudz = dstokes_dz(z_d, p.u₁₀)
-@show dudz
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 function compute_new_Stokes(sim)
-    
     set!(new_dUSDdz, reshape(dudz, 1, 1, :))
-    
     return nothing
 end 
 
@@ -123,6 +121,24 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 simulation = Simulation(model, Δt=45.0, stop_time = 24hours)
 @show simulation
 
+function progress(simulation)
+    u, v, w = simulation.model.velocities
+
+    # Print a progress message
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+                   iteration(simulation),
+                   prettytime(time(simulation)),
+                   prettytime(simulation.Δt),
+                   maximum(abs, u), maximum(abs, v), maximum(abs, w),
+                   prettytime(simulation.run_wall_time))
+
+    @info msg
+
+    return nothing
+end
+
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+
 conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 output_interval = 5minutes
 
@@ -141,18 +157,14 @@ u, v, w = model.velocities
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 W = Average(w, dims=(1, 2))
+B = Average(model.tracers.b, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, wu, wv),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, B, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
                                                         with_halos = false)
-
-#simulation.output_writers[:fields] = JLD2OutputWriter(model, model.forcing,
-#                                                        schedule = TimeInterval(output_interval),
-#                                                        filename = "forcing_$rank.jld2",
-#                                                        overwrite_existing = true)
 
 run!(simulation)
