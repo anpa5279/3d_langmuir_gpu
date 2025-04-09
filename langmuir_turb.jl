@@ -49,7 +49,7 @@ function stokes_kernel(f, z, u₁₀)
     return 2.0 * α * g_Earth / (fₚ * f) * exp(2.0 * f^2 * z / g_Earth - (fₚ / f)^4)
 end
 function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(p.Nz))
+    u = Array{Float64}(undef, length(z))
     a = 0.1
     b = 5000.0
     nf = 3^9
@@ -77,10 +77,11 @@ function dstokes_dz(z, u₁₀)
     return dudz
 end 
 z_d = reverse(collect(znodes(grid, Center())))
-#const dudz = dstokes_dz(z_d, p.u₁₀)
+dudz = CuArray{Float64}(undef, p.Nz)
+const dudz = dstokes_dz(z_d, p.u₁₀)
 #@show dudz
 
-@inline ∂z_uˢ(z, t) = dstokes_dz(z, p.u₁₀) #dudz[Int(round(p.Nz * abs(z/p.Lz) + 1))]
+@inline ∂z_uˢ(z, t) = dudz[Int(round(p.Nz * abs(z/p.Lz) + 1))]
 @show ∂z_uˢ
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
