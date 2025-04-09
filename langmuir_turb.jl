@@ -1,7 +1,7 @@
 using Pkg
 using MPI
+using CUDA
 using Statistics
-using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
