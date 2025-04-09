@@ -124,9 +124,11 @@ simulation = Simulation(model, Δt=45.0, stop_time = 24hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
-simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1))
 output_interval = 5minutes
 
+simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1))
+
+@show model.velocities
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
