@@ -132,7 +132,7 @@ simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
-                                                      schedule = TimeInterval(output_interval),
+                                                      schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                       filename = "langmuir_turbulence_fields_$rank.jld2",
                                                       overwrite_existing = true,
                                                       with_halos = false)
@@ -149,9 +149,10 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, wu, w
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
                                                         with_halos = false)
-simulation.output_writers[:fields] = JLD2OutputWriter(model, model.forcing,
-                                                        schedule = TimeInterval(output_interval),
-                                                        filename = "forcing_$rank.jld2",
-                                                        overwrite_existing = true)
+
+#simulation.output_writers[:fields] = JLD2OutputWriter(model, model.forcing,
+#                                                        schedule = TimeInterval(output_interval),
+#                                                        filename = "forcing_$rank.jld2",
+#                                                        overwrite_existing = true)
 
 run!(simulation)
