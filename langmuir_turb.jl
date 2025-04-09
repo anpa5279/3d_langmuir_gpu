@@ -78,13 +78,15 @@ end
 z_d = reverse(collect(znodes(grid, Center())))
 const dudz = dstokes_dz(z_d, p.u₁₀)
 @show dudz
-const zl = grid.z.cᵃᵃᶠ[1]
-@show zl
-@inline function ∂z_uˢ(z, t)
-    idx = Int32(clamp(round(Int32, p.Nz * z / zl + 1), 1, length(dudz)))
-    return dudz[idx]
-end
-@show ∂z_uˢ
+new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
+function compute_new_Stokes(sim)
+    
+    set!(new_dUSDdz, reshape(dudz, 1, 1, :))
+    
+    return nothing
+end 
+
+auxiliary_fields = (; new_dUSDdz)
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
 τx = -(u_f^2)
@@ -103,7 +105,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             tracers = (:b),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, b=b_bcs)) 
+                            boundary_conditions = (u=u_bcs, b=b_bcs), auxiliary_fields,) 
 @show model
 
 # random seed
@@ -122,7 +124,7 @@ simulation = Simulation(model, Δt=45.0, stop_time = 24hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
-
+simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1))
 output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
