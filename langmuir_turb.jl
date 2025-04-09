@@ -79,12 +79,10 @@ z_d = reverse(collect(znodes(grid, Center())))
 #dudz = CuArray{Float64}(undef, p.Nz)
 const dudz = dstokes_dz(z_d, p.u₁₀)
 @show dudz
-@show dudz
-const zl = grid.z.cᵃᵃᶠ[1]
-@show zl
-const Nz = p.Nz
-@show Nz
-@inline ∂z_uˢ(z, t) = Int(round(Nz * z/zl + 1))
+@inline function ∂z_uˢ(z, t, parameters)
+    idx = Int32(clamp(round(Int32, parameters.Nz * z / parameters.Lz + 1), 1, length(dudz)))
+    return dudz[idx]
+end
 @show ∂z_uˢ
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
@@ -104,7 +102,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             timestepper = :RungeKutta3,
                             tracers = (:b),
                             closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ, parameters = (dudz, p.Nz, -p.Lz)),
                             boundary_conditions = (u=u_bcs, b=b_bcs)) 
 @show model
 
