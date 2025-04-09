@@ -1,7 +1,6 @@
 using Pkg
 using MPI
 using Statistics
-using CairoMakie
 using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
@@ -77,7 +76,7 @@ function dstokes_dz(z, u₁₀)
     return dudz
 end 
 z_d = reverse(collect(znodes(grid, Center())))
-dudz = CuArray{Float64}(undef, p.Nz)
+#dudz = CuArray{Float64}(undef, p.Nz)
 const dudz = dstokes_dz(z_d, p.u₁₀)
 #@show dudz
 
