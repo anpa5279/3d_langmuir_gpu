@@ -28,7 +28,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 128, 128, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 
 
@@ -43,23 +43,20 @@ grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 @show grid
 
 #stokes drift
-function stokes_kernel(f, z, u₁₀)
+function stokes_velocity(z, u₁₀)
+    u = Array{Float64}(undef, length(z_d))
     α = 0.00615
     fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
-    return 2.0 * α * g_Earth / (fₚ * f) * exp(2.0 * f^2 * z / g_Earth - (fₚ / f)^4)
-end
-function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(z))
     a = 0.1
     b = 5000.0
     nf = 3^9
     df = (b -  a) / nf
     for i in 1:length(z)
-        σ1 = a + 0.5 * df
+        σ = a + 0.5 * df
         u_temp = 0.0
         for k in 1:nf
-            u_temp = u_temp + stokes_kernel(σ1, z[i], u₁₀)
-            σ1 = σ1 + df
+            u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
+            σ = σ + df
         end 
         u[i] = df * u_temp
     end
@@ -67,24 +64,26 @@ function stokes_velocity(z, u₁₀)
 end
 function dstokes_dz(z, u₁₀)
     dudz = Array{Float64}(undef, length(z))
-    for j in 1:length(z)
-        z1 = z[j]
-        u1 = stokes_velocity(z1, u₁₀)[1]
-        z2 = z[j] + 1e-6
-        u2 = stokes_velocity(z2 + 1e-6, u₁₀)[1]
-        dudz[j] = (u1 - u2) / (z1 - z2)
+    α = 0.00615
+    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
+    a = 0.1
+    b = 5000.0
+    nf = 3^9
+    df = (b -  a) / nf
+    for i in 1:length(z)
+        σ = a + 0.5 * df
+        du_temp = 0.0
+        for k in 1:nf
+            du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
+            σ = σ + df
+        end 
+        dudz[i] = df * du_temp
     end
     return dudz
 end 
 z_d = reverse(collect(znodes(grid, Center())))
-const dudz = dstokes_dz(z_d, p.u₁₀)
-new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
-function compute_new_Stokes(sim)
-    set!(new_dUSDdz, reshape(dudz, 1, 1, :))
-    return nothing
-end 
-
-auxiliary_fields = (; new_dUSDdz)
+dudz = dstokes_dz(z_d, p.u₁₀)
+@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
 τx = -(u_f^2)
