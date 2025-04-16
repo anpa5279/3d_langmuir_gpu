@@ -87,7 +87,7 @@ function ∂z_uˢ(z, t)
     return dudz[idx]
 end
 
-u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
+u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @show u_bcs
