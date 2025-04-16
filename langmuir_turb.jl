@@ -42,7 +42,7 @@ grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(z_d))
+    u = Array{Float64}(undef, length(z))
     α = 0.00615
     fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
     a = 0.1
@@ -145,7 +145,7 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(z_d, p.u₁₀)[1]
+    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
     file["IC/wind_speed"] = p.u₁₀
     return nothing
 end
