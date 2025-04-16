@@ -104,8 +104,8 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             timestepper = :RungeKutta3,
                             tracers = (:b),
                             closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, b=b_bcs), auxiliary_fields,) 
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, b=b_bcs)) 
 @show model
 
 # random seed
