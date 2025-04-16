@@ -79,13 +79,11 @@ function dstokes_dz(z, u₁₀)
     end
     return dudz
 end 
-function ∂z_uˢ(z, t)
-    z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
-    #@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
-    dudz = dstokes_dz(z_d, p.u₁₀)
-    idx = Int32(clamp(round(Int32, p.Nz * z / (-p.Lz) + 1), 1, length(dudz)))
-    return dudz[idx]
-end
+const z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
+#@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+const dudz = dstokes_dz(z_d, p.u₁₀)
+new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
+set!(new_dUSDdz, reshape(dudz, 1, 1, :))
 
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
@@ -103,7 +101,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             timestepper = :RungeKutta3,
                             tracers = (:b),
                             closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, b=b_bcs)) 
 @show model
 
