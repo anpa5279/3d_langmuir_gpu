@@ -30,8 +30,6 @@ end
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
-
-
 # Automatically distribute among available processors
 arch = Distributed(GPU())
 @show arch
@@ -81,9 +79,14 @@ function dstokes_dz(z, u₁₀)
     end
     return dudz
 end 
-z_d = reverse(collect(znodes(grid, Center())))
-dudz = dstokes_dz(z_d, p.u₁₀)
-@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
+#@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+const dudz = dstokes_dz(z_d, p.u₁₀)
+@show dudz
+function ∂z_uˢ(z, t)
+    idx = Int32(clamp(round(Int32, p.Nz * z / (-p.Lz) + 1), 1, length(dudz)))
+    return dudz[idx]
+end
 
 u_f = p.La_t^2 * (stokes_velocity(z_d[1], p.u₁₀)[1])
 τx = -(u_f^2)
@@ -139,18 +142,26 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
+
+#output files
+function save_IC!(file, model)
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = stokes_velocity(z_d, p.u₁₀)[1]
+    file["IC/wind_speed"] = p.u₁₀
+    return nothing
+end
+
 output_interval = 5minutes
 
 simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1))
 
-@show model.velocities
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields_$rank.jld2",
-                                                      overwrite_existing = true,
-                                                      with_halos = false)
+                                                      overwrite_existing = true, 
+                                                      init = save_IC!)
 
 u, v, w = model.velocities
 U = Average(u, dims=(1, 2))
@@ -163,7 +174,6 @@ wv = Average(w * v, dims=(1, 2))
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, B, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
-                                                        overwrite_existing = true,
-                                                        with_halos = false)
+                                                        overwrite_existing = true)
 
 run!(simulation)
