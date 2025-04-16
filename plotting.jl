@@ -163,24 +163,29 @@ function plot()
     wu .= wu_data
     wv .= wv_data
 
-    #begin plotting
+    # function calls
+    wprime2 = VKE(w.data, u★)
+    initial_data = wprime2[:, 1]
+    x_obs = Observable(initial_data)
+
+    # plotting results
     n = Observable(1)
-    axis_kwargs = (xlabel="x (m)",
+    pt = 1
+    axis_kwargs = (xlabel="y (m)",
                 ylabel="z (m)",
-                aspect = AxisAspect(p.Lx/p.Lz),
-                limits = ((0, p.Lx), (-p.Lz, 0)))
-    fig = Figure(size = (850, 1150))
-    title = @lift @sprintf("t = %s", prettytime(times[$n]))
+                aspect = AxisAspect(grid.Lx/grid.Lz),
+                limits = ((0, grid.Lx), (-grid.Lz, 0)))
+    fig = Figure(size = (850, 850))
 
     # w surface plane slice
-    wxy_title = @lift string("w(x, y, t), t = ", prettytime(times[$n]))
+    wxy_title = @lift string("w(x, y, t), at z=-8 m and t = ", prettytime(times[$n]))
     ax_wxy = Axis(fig[1, 1:2];
                 xlabel = "x (m)",
                 ylabel = "y (m)",
                 aspect = DataAspect(),
-                limits = ((0, p.Lx), (0, p.Ly)),
+                limits = ((0, grid.Lx), (0, grid.Ly)),
                 title = wxy_title)
-    k = searchsortedfirst(znodes(grid, Face(); with_halos=false), -2)
+    k = searchsortedfirst(znodes(grid, Face(); with_halos=false), -8)
     wxyₙ = @lift view(w[$n], :, :, k)
     wlims = (-0.02, 0.02)
     hm_wxy = heatmap!(ax_wxy, wxyₙ;
@@ -188,53 +193,41 @@ function plot()
                     colormap = :balance)
     Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
-    # w xz plane slice
-    wxz_title = @lift string("w(x, z, t), t = ", prettytime(times[$n]))
+    # w yz plane slice
+    wxz_title = @lift string("w(x, z, t), at x=0 m and t = ", prettytime(times[$n]))
     ax_wxz = Axis(fig[2, 1:2]; title = wxz_title, axis_kwargs...)
-    wxzₙ = @lift view(w[$n], :, p.Ny/2, :)
+    wxzₙ = @lift view(w[$n], 1, :, :)
     hm_wxz = heatmap!(ax_wxz, wxzₙ;
                     colorrange = wlims,
                     colormap = :balance)
 
     Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-    # w yz plane slice
-    wyz_title = @lift string("w(y, z, t), t = ", prettytime(times[$n]))
-    ax_wxz = Axis(fig[3, 1:2]; title = wyz_title, xlabel = "y (m)",
-                ylabel = "z (m)",
-                aspect = DataAspect(),
-                limits = ((0, p.Ly), (-p.Lz, 0)))
-    wxzₙ = @lift view(w[$n], p.Nx/2, :, :)
-    hm_wxz = heatmap!(ax_wxz, wxzₙ;
-                    colorrange = wlims,
-                    colormap = :balance)
-
-    Colorbar(fig[3, 3], hm_wxz; label = "m s⁻¹")
-
-    # u xz plane slice
-    uxz_title = @lift string("u(x, z, t), t = ", prettytime(times[$n]))
-    ax_uxz = Axis(fig[4, 1:2]; title = uxz_title, axis_kwargs...)
+    # u yz plane slice
+    uxz_title = @lift string("u(x, z, t), at x=0 m and t = ", prettytime(times[$n]))
+    ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
     uₙ = @lift u[$n]
-    uxzₙ = @lift view(u[$n], :, p.Ny/2, :)
-    ulims = (-0.06, 0.06)
+    uxzₙ = @lift view(u[$n], 1, :, :)
+    ulims = (-0.1, 0.1)
     ax_uxz = heatmap!(ax_uxz, uxzₙ;
                     colorrange = ulims,
                     colormap = :balance)
 
-    Colorbar(fig[4, 3], ax_uxz; label = "m s⁻¹")
+    Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
     # buoyancy with depth
     ax_B = Axis(fig[1, 4:5];
-    xlabel = "Buoyancy (m s⁻²)",
-    ylabel = "z (m)")
+                xlabel = "Buoyancy (m s⁻²)",
+                ylabel = "z (m)",
+                limits = ((minimum(B.data[:, :, :, :]), maximum(B.data[:, :, :, :])), nothing))
     Bₙ = @lift view(B[$n], 1, 1, :)
     lines!(ax_B, Bₙ)
 
     # mean horizontal velocities with depth
     ax_U = Axis(fig[2, 4:5];
-    xlabel = "Velocities (m s⁻¹)",
-    ylabel = "z (m)",
-    limits = ((-0.07, 0.07), nothing))
+                xlabel = "Velocities (m s⁻¹)",
+                ylabel = "z (m)",
+                limits = ((minimum(U.data[:, :, :, :]), maximum(U.data[:, :, :, :])), nothing))
     Uₙ = @lift view(U[$n], 1, 1, :)
     Vₙ = @lift view(V[$n], 1, 1, :)
     lines!(ax_U, Uₙ; label = L"\bar{u}")
@@ -243,43 +236,29 @@ function plot()
 
     # momentum fluxes with depth
     ax_fluxes = Axis(fig[3, 4:5];
-    xlabel = "Momentum fluxes (m² s⁻²)",
-    ylabel = "z (m)",
-    limits = ((-3.5e-5, 3.5e-5), nothing))
+                    xlabel = "Momentum fluxes (m² s⁻²)",
+                    ylabel = "z (m)",
+                    limits = ((minimum(wu.data[:, :, :, :]), maximum(wu.data[:, :, :, :])), nothing))
     wuₙ = @lift view(wu[$n], 1, 1, :)
     wvₙ = @lift view(wv[$n], 1, 1, :)
-    lines!(ax_fluxes, wuₙ; label = L"mean $wu$")
-    lines!(ax_fluxes, wvₙ; label = L"mean $wv$")
+    lines!(ax_fluxes, wuₙ; label = L"\overline{wu}")
+    lines!(ax_fluxes, wvₙ; label = L"\overline{wv}")
+    axislegend(ax_fluxes; position = :rb)
+
+    #VKE
+    ax_fluxes = Axis(fig[4, 4:5];
+                    xlabel = L"\overline{w'²} / u★²",
+                    ylabel = "z (m)",
+                    limits = ((0.0, 5.0), nothing))
+    lines!(ax_fluxes, x_obs,  w.grid.z.cᵃᵃᶜ[1:grid.Nz+1]; label = L"\overline{w'²} / u★²")
     axislegend(ax_fluxes; position = :rb)
 
     fig
 
     frames = 1:length(times)
 
-    record(fig, "langmuir_turbulence_comparison.mp4", frames, framerate=8) do i
+    record(fig, "plotting.mp4", frames, framerate=8) do i
         n[] = i
+        x_obs[] = wprime2[:, i]
     end 
 end 
-
-function fluctuation(a, a_avg)
-    a_fluct = Array{Float64}(undef, size(a_avg))
-    for i in 1:size(a, 1)
-        for j in 1:size(a, 2)
-            for k in 1:size(a, 3)
-                a_fluct[i, j, k] = a[i, j, k] - a_avg[k]
-            end
-        end
-    end
-    return a_fluct
-end 
-function fluct_squared(a, a_avg)
-    a_fluct = Array{Float64}(undef, size(a_avg))
-    for i in 1:size(a, 1)
-        for j in 1:size(a, 2)
-            for k in 1:size(a, 3)
-                a_fluct2[i, j, k] = (a[i, j, k] - a_avg[k])^2
-            end
-        end
-    end
-    return a_fluct2
-end

@@ -2,7 +2,9 @@ core
 daf
 outputs_temp/
 outputs/
+ncarles_results/
 outputs.tar.gz
+test_runs/
 *.sh
 *.mp4
 *.jld2
