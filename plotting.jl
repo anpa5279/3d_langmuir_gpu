@@ -2,6 +2,7 @@ using Pkg
 using Statistics
 using CairoMakie
 using Printf
+using JLD2
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
 using Oceananigans.BuoyancyFormulations: g_Earth
@@ -26,12 +27,42 @@ end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(32, 32, 32, 128, 128, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
+function VKE(a, u_f)
+    nt = length(a[1, 1, 1, :])
+    nz = length(a[1, 1, :, 1])
+    ny = length(a[1, :, 1, 1])
+    nx = length(a[:, 1, 1, 1])
+    a_avg = Statistics.mean(a, dims=(1, 2, 3))
+    a_avg = repeat(a_avg, nx, ny, nz, 1)  
+    a_prime = a_avg - a
+    a_prime2 = a_prime.^2
+    aprime2_norm = Array{Float64}(undef, nz, nt)
+    for l in 1:nt
+        for k in 1:nz
+            aprime2_norm[k, l] = 0.0
+            for j in 1:ny
+                for i in 1:nx
+                    aprime2_norm[k, l] = aprime2_norm[k, l] + a_prime2[i, j, k, l]
+                end
+            end
+            aprime2_norm[k, l] = aprime2_norm[k, l] / (u_f^2 * nx * ny)
+        end
+    end 
+    return aprime2_norm
+end
 
 function plot()
     Nranks = 4
 
     fld_file="outputs/langmuir_turbulence_fields_0.jld2"
     averages_file="outputs/langmuir_turbulence_averages_0.jld2"
+
+    # required IC from model
+    f = jldopen(fld_file)
+    u★ = f["parameters"]["friction_velocity"]
+    u_stokes = f["parameters"]["stokes_velocity"]
+    u₁₀ = f["parameters"]["wind_speed"]
+    # function calls
 
     w_temp = FieldTimeSeries(fld_file, "w")
     u_temp = FieldTimeSeries(fld_file, "u")
