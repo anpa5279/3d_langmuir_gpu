@@ -79,11 +79,10 @@ function dstokes_dz(z, u₁₀)
     end
     return dudz
 end 
-z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
-#@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
-const dudz = dstokes_dz(z_d, p.u₁₀)
-@show dudz
 function ∂z_uˢ(z, t)
+    z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
+    #@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
+    dudz = dstokes_dz(z_d, p.u₁₀)
     idx = Int32(clamp(round(Int32, p.Nz * z / (-p.Lz) + 1), 1, length(dudz)))
     return dudz[idx]
 end
