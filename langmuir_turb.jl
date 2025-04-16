@@ -153,8 +153,6 @@ end
 
 output_interval = 5minutes
 
-simulation.callbacks[:Stokes] = Callback(compute_new_Stokes, IterationInterval(1))
-
 fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
