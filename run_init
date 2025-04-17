@@ -5,7 +5,7 @@
 #PBS -j oe
 #PBS -q develop 
 #PBS -l walltime=0:35:00
-#PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4:mem=84GB
+#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=84GB
 #PBS -l gpu_type=a100
 
 # Use moar processes for precompilation to speed things up
@@ -52,5 +52,5 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 # 4. Build MPI and CUDA in advance for yucks
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
-mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 1 -ppn 1 ./launch.sh julia --project langmuir_turb.jl
 
