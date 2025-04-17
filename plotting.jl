@@ -26,28 +26,19 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 128, 128, 96.0, 5.3*(10^(-9)), 33.0, 5.0, 3991.0, 1000.0, 0.006667, 17.0, 2.0e-4, 5.75, 0.29)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
 function VKE(a, u_f)
+    a= copy(parent(a))
     nt = length(a[1, 1, 1, :])
     nz = length(a[1, 1, :, 1])
     ny = length(a[1, :, 1, 1])
     nx = length(a[:, 1, 1, 1])
-    a_avg = Statistics.mean(a, dims=(1, 2, 3))
-    a_avg = repeat(a_avg, nx, ny, nz, 1)  
-    a_prime = a_avg - a
+    a_avg_xy = Statistics.mean(a, dims=(1, 2))
+    a_avg_xy = repeat(a_avg_xy, nx, ny, 1)
+    a_prime = a_avg_xy .- a
     a_prime2 = a_prime.^2
     aprime2_norm = Array{Float64}(undef, nz, nt)
-    for l in 1:nt
-        for k in 1:nz
-            aprime2_norm[k, l] = 0.0
-            for j in 1:ny
-                for i in 1:nx
-                    aprime2_norm[k, l] = aprime2_norm[k, l] + a_prime2[i, j, k, l]
-                end
-            end
-            aprime2_norm[k, l] = aprime2_norm[k, l] / (u_f^2 * nx * ny)
-        end
-    end 
+    aprime2_norm = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
     return aprime2_norm
 end
 
@@ -59,11 +50,10 @@ function plot()
 
     # required IC from model
     f = jldopen(fld_file)
-    u★ = f["parameters"]["friction_velocity"]
-    u_stokes = f["parameters"]["stokes_velocity"]
-    u₁₀ = f["parameters"]["wind_speed"]
+    u★ = f["IC"]["friction_velocity"]
+    u_stokes = f["IC"]["stokes_velocity"]
+    u₁₀ = f["IC"]["wind_speed"]
     # function calls
-
     w_temp = FieldTimeSeries(fld_file, "w")
     u_temp = FieldTimeSeries(fld_file, "u")
     b_temp = FieldTimeSeries(fld_file, "b")
@@ -98,7 +88,6 @@ function plot()
     wv_data .= 0
 
     nn = 1 
-    @show nn
     w_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
     u_data[nn:nn + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
     b_data[nn:nn + b_temp.grid.Nx - 1, :, :, :] .= b_temp.data
@@ -165,7 +154,8 @@ function plot()
 
     # function calls
     wprime2 = VKE(w.data, u★)
-    initial_data = wprime2[:, 1]
+    @show size(wprime2)
+    initial_data = wprime2[1, 1, :, 1]
     x_obs = Observable(initial_data)
 
     # plotting results
@@ -250,7 +240,7 @@ function plot()
                     xlabel = L"\overline{w'²} / u★²",
                     ylabel = "z (m)",
                     limits = ((0.0, 5.0), nothing))
-    lines!(ax_fluxes, x_obs,  w.grid.z.cᵃᵃᶜ[1:grid.Nz+1]; label = L"\overline{w'²} / u★²")
+    lines!(ax_fluxes, x_obs,  w.grid.z.cᵃᵃᶜ[1:p.Nz+1]; label = L"\overline{w'²} / u★²")
     axislegend(ax_fluxes; position = :rb)
 
     fig
