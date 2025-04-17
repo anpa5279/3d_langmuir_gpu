@@ -117,7 +117,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 24hours)
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours)
 @show simulation
 
 function progress(simulation)
