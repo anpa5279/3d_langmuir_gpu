@@ -6,7 +6,7 @@
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=1:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4:mem=100GB 
+#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=100GB 
 #PBS -l gpu_type=a100
 
 # Use moar processes for precompilation to speed things up
@@ -34,7 +34,7 @@ export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export LOCAL_RANK=\${PMI_LOCAL_RANK}
 export GLOBAL_RANK=\${PMI_RANK}
-export CUDA_VISIBLE_DEVICES=\$(expr \${LOCAL_RANK} % 4)
+export CUDA_VISIBLE_DEVICES=\$(expr \${LOCAL_RANK} % 1)
 
 echo "Global Rank \${GLOBAL_RANK} / Local Rank \${LOCAL_RANK} / CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES} / \$(hostname)"
 
@@ -50,5 +50,5 @@ julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # 2. Update packages to the environment that we need to use. not always necessary
 #julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("Printf")'
 # Finally, let's run this thing
-mpiexec -n 4 -ppn 4 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 1 -ppn 1 ./launch.sh julia --project langmuir_turb.jl
 
