@@ -10,3 +10,4 @@ test_runs/
 *.jld2
 langmuir_turbulence.mp4
 test.o*
+data/

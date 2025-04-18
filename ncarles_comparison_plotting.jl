@@ -24,9 +24,9 @@ mutable struct Params
     u₁₀::Float64    # (m s⁻¹) wind speed at 10 meters above the ocean
     La_t::Float64   # Langmuir turbulence number
 end
-
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
+
 function VKE(a, u_f)
     a= copy(parent(a))
     nt = length(a[1, 1, 1, :])
@@ -42,129 +42,71 @@ function VKE(a, u_f)
     return aprime2_norm
 end
 
-function plot()
-    Nranks = 1
+function plot_ncar()
+    # collecting NCAR LES data
+    dtn = cd(readdir, "data")
+    nvar = 5
+    Nt = Int(length(dtn)/2)
+    u_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    v_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    w_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    T_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    var = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, nvar))
+    j = 1
 
-    fld_file="outputs/langmuir_turbulence_fields_0.jld2"
-    averages_file="outputs/langmuir_turbulence_averages_0.jld2"
-
-    # required IC from model
-    f = jldopen(fld_file)
-    u★ = f["IC"]["friction_velocity"]
-    u_stokes = f["IC"]["stokes_velocity"]
-    u₁₀ = f["IC"]["wind_speed"]
-    # function calls
-    w_temp = FieldTimeSeries(fld_file, "w")
-    u_temp = FieldTimeSeries(fld_file, "u")
-    b_temp = FieldTimeSeries(fld_file, "b")
-    U_temp = FieldTimeSeries(averages_file, "U")
-    V_temp = FieldTimeSeries(averages_file, "V")
-    W_temp = FieldTimeSeries(averages_file, "W")
-    wu_temp = FieldTimeSeries(averages_file, "wu")
-    wv_temp = FieldTimeSeries(averages_file, "wv")
-
-    Lx = Nranks * u_temp.grid.Lx
-    Ly = u_temp.grid.Ly
-    Lz = u_temp.grid.Lz
-    Nx = Nranks * u_temp.grid.Nx
-    Ny = u_temp.grid.Ny
-    Nz = u_temp.grid.Nz
-    Nt = length(u_temp.times)
-    grid = RectilinearGrid(size = (Nx, Ny, Nz), extent = (Lx, Ly, Lz))
-    times = u_temp.times
-
-    w_data = Array{Float64}(undef, (Nx, Ny, Nz + 1, Nt)) #because face value
-    u_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
-    b_data = Array{Float64}(undef, (Nx, Ny, Nz, Nt))
-    U_data = Array{Float64}(undef, (1, 1, Nz, Nt))
-    V_data = Array{Float64}(undef, (1, 1, Nz, Nt))
-    W_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
-    wu_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))  
-    wv_data = Array{Float64}(undef, (1, 1, Nz + 1, Nt))
-    U_data .= 0
-    V_data .= 0
-    W_data .= 0
-    wu_data .= 0
-    wv_data .= 0
-
-    nn = 1 
-    w_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
-    u_data[nn:nn + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
-    b_data[nn:nn + b_temp.grid.Nx - 1, :, :, :] .= b_temp.data
-    U_data .= U_data .+ U_temp.data
-    V_data .= V_data .+ V_temp.data
-    W_data .= W_data .+ W_temp.data
-    wu_data .= wu_data .+ wu_temp.data
-    wv_data .= wv_data .+ wv_temp.data
-    if Nranks > 1
-        for i in 1:Nranks-1
-
-            nn = nn + u_temp.grid.Nx
-
-            println("Loading rank $i")
-
-            fld_file="outputs/langmuir_turbulence_fields_$(i).jld2"
-            averages_file="outputs/langmuir_turbulence_averages_$(i).jld2"
-
-            w_temp = FieldTimeSeries(fld_file, "w")
-            u_temp = FieldTimeSeries(fld_file, "u")
-            B_temp = FieldTimeSeries(fld_file, "b")
-            U_temp = FieldTimeSeries(averages_file, "U")
-            V_temp = FieldTimeSeries(averages_file, "V")
-            W_temp = FieldTimeSeries(averages_file, "W")
-            wu_temp = FieldTimeSeries(averages_file, "wu")
-            wv_temp = FieldTimeSeries(averages_file, "wv")
-            
-            w_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= w_temp.data
-            u_data[nn:nn + u_temp.grid.Nx - 1, :, :, :] .= u_temp.data
-            b_data[nn:nn + w_temp.grid.Nx - 1, :, :, :] .= B_temp.data
-            U_data .= U_data .+ U_temp.data
-            V_data .= V_data .+ V_temp.data
-            W_data .= W_data .+ W_temp.data
-            wu_data .= wu_data .+ wu_temp.data
-            wv_data .= wv_data .+ wv_temp.data
+    for i in 1:length(dtn)
+        if contains(dtn[i], ".con")==0 && contains(dtn[i], "u.mp.")
+            tmp = read("data/"* dtn[i])
+            #@show "data/"* dtn[i]
+            var=reshape(reinterpret(Float64, tmp), p.Nx, p.Ny, p.Nz, nvar)
+            u_ncar[:,:,:,j] = var[:,:,:,1]
+            v_ncar[:,:,:,j] = var[:,:,:,2]
+            w_ncar[:,:,:,j] = var[:,:,:,3]
+            T_ncar[:,:,:,j] = var[:,:,:,4]
+            j = j + 1
+            #@show j
         end
     end
+    #ccalculating plotting variables
+    b_ncar = g_Earth * p.β * (T_ncar .- p.T0)
+    b_ncar_avg = Statistics.mean(b_ncar, dims=(1, 2))
+    u_ncar_avg = Statistics.mean(u_ncar, dims=(1, 2))
+    v_ncar_avg = Statistics.mean(v_ncar, dims=(1, 2))
+    wu_ncar = Statistics.mean(w_ncar .* u_ncar, dims=(1, 2))
+    wv_ncar = Statistics.mean(w_ncar .* v_ncar, dims=(1, 2))
 
-    #averaging
-    B_avg = b_data ./ (Nx * Ny * Nz)
-    U_data = U_data ./ Nranks
-    V_data = V_data ./ Nranks
-    wu_data = wu_data ./ Nranks
-    wv_data = wv_data ./ Nranks
+    w_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
+    u_ncarles = FieldTimeSeries{Face, Center, Center}(grid, times)
+    b_ncarles = FieldTimeSeries{Center, Center, Center}(grid, times)
+    B_ncarles = FieldTimeSeries{Center, Center, Center}(grid, times)
+    U_ncarles = FieldTimeSeries{Center, Center, Center}(grid, times)
+    V_ncarles = FieldTimeSeries{Center, Center, Center}(grid, times)
+    wu_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
+    wv_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
 
-    #putting everything back into FieldTimeSeries
-    w = FieldTimeSeries{Center, Center, Face}(grid, times)
-    u = FieldTimeSeries{Face, Center, Center}(grid, times)
-    b = FieldTimeSeries{Center, Center, Center}(grid, times)
-    B = FieldTimeSeries{Center, Center, Center}(grid, times)
-    U = FieldTimeSeries{Center, Center, Center}(grid, times)
-    V = FieldTimeSeries{Center, Center, Center}(grid, times)
-    wu = FieldTimeSeries{Center, Center, Face}(grid, times)
-    wv = FieldTimeSeries{Center, Center, Face}(grid, times)
+    global w_ncarles .= w_ncar
+    global u_ncarles .= u_ncar
+    global b_ncarles .= b_ncar
+    global B_ncarles .= b_ncar_avg
+    global U_ncarles .= u_ncar_avg
+    global V_ncarles .= v_ncar_avg
+    global wu_ncarles .= wu_ncar
+    global wv_ncarles .= wv_ncar
 
-    w .= w_data
-    u .= u_data
-    b .= b_data
-    B .= B_avg
-    U .= U_data
-    V .= V_data
-    wu .= wu_data
-    wv .= wv_data
+    # manipulating NCAR data
+    wprime2_ncarles = VKE(w_ncar, 0.5301e-02)
+    b_ncarles = g_Earth * p.β * (T_ncar)
 
-    # function calls
-    wprime2 = VKE(w.data, u★)
-    @show size(wprime2)
-    initial_data = wprime2[1, 1, :, 1]
-    x_obs = Observable(initial_data)
+    initial_data = wprime2_ncarles[1, 1, :, 1]
+    wprime2_obs = Observable(initial_data)
 
     # plotting results
     n = Observable(1)
     pt = 1
     axis_kwargs = (xlabel="y (m)",
                 ylabel="z (m)",
-                aspect = AxisAspect(grid.Lx/grid.Lz),
-                limits = ((0, grid.Lx), (-grid.Lz, 0)))
+                aspect = AxisAspect(p.Lx/p.Lz),
+                limits = ((0, p.Lx), (-p.Lz, 0)))
     fig = Figure(size = (850, 850))
 
     # w surface plane slice
@@ -175,8 +117,8 @@ function plot()
                 aspect = DataAspect(),
                 limits = ((0, grid.Lx), (0, grid.Ly)),
                 title = wxy_title)
-    k = searchsortedfirst(znodes(grid, Face(); with_halos=false), -8)
-    wxyₙ = @lift view(w[$n], :, :, k)
+    k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
+    wxyₙ = @lift view(w_ncarles[$n], :, :, k)
     wlims = (-0.02, 0.02)
     hm_wxy = heatmap!(ax_wxy, wxyₙ;
                     colorrange = wlims,
@@ -186,7 +128,7 @@ function plot()
     # w yz plane slice
     wxz_title = @lift string("w(x, z, t), at x=0 m and t = ", prettytime(times[$n]))
     ax_wxz = Axis(fig[2, 1:2]; title = wxz_title, axis_kwargs...)
-    wxzₙ = @lift view(w[$n], 1, :, :)
+    wxzₙ = @lift view(w_ncarles[$n], 1, :, :)
     hm_wxz = heatmap!(ax_wxz, wxzₙ;
                     colorrange = wlims,
                     colormap = :balance)
@@ -196,8 +138,8 @@ function plot()
     # u yz plane slice
     uxz_title = @lift string("u(x, z, t), at x=0 m and t = ", prettytime(times[$n]))
     ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
-    uₙ = @lift u[$n]
-    uxzₙ = @lift view(u[$n], 1, :, :)
+    uₙ = @lift u_ncarles[$n]
+    uxzₙ = @lift view(u_ncarles[$n], 1, :, :)
     ulims = (-0.1, 0.1)
     ax_uxz = heatmap!(ax_uxz, uxzₙ;
                     colorrange = ulims,
@@ -209,17 +151,17 @@ function plot()
     ax_B = Axis(fig[1, 4:5];
                 xlabel = "Buoyancy (m s⁻²)",
                 ylabel = "z (m)",
-                limits = ((minimum(B.data[:, :, :, :]), maximum(B.data[:, :, :, :])), nothing))
-    Bₙ = @lift view(B[$n], 1, 1, :)
+                limits = ((minimum(B_ncarles.data[:, :, :, :]), maximum(B_ncarles.data[:, :, :, :])), nothing))
+    Bₙ = @lift view(B_ncarles[$n], 1, 1, :)
     lines!(ax_B, Bₙ)
 
     # mean horizontal velocities with depth
     ax_U = Axis(fig[2, 4:5];
                 xlabel = "Velocities (m s⁻¹)",
                 ylabel = "z (m)",
-                limits = ((minimum(U.data[:, :, :, :]), maximum(U.data[:, :, :, :])), nothing))
-    Uₙ = @lift view(U[$n], 1, 1, :)
-    Vₙ = @lift view(V[$n], 1, 1, :)
+                limits = ((minimum(U_ncarles.data[:, :, :, :]), maximum(U_ncarles.data[:, :, :, :])), nothing))
+    Uₙ = @lift view(U_ncarles[$n], 1, 1, :)
+    Vₙ = @lift view(V_ncarles[$n], 1, 1, :)
     lines!(ax_U, Uₙ; label = L"\bar{u}")
     lines!(ax_U, Vₙ; label = L"\bar{v}")
     axislegend(ax_U; position = :rb)
@@ -228,9 +170,9 @@ function plot()
     ax_fluxes = Axis(fig[3, 4:5];
                     xlabel = "Momentum fluxes (m² s⁻²)",
                     ylabel = "z (m)",
-                    limits = ((minimum(wu.data[:, :, :, :]), maximum(wu.data[:, :, :, :])), nothing))
-    wuₙ = @lift view(wu[$n], 1, 1, :)
-    wvₙ = @lift view(wv[$n], 1, 1, :)
+                    limits = ((minimum(wu_ncarles.data[:, :, :, :]), maximum(wu_ncarles.data[:, :, :, :])), nothing))
+    wuₙ = @lift view(wu_ncarles[$n], 1, 1, :)
+    wvₙ = @lift view(wv_ncarles[$n], 1, 1, :)
     lines!(ax_fluxes, wuₙ; label = L"\overline{wu}")
     lines!(ax_fluxes, wvₙ; label = L"\overline{wv}")
     axislegend(ax_fluxes; position = :rb)
@@ -240,15 +182,15 @@ function plot()
                     xlabel = L"\overline{w'²} / u★²",
                     ylabel = "z (m)",
                     limits = ((0.0, 5.0), nothing))
-    lines!(ax_fluxes, x_obs,  w.grid.z.cᵃᵃᶜ[1:p.Nz+1]; label = L"\overline{w'²} / u★²")
+    lines!(ax_fluxes, wprime2_obs,  w.grid.z.cᵃᵃᶜ[1:p.Nz+1]; label = L"\overline{w'²} / u★²")
     axislegend(ax_fluxes; position = :rb)
 
     fig
 
     frames = 1:length(times)
 
-    record(fig, "plotting.mp4", frames, framerate=8) do i
+    record(fig, "plotting_ncarles.mp4", frames, framerate=8) do i
         n[] = i
-        x_obs[] = wprime2[:, i]
+        wprime2_obs[] = wprime2_ncarles[:, i]
     end 
-end 
+end
