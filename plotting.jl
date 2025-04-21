@@ -27,6 +27,7 @@ end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
+grid = RectilinearGrid(size = (p.Nx, p.Ny, p.Nz), extent = (p.Lx, p.Ly, p.Lz), halo = (3, 3, 3))
 function VKE(a, u_f)
     a= copy(parent(a))
     nt = length(a[1, 1, 1, :])
@@ -45,28 +46,15 @@ end
 function plot()
     Nranks = 4
 
+    #requirement parameters for initializing the matrices
     fld_file="outputs/langmuir_turbulence_fields_0.jld2"
-    averages_file="outputs/langmuir_turbulence_averages_0.jld2"
-
-    # Load the data
     f = jldopen(fld_file)
-    fa = jldopen(averages_file)
-    # required IC from model
     global u★ = f["IC"]["friction_velocity"]
     u_stokes = f["IC"]["stokes_velocity"]
     u₁₀ = f["IC"]["wind_speed"]
-    #loading in the data
-    w_temp = f["timeseries"]["w"]
-    u_temp = f["timeseries"]["u"]
-    b_temp = f["timeseries"]["b"]
     t_temp = keys(f["timeseries"]["t"])
-    U_temp = FieldTimeSeries(averages_file, "U")
-    V_temp = FieldTimeSeries(averages_file, "V")
-    wu_temp = FieldTimeSeries(averages_file, "wu")
-    wv_temp = FieldTimeSeries(averages_file, "wv")
-
     Nt = length(t_temp)
-    grid = RectilinearGrid(size = (p.Nx, p.Ny, p.Nz), extent = (p.Lx, p.Ly, p.Lz), halo = (3, 3, 3))
+    Nr = Int(p.Nx / Nranks)
 
     times = Array{Float64}(undef, Nt)
     w_data = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz + 1, Nt)) #because face value
@@ -81,25 +69,10 @@ function plot()
     wu_data .= 0
     wv_data .= 0
 
-    nn = 1 
-    Nr = Int(p.Nx / Nranks)
-    for i in 1:Nt
-        step = t_temp[i]
-        times[i] = f["timeseries"]["t"][step]
-        w_data[nn:nn + Nr - 1, :, :, :] .= w_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz + 1]
-        u_data[nn:nn + Nr - 1, :, :, :] .= u_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz]
-        b_data[nn:nn + Nr - 1, :, :, :] .= b_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz]
-        @show i
-    end
+    close(f)
+    for i in 0:Nranks-1
 
-    U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, :]
-    V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, :]
-    wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz, :]
-    wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz, :]
-
-    for i in 1:Nranks-1
-
-        nn = nn + Nr
+        nn = 1 + i * Nr
 
         println("Loading rank $i")
 
@@ -108,29 +81,41 @@ function plot()
 
         f = jldopen(fld_file)
         fa = jldopen(averages_file)
-
-        w_temp = f["timeseries"]["w"]
-        u_temp = f["timeseries"]["u"]
-        b_temp = f["timeseries"]["b"]
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
         W_temp = FieldTimeSeries(averages_file, "W")
         wu_temp = FieldTimeSeries(averages_file, "wu")
         wv_temp = FieldTimeSeries(averages_file, "wv")
         
+        xrange = grid.Hx + 1 : grid.Hx + Nr
+        yrange = grid.Hy + 1 : grid.Hy + p.Ny
+        wrange = grid.Hz + 1 : grid.Hz + p.Nz + 1
+        urange = grid.Hz + 1 : grid.Hz + p.Nz
+        t_save = collect(keys(f["timeseries"]["t"]))
+        sort!(t_save)
+        w_all = [f["timeseries"]["w"][t][xrange, yrange, wrange] for t in t_save]
+        u_all = [f["timeseries"]["u"][t][xrange, yrange, urange] for t in t_save]
+        b_all = [f["timeseries"]["b"][t][xrange, yrange, urange] for t in t_save]
         for k in 1:Nt
-            @show k
-            step = t_temp[k]
-            times[k] = f["timeseries"]["t"][step]
-            w_data[nn:nn + Nr - 1, :, :, :] .= w_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz + 1]
-            u_data[nn:nn + Nr - 1, :, :, :] .= u_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz]
-            b_data[nn:nn + Nr - 1, :, :, :] .= b_temp[step][grid.Hx + 1:grid.Hx + Nr, grid.Hy + 1:grid.Hy + p.Ny, grid.Hz + 1:grid.Hz + p.Nz]
+            #@show k
+            times[k] = f["timeseries"]["t"][t_save[k]]
+            local w = w_all[k]
+            local u = u_all[k]
+            local b = b_all[k]
+
+            w_data[nn:nn + Nr - 1, :, :, k] = w
+            u_data[nn:nn + Nr - 1, :, :, k] = u
+            b_data[nn:nn + Nr - 1, :, :, k] = b
         end
         U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, :]
         V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, :]
         wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz, :]
         wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz, :]
-        
+        w_all = nothing
+        u_all = nothing
+        b_all = nothing
+        close(f)
+        close(fa)
     end
 
     #averaging
