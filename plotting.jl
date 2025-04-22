@@ -27,7 +27,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 grid = RectilinearGrid(size = (p.Nx, p.Ny, p.Nz), extent = (p.Lx, p.Ly, p.Lz), halo = (3, 3, 3))
 function VKE(a, u_f)
     nt = length(a[1, 1, 1, :])
@@ -205,7 +205,7 @@ function plot()
     println("Calculating VKE")
     wprime2 = VKE(w.data, u★)
     initial_data = wprime2[-2, -2, :, 1] #negative indices because of the halo
-    x_obs = Observable(initial_data)
+    wprime2_obs = Observable(initial_data)
 
     # plotting results
     n = Observable(1)
@@ -285,12 +285,12 @@ function plot()
     axislegend(ax_fluxes; position = :rb)
 
     #VKE
-    ax_fluxes = Axis(fig[4, 4:5];
+    ax_VKE = Axis(fig[4, 4:5];
                     xlabel = L"\overline{w'²} / u★²",
                     ylabel = "z (m)",
                     limits = ((0.0, 5.0), nothing))
-    lines!(ax_fluxes, x_obs, grid.z.cᵃᵃᶠ; label = L"\overline{w'²} / u★²")
-    axislegend(ax_fluxes; position = :rb)
+    lines!(ax_VKE, wprime2_obs, grid.z.cᵃᵃᶠ; label = L"\overline{w'²} / u★²")
+    axislegend(ax_VKE; position = :rb)
 
     fig
 
@@ -298,6 +298,6 @@ function plot()
 
     record(fig, "plotting.mp4", frames, framerate=8) do i
         n[] = i
-        x_obs[] = wprime2[-2, -2, :, i]
+        wprime2_obs[] = wprime2[-2, -2, :, i]
     end 
 end 
