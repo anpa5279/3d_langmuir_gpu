@@ -37,13 +37,8 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 @show grid
-
-#buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
-#                                                                    haline_contraction = 8e-4))
-#@show buoyancy
 
 #stokes drift
 function stokes_velocity(z, u₁₀)
@@ -85,7 +80,6 @@ function dstokes_dz(z, u₁₀)
     return dudz
 end 
 const z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
-#@inline ∂z_uˢ(z, t) = dudz[Int(round(grid.Nz * abs(z/grid.Lz) + 1))]
 const dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
@@ -95,28 +89,29 @@ u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @show u_bcs
 
-coriolis = FPlane(f=1e-4) # s⁻¹
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
+@show buoyancy
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
+                                bottom = GradientBoundaryCondition(p.dTdz))
+#coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T, :S),
+                            tracers = (:T),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, b=b_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
 @show model
 
 # random seed
 Ξ(z) = randn() * exp(z / 4)
 
-@inline stratification(z) = z < - p.initial_mixed_layer_depth ? p.N² * z : p.N² * (-p.initial_mixed_layer_depth)
-
-bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * p.N² * p.Lz
-
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * z + p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 48hours)
 @show simulation
@@ -164,11 +159,11 @@ u, v, w = model.velocities
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 W = Average(w, dims=(1, 2))
-B = Average(model.tracers.b, dims=(1, 2))
+T_avg = Average(model.tracers.T, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu, wv),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true)
