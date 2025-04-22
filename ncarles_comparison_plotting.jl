@@ -24,8 +24,9 @@ mutable struct Params
     u₁₀::Float64    # (m s⁻¹) wind speed at 10 meters above the ocean
     La_t::Float64   # Langmuir turbulence number
 end
+
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 function VKE(a, u_f)
     a= copy(parent(a))
@@ -41,36 +42,53 @@ function VKE(a, u_f)
     aprime2_norm = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
     return aprime2_norm
 end
+function load_ncar_data(p)
+    dtn = cd(readdir, "data")
+    nvar = 5
+    Nt = Int(length(dtn) / 2)
 
-# collecting NCAR LES data
-dtn = cd(readdir, "data")
-nvar = 5
-Nt = Int(length(dtn)/2)
-u_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
-v_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
-w_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
-T_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
-var = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, nvar))
-j = 1
+    u_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    v_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    w_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    T_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    var_ncar = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, nvar))
+    @show size(var_ncar)
 
-for i in 1:length(dtn)
-    if contains(dtn[i], ".con")==0 && contains(dtn[i], "u.mp.")
-        tmp = read("data/"* dtn[i])
-        #@show "data/"* dtn[i]
-        var=reshape(reinterpret(Float64, tmp), p.Nx, p.Ny, p.Nz, nvar)
-        u_ncar[:,:,:,j] = var[:,:,:,1]
-        v_ncar[:,:,:,j] = var[:,:,:,2]
-        w_ncar[:,:,:,j] = var[:,:,:,3]
-        T_ncar[:,:,:,j] = var[:,:,:,4]
-        j = j + 1
-        #@show j
+    j = 1
+    for i in 1:length(dtn)
+        if !occursin(".con", dtn[i]) && occursin("u.mp.", dtn[i])
+            tmp = read("data/" * dtn[i])
+            @show j
+            @show size(tmp)
+            var_ncar = reshape(reinterpret(Float64, tmp), p.Nx, p.Ny, p.Nz, nvar)
+            u_ncar[:,:,:,j] = var_ncar[:,:,:,1]
+            v_ncar[:,:,:,j] = var_ncar[:,:,:,2]
+            w_ncar[:,:,:,j] = var_ncar[:,:,:,3]
+            T_ncar[:,:,:,j] = var_ncar[:,:,:,4]
+            j += 1
+            var_ncar = nothing
+            tmp = nothing
+            GC.gc()
+        end
     end
+
+    return u_ncar, v_ncar, w_ncar, T_ncar
 end
-#ccalculating plotting variables
+#collecting data
+u_ncar, v_ncar, w_ncar, T_ncar = load_ncar_data(p)
+#calculating plotting variables
 b_ncar = g_Earth * p.β * (T_ncar .- p.T0)
+T_ncar = nothing
+GC.gc()
 b_ncar_avg = Statistics.mean(b_ncar, dims=(1, 2))
+b_ncar = nothing
+GC.gc()
 u_ncar_avg = Statistics.mean(u_ncar, dims=(1, 2))
+u_ncar = nothing
+GC.gc()
 v_ncar_avg = Statistics.mean(v_ncar, dims=(1, 2))
+v_ncar = nothing
+GC.gc()
 wu_ncar = Statistics.mean(w_ncar .* u_ncar, dims=(1, 2))
 wv_ncar = Statistics.mean(w_ncar .* v_ncar, dims=(1, 2))
 
@@ -83,18 +101,36 @@ V_ncarles = FieldTimeSeries{Center, Center, Center}(grid, times)
 wu_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
 wv_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
 
-global w_ncarles .= w_ncar
-global u_ncarles .= u_ncar
-global b_ncarles .= b_ncar
-global B_ncarles .= b_ncar_avg
-global U_ncarles .= u_ncar_avg
-global V_ncarles .= v_ncar_avg
-global wu_ncarles .= wu_ncar
-global wv_ncarles .= wv_ncar
+w_ncarles .= w_ncar
+u_ncarles .= u_ncar
+u_ncar  = nothing
+GC.gc()
+b_ncarles .= b_ncar
+b_ncar = nothing
+GC.gc()
+B_ncarles .= b_ncar_avg
+b_ncar_avg = nothing
+GC.gc()
+U_ncarles .= u_ncar_avg
+u_ncar_avg = nothing
+GC.gc()
+V_ncarles .= v_ncar_avg
+v_ncar_avg = nothing
+GC.gc()
+wu_ncarles .= wu_ncar
+wu_ncar = nothing
+GC.gc()
+wv_ncarles .= wv_ncar
+wv_ncar = nothing
+GC.gc()
 
 # manipulating NCAR data
 wprime2_ncarles = VKE(w_ncar, 0.5301e-02)
+w_ncar = nothing
+GC.gc()
 b_ncarles = g_Earth * p.β * (T_ncar)
+T_ncar = nothing
+GC.gc()
 
 initial_data = wprime2_ncarles[1, 1, :, 1]
 wprime2_obs = Observable(initial_data)
@@ -181,7 +217,7 @@ ax_fluxes = Axis(fig[4, 4:5];
                 xlabel = L"\overline{w'²} / u★²",
                 ylabel = "z (m)",
                 limits = ((0.0, 5.0), nothing))
-lines!(ax_fluxes, wprime2_obs,  w.grid.z.cᵃᵃᶜ[1:p.Nz+1]; label = L"\overline{w'²} / u★²")
+lines!(ax_fluxes, wprime2_obs, grid.z.cᵃᵃᶠ; label = L"\overline{w'²} / u★²")
 axislegend(ax_fluxes; position = :rb)
 
 fig
@@ -190,5 +226,5 @@ frames = 1:length(times)
 
 record(fig, "plotting_ncarles.mp4", frames, framerate=8) do i
     n[] = i
-    wprime2_obs[] = wprime2_ncarles[:, i]
+    wprime2_obs[] = wprime2_ncarles[1, 1, :, i]
 end 
