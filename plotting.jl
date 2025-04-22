@@ -1,4 +1,5 @@
 using Pkg
+using OffsetArrays
 using Statistics
 using CairoMakie
 using Printf
@@ -29,80 +30,106 @@ end
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 5.0, 3991.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.29)
 grid = RectilinearGrid(size = (p.Nx, p.Ny, p.Nz), extent = (p.Lx, p.Ly, p.Lz), halo = (3, 3, 3))
 function VKE(a, u_f)
-    a= copy(parent(a))
     nt = length(a[1, 1, 1, :])
     nz = length(a[1, 1, :, 1])
     ny = length(a[1, :, 1, 1])
     nx = length(a[:, 1, 1, 1])
     a_avg_xy = Statistics.mean(a, dims=(1, 2))
-    a_avg_xy = repeat(a_avg_xy, nx, ny, 1)
-    a_prime = a_avg_xy .- a
+    a_prime = a .- a_avg_xy 
     a_prime2 = a_prime.^2
     aprime2_norm = Array{Float64}(undef, nz, nt)
     aprime2_norm = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
     return aprime2_norm
 end
 
+function make_field_center(data, times)
+    field = FieldTimeSeries{Center, Center, Center}(grid, times)
+    field.data .= data
+    return field
+end
+
+function make_field_face(data, times)
+    # Create a FieldTimeSeries object from the data
+    field = FieldTimeSeries{Center, Center, Face}(grid, times)
+    field.data .= data
+    return field
+end
+
 function plot()
     Nranks = 4
-
-    #requirement parameters for initializing the matrices
     fld_file="outputs/langmuir_turbulence_fields_0.jld2"
     f = jldopen(fld_file)
-    global u★ = f["IC"]["friction_velocity"]
-    u_stokes = f["IC"]["stokes_velocity"]
-    u₁₀ = f["IC"]["wind_speed"]
-    t_temp = keys(f["timeseries"]["t"])
-    Nt = length(t_temp)
-    Nr = Int(p.Nx / Nranks)
+
+    #time and IC data 
+    u★ = f["IC"]["friction_velocity"]
+    #u_stokes = f["IC"]["stokes_velocity"]
+    #u₁₀ = f["IC"]["wind_speed"]
+    t_save = collect(keys(f["timeseries"]["t"]))
+    close(f)
+
+    Nt = length(t_save)
 
     times = Array{Float64}(undef, Nt)
-    w_data = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz + 1, Nt)) #because face value
-    u_data = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
-    b_data = Array{Float64}(undef, (p.Nx, p.Ny, p.Nz, Nt))
+    w_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
+                                        -grid.Hy+1 : p.Ny+grid.Hy,
+                                        -grid.Hz+1 : p.Nz+1+grid.Hz,
+                                        1 : Nt)
+    u_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
+                                        -grid.Hy+1 : p.Ny+grid.Hy,
+                                        -grid.Hz+1 : p.Nz+grid.Hz,
+                                        1 : Nt)
+    b_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
+                                        -grid.Hy+1 : p.Ny+grid.Hy,
+                                        -grid.Hz+1 : p.Nz+grid.Hz,
+                                        1 : Nt)
+    B_data =  Array{Float64}(undef, (1, 1, p.Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
-    wu_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))  
-    wv_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
+    wu_data = Array{Float64}(undef, (1, 1, p.Nz + 1, Nt))
+    wv_data =   Array{Float64}(undef, (1, 1, p.Nz + 1, Nt))
+    B_data .= 0
     U_data .= 0
     V_data .= 0
     wu_data .= 0
     wv_data .= 0
 
-    close(f)
     for i in 0:Nranks-1
-
-        nn = 1 + i * Nr
-
         println("Loading rank $i")
 
         fld_file="outputs/langmuir_turbulence_fields_$(i).jld2"
         averages_file="outputs/langmuir_turbulence_averages_$(i).jld2"
 
         f = jldopen(fld_file)
-        fa = jldopen(averages_file)
+        B_temp = FieldTimeSeries(averages_file, "B")
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
         W_temp = FieldTimeSeries(averages_file, "W")
         wu_temp = FieldTimeSeries(averages_file, "wu")
         wv_temp = FieldTimeSeries(averages_file, "wv")
-        
-        xrange = grid.Hx + 1 : grid.Hx + Nr
-        yrange = grid.Hy + 1 : grid.Hy + p.Ny
-        wrange = grid.Hz + 1 : grid.Hz + p.Nz + 1
-        urange = grid.Hz + 1 : grid.Hz + p.Nz
-        t_save = collect(keys(f["timeseries"]["t"]))
-        sort!(t_save)
-        w_all = [f["timeseries"]["w"][t][xrange, yrange, wrange] for t in t_save]
-        u_all = [f["timeseries"]["u"][t][xrange, yrange, urange] for t in t_save]
-        b_all = [f["timeseries"]["b"][t][xrange, yrange, urange] for t in t_save]
+        if i == 0 #first rank
+            shift = 0
+            Nr = Int(p.Nx / Nranks + grid.Hx)
+            xrange = 1 : Nr #last rank
+        elseif i == Nranks - 1
+            shift  = -2 * grid.Hx
+            Nr = Int(p.Nx / Nranks + grid.Hx)
+            xrange = grid.Hx + 1 : grid.Hx + Nr
+        else #middle ranks
+            shift = grid.Hx
+            Nr = Int(p.Nx / Nranks)
+            xrange = grid.Hx + 1 : grid.Hx + Nr
+        end 
+        nn = 1 + shift + i * Nr - grid.Hx
+        w_all = [f["timeseries"]["w"][t][xrange, :, :] for t in t_save]
+        u_all = [f["timeseries"]["u"][t][xrange, :, :] for t in t_save]
+        b_all = [f["timeseries"]["b"][t][xrange, :, :] for t in t_save]
+
         for k in 1:Nt
             @show k
             times[k] = f["timeseries"]["t"][t_save[k]]
             local w = w_all[k]
             local u = u_all[k]
             local b = b_all[k]
-
             w_data[nn:nn + Nr - 1, :, :, k] = w
             u_data[nn:nn + Nr - 1, :, :, k] = u
             b_data[nn:nn + Nr - 1, :, :, k] = b
@@ -112,22 +139,32 @@ function plot()
             b = nothing
             GC.gc()
         end
+        B_data .= B_data .+ B_temp.data[:, :, 1:p.Nz, :]
         U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, :]
         V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, :]
-        wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz, :]
-        wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz, :]
+        wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz + 1, :]
+        wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz + 1, :]
         #removing the data from memory
         w_all = nothing
         u_all = nothing
         b_all = nothing
+        xrange = nothing
+        Nr = nothing 
+        shift = nothing
+        B_temp = nothing
+        U_temp = nothing
+        V_temp = nothing
+        wu_temp = nothing
+        wv_temp = nothing
         GC.gc() 
         close(f)
-        close(fa)
     end
+    t_save = nothing
+    GC.gc()
 
     #averaging
     println("Averaging data")
-    B_avg = b_data ./ (p.Nx * p.Ny * p.Nz)
+    B_avg = B_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
@@ -135,39 +172,39 @@ function plot()
 
     #putting everything back into FieldTimeSeries
     println("Putting data into FieldTimeSeries")
-    w = FieldTimeSeries{Center, Center, Face}(grid, times)
-    u = FieldTimeSeries{Face, Center, Center}(grid, times)
-    b = FieldTimeSeries{Center, Center, Center}(grid, times)
+    w  = make_field_face(w_data, times)
+    w_data = nothing
+    GC.gc()
+    u  = make_field_center(u_data, times)
+    u_data = nothing
+    GC.gc()
+    b  = make_field_center(b_data, times)
+    b_data = nothing
+    GC.gc()
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
     wu = FieldTimeSeries{Center, Center, Face}(grid, times)
     wv = FieldTimeSeries{Center, Center, Face}(grid, times)
-
-    global w .= w_data
-    global u .= u_data
-    global b .= b_data
-    global B .= B_avg
-    global U .= U_data
-    global V .= V_data
-    global wu .= wu_data
-    global wv .= wv_data
-
-    #removing the data from memory
-    w_data = nothing
-    u_data = nothing
-    b_data = nothing
+    B .= B_data
+    B_data = nothing
+    GC.gc()
+    U .= U_data
     U_data = nothing
+    GC.gc()
+    V .= V_data
     V_data = nothing
+    GC.gc()
+    wu .= wu_data
     wu_data = nothing
+    GC.gc()
+    wv .= wv_data
     wv_data = nothing
     GC.gc()
-
     # function calls
     println("Calculating VKE")
     wprime2 = VKE(w.data, u★)
-    @show size(wprime2)
-    initial_data = wprime2[1, 1, :, 1]
+    initial_data = wprime2[-2, -2, :, 1] #negative indices because of the halo
     x_obs = Observable(initial_data)
 
     # plotting results
@@ -252,7 +289,7 @@ function plot()
                     xlabel = L"\overline{w'²} / u★²",
                     ylabel = "z (m)",
                     limits = ((0.0, 5.0), nothing))
-    lines!(ax_fluxes, x_obs,  w.grid.z.cᵃᵃᶜ[1:p.Nz+1]; label = L"\overline{w'²} / u★²")
+    lines!(ax_fluxes, x_obs, grid.z.cᵃᵃᶠ; label = L"\overline{w'²} / u★²")
     axislegend(ax_fluxes; position = :rb)
 
     fig
@@ -261,6 +298,6 @@ function plot()
 
     record(fig, "plotting.mp4", frames, framerate=8) do i
         n[] = i
-        x_obs[] = wprime2[:, i]
+        x_obs[] = wprime2[-2, -2, :, i]
     end 
 end 
