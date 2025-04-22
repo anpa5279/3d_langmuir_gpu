@@ -122,7 +122,7 @@ function plot()
         nn = 1 + shift + i * Nr - grid.Hx
         w_all = [f["timeseries"]["w"][t][xrange, :, :] for t in t_save]
         u_all = [f["timeseries"]["u"][t][xrange, :, :] for t in t_save]
-        b_all = [f["timeseries"]["b"][t][xrange, :, :] for t in t_save]
+        #b_all = [f["timeseries"]["b"][t][xrange, :, :] for t in t_save]
 
         for k in 1:Nt
             @show k
@@ -132,7 +132,7 @@ function plot()
             #local b = b_all[k]
             w_data[nn:nn + Nr - 1, :, :, k] = w
             u_data[nn:nn + Nr - 1, :, :, k] = u
-            #[nn:nn + Nr - 1, :, :, k] = b
+            #b[nn:nn + Nr - 1, :, :, k] = b
             #removing the data from memory
             w = nothing
             u = nothing

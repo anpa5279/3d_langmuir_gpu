@@ -92,7 +92,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 #temperature bcs
 buoyancy = BuoyancyTracer()
-b_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(p.N²))
+b_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
 
 #coriolis = FPlane(f=1e-4) # s⁻¹
 
