@@ -78,10 +78,10 @@ function plot()
                                         -grid.Hy+1 : p.Ny+grid.Hy,
                                         -grid.Hz+1 : p.Nz+grid.Hz,
                                         1 : Nt)
-    b_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
-                                        -grid.Hy+1 : p.Ny+grid.Hy,
-                                        -grid.Hz+1 : p.Nz+grid.Hz,
-                                        1 : Nt)
+    #b_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
+    #                                    -grid.Hy+1 : p.Ny+grid.Hy,
+    #                                    -grid.Hz+1 : p.Nz+grid.Hz,
+    #                                    1 : Nt)
     B_data =  Array{Float64}(undef, (1, 1, p.Nz, Nt))
     U_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
     V_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
@@ -129,14 +129,14 @@ function plot()
             times[k] = f["timeseries"]["t"][t_save[k]]
             local w = w_all[k]
             local u = u_all[k]
-            local b = b_all[k]
+            #local b = b_all[k]
             w_data[nn:nn + Nr - 1, :, :, k] = w
             u_data[nn:nn + Nr - 1, :, :, k] = u
-            b_data[nn:nn + Nr - 1, :, :, k] = b
+            #[nn:nn + Nr - 1, :, :, k] = b
             #removing the data from memory
             w = nothing
             u = nothing
-            b = nothing
+            #b = nothing
             GC.gc()
         end
         B_data .= B_data .+ B_temp.data[:, :, 1:p.Nz, :]
@@ -164,7 +164,7 @@ function plot()
 
     #averaging
     println("Averaging data")
-    B_avg = B_data ./ Nranks
+    B_data = B_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
@@ -178,9 +178,9 @@ function plot()
     u  = make_field_center(u_data, times)
     u_data = nothing
     GC.gc()
-    b  = make_field_center(b_data, times)
-    b_data = nothing
-    GC.gc()
+    #b = make_field_center(b_data, times)
+    #b_data = nothing
+    #GC.gc()
     B = FieldTimeSeries{Center, Center, Center}(grid, times)
     U = FieldTimeSeries{Center, Center, Center}(grid, times)
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
