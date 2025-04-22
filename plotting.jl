@@ -121,17 +121,17 @@ function plot()
         end 
         nn = 1 + shift + i * Nr - grid.Hx
         w_all = [f["timeseries"]["w"][t][xrange, :, :] for t in t_save]
-        u_all = [f["timeseries"]["u"][t][xrange, :, :] for t in t_save]
+        u_yplane = [f["timeseries"]["u"][t][1, :, :] for t in t_save]
         #b_all = [f["timeseries"]["b"][t][xrange, :, :] for t in t_save]
 
         for k in 1:Nt
             @show k
             times[k] = f["timeseries"]["t"][t_save[k]]
             local w = w_all[k]
-            local u = u_all[k]
+            local u = u_yplane[k]
             #local b = b_all[k]
             w_data[nn:nn + Nr - 1, :, :, k] = w
-            u_data[nn:nn + Nr - 1, :, :, k] = u
+            u_data[1, :, :, k] = u
             #b[nn:nn + Nr - 1, :, :, k] = b
             #removing the data from memory
             w = nothing
@@ -146,7 +146,7 @@ function plot()
         wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz + 1, :]
         #removing the data from memory
         w_all = nothing
-        u_all = nothing
+        u_yplane = nothing
         b_all = nothing
         xrange = nothing
         Nr = nothing 
@@ -242,7 +242,7 @@ function plot()
 
     Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-    # u yz plane slice
+    # u xz plane slice
     uxz_title = @lift string("u(x, z, t), at x=0 m and t = ", prettytime(times[$n]))
     ax_uxz = Axis(fig[3, 1:2]; title = uxz_title, axis_kwargs...)
     uₙ = @lift u[$n]
