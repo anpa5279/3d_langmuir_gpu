@@ -27,16 +27,13 @@ end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
-
 function VKE(a, u_f)
-    a= copy(parent(a))
     nt = length(a[1, 1, 1, :])
     nz = length(a[1, 1, :, 1])
     ny = length(a[1, :, 1, 1])
     nx = length(a[:, 1, 1, 1])
     a_avg_xy = Statistics.mean(a, dims=(1, 2))
-    a_avg_xy = repeat(a_avg_xy, nx, ny, 1)
-    a_prime = a_avg_xy .- a
+    a_prime = a .- a_avg_xy 
     a_prime2 = a_prime.^2
     aprime2_norm = Array{Float64}(undef, nz, nt)
     aprime2_norm = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
@@ -61,36 +58,36 @@ function load_ncar_data(p)
             @show j
             @show size(tmp)
             var_ncar = reshape(reinterpret(Float64, tmp), p.Nx, p.Ny, p.Nz, nvar)
-            u_ncar[:,:,:,j] = var_ncar[:,:,:,1]
-            v_ncar[:,:,:,j] = var_ncar[:,:,:,2]
+            u_ncar = var_ncar[:,:,:,1]
+            v_ncar = var_ncar[:,:,:,2]
             w_ncar[:,:,:,j] = var_ncar[:,:,:,3]
-            T_ncar[:,:,:,j] = var_ncar[:,:,:,4]
+            T_ncar = var_ncar[:,:,:,4]
             j += 1
             var_ncar = nothing
             tmp = nothing
             GC.gc()
+            #getting u in yz plane
+            u_yz[:, :, j] = u_ncar[1, :, :, j]
+            #getting averages of u, v, uw, vw, and T
+            wu_ncar(j, :) = Statistics.mean(w_ncar .* u_ncar, dims=(1, 2))
+            wv_ncar(j, :) = Statistics.mean(w_ncar .* v_ncar, dims=(1, 2))
+            u_ncar_avg(j, :) = Statistics.mean(u_ncar, dims=(1, 2))
+            u_ncar = nothing
+            GC.gc()
+            v_ncar_avg(j, :) = Statistics.mean(v_ncar, dims=(1, 2))
+            v_ncar = nothing
+            GC.gc()
+            #calculating buoyancy
+            B_ncar(j, :) = g_Earth * p.β * Statistics.mean(T_ncar .- p.T0, dims=(1, 2))
+            T_ncar = nothing
+            GC.gc()
         end
     end
 
-    return u_ncar, v_ncar, w_ncar, T_ncar
+    return u_yz, u_ncar_avg, v_ncar_avg, w_ncar, B_ncar
 end
 #collecting data
-u_ncar, v_ncar, w_ncar, T_ncar = load_ncar_data(p)
-#calculating plotting variables
-b_ncar = g_Earth * p.β * (T_ncar .- p.T0)
-T_ncar = nothing
-GC.gc()
-b_ncar_avg = Statistics.mean(b_ncar, dims=(1, 2))
-b_ncar = nothing
-GC.gc()
-u_ncar_avg = Statistics.mean(u_ncar, dims=(1, 2))
-u_ncar = nothing
-GC.gc()
-v_ncar_avg = Statistics.mean(v_ncar, dims=(1, 2))
-v_ncar = nothing
-GC.gc()
-wu_ncar = Statistics.mean(w_ncar .* u_ncar, dims=(1, 2))
-wv_ncar = Statistics.mean(w_ncar .* v_ncar, dims=(1, 2))
+u_yz, u_ncar_avg, v_ncar_avg, w_ncar, B_ncar = load_ncar_data(p)
 
 w_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
 u_ncarles = FieldTimeSeries{Face, Center, Center}(grid, times)
@@ -103,13 +100,8 @@ wv_ncarles = FieldTimeSeries{Center, Center, Face}(grid, times)
 
 w_ncarles .= w_ncar
 u_ncarles .= u_ncar
-u_ncar  = nothing
-GC.gc()
-b_ncarles .= b_ncar
-b_ncar = nothing
-GC.gc()
-B_ncarles .= b_ncar_avg
-b_ncar_avg = nothing
+B_ncarles .= B_ncar
+B_ncar = nothing
 GC.gc()
 U_ncarles .= u_ncar_avg
 u_ncar_avg = nothing
@@ -127,9 +119,6 @@ GC.gc()
 # manipulating NCAR data
 wprime2_ncarles = VKE(w_ncar, 0.5301e-02)
 w_ncar = nothing
-GC.gc()
-b_ncarles = g_Earth * p.β * (T_ncar)
-T_ncar = nothing
 GC.gc()
 
 initial_data = wprime2_ncarles[1, 1, :, 1]
