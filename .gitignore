@@ -3,9 +3,13 @@ daf
 outputs_temp/
 outputs/
 data/
+ncarles_results/
 outputs.tar.gz
+test_runs/
 *.sh
 *.mp4
+*.jld2
 langmuir_turbulence.mp4
 langmuir_turbulence_temp_buoy.mp4
 test.o*
+data/
