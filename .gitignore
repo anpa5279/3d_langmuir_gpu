@@ -2,6 +2,7 @@ core
 daf
 outputs_temp/
 outputs/
+data/
 outputs.tar.gz
 *.sh
 *.mp4
