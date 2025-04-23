@@ -144,7 +144,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 5minutes
+output_interval = 10minutes
 
 fields_to_output = merge(model.velocities, model.tracers)
 

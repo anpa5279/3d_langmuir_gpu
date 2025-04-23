@@ -4,7 +4,7 @@ outputs_temp/
 outputs/
 data/
 ncarles_results/
-outputs.tar.gz
+*.tar.gz
 test_runs/
 *.sh
 *.mp4
