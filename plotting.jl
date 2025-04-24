@@ -67,26 +67,27 @@ function plot()
     t_save = collect(keys(f["timeseries"]["t"]))
     close(f)
 
-    Nt = length(t_save)
+    Nt = length(t_save) - 1
+    @show Nt
 
-    times = Array{Float64}(undef, Nt)
+    times = Array{Float64}(undef, Int(Nt/2))
     w_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
                                         -grid.Hy+1 : p.Ny+grid.Hy,
                                         -grid.Hz+1 : p.Nz+1+grid.Hz,
-                                        1 : Nt)
+                                        1 : Int(Nt/2))
     u_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
                                         -grid.Hy+1 : p.Ny+grid.Hy,
                                         -grid.Hz+1 : p.Nz+grid.Hz,
-                                        1 : Nt)
+                                        1 : Int(Nt/2))
     #b_data = OffsetArray{Float64}(undef, -grid.Hx+1 : p.Nx+grid.Hx,
     #                                    -grid.Hy+1 : p.Ny+grid.Hy,
     #                                    -grid.Hz+1 : p.Nz+grid.Hz,
     #                                    1 : Nt)
-    B_data =  Array{Float64}(undef, (1, 1, p.Nz, Nt))
-    U_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
-    V_data = Array{Float64}(undef, (1, 1, p.Nz, Nt))
-    wu_data = Array{Float64}(undef, (1, 1, p.Nz + 1, Nt))
-    wv_data =   Array{Float64}(undef, (1, 1, p.Nz + 1, Nt))
+    B_data =  Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
+    U_data = Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
+    V_data = Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
+    wu_data = Array{Float64}(undef, (1, 1, p.Nz + 1, Int(Nt/2)))
+    wv_data =   Array{Float64}(undef, (1, 1, p.Nz + 1, Int(Nt/2)))
     B_data .= 0
     U_data .= 0
     V_data .= 0
@@ -123,27 +124,28 @@ function plot()
         w_all = [f["timeseries"]["w"][t][xrange, :, :] for t in t_save]
         u_yplane = [f["timeseries"]["u"][t][1, :, :] for t in t_save]
         #b_all = [f["timeseries"]["b"][t][xrange, :, :] for t in t_save]
-
-        for k in 1:Nt
-            @show k
-            times[k] = f["timeseries"]["t"][t_save[k]]
+        j = 1
+        for k in 1:2:Nt
+            @show k, j
+            times[j] = f["timeseries"]["t"][t_save[j]]
             local w = w_all[k]
             local u = u_yplane[k]
             #local b = b_all[k]
-            w_data[nn:nn + Nr - 1, :, :, k] = w
-            u_data[1, :, :, k] = u
+            w_data[nn:nn + Nr - 1, :, :, j] = w
+            u_data[1, :, :, j] = u
             #b[nn:nn + Nr - 1, :, :, k] = b
+            j += 1
             #removing the data from memory
             w = nothing
             u = nothing
             #b = nothing
             GC.gc()
         end
-        B_data .= B_data .+ B_temp.data[:, :, 1:p.Nz, :]
-        U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, :]
-        V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, :]
-        wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz + 1, :]
-        wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz + 1, :]
+        B_data .= B_data .+ B_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
+        U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
+        V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
+        wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz + 1, 1:Int(Nt/2)]
+        wv_data .= wv_data .+ wv_temp.data[:, :, 1:p.Nz + 1, 1:Int(Nt/2)]
         #removing the data from memory
         w_all = nothing
         u_yplane = nothing

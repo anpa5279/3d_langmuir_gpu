@@ -3,7 +3,7 @@ daf
 outputs_temp/
 outputs/
 ncarles_results/
-outputs.tar.gz
+*.tar.gz
 test_runs/
 *.sh
 *.mp4
