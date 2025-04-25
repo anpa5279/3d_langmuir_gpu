@@ -107,7 +107,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 # random seed
 Ξ(z) = randn() * exp(z / 4)
 
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * z + p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
