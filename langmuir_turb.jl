@@ -168,4 +168,4 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true)
 
-run!(simulation; pickup = true)
+run!(simulation) #; pickup = true)
