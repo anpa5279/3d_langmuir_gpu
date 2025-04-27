@@ -167,5 +167,7 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true)
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5e4), prefix="model_checkpoint")
 
-run!(simulation) #; pickup = true)
+#simulation.stop_iteration = 5e4
+run!(simulation, stop_iteration=50005) #; pickup = true)
