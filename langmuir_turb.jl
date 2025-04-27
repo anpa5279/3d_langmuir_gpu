@@ -113,7 +113,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours)
+simulation = Simulation(model, Δt=30.0, stop_time = 96hours, stop_iteration=50005)
 @show simulation
 
 function progress(simulation)
@@ -170,4 +170,4 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5e4), prefix="model_checkpoint")
 
 #simulation.stop_iteration = 5e4
-run!(simulation, stop_iteration=50005) #; pickup = true)
+run!(simulation) #; pickup = true)
