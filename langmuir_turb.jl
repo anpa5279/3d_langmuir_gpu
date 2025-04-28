@@ -150,24 +150,11 @@ fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                      filename = "langmuir_turbulence_fields_$(rank).jld2",
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
-#u, v, w = model.velocities
-
-#U = Average(u, dims=(1, 2))
-#V = Average(v, dims=(1, 2))
-#W = Average(w, dims=(1, 2))
-#T_avg = Average(model.tracers.T, dims=(1, 2))
-#wu = Average(w * u, dims=(1, 2))
-#wv = Average(w * v, dims=(1, 2))
-
-#simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg, wu, wv),
-#                                                        schedule = AveragedTimeInterval(output_interval, window=2minutes),
-#                                                        filename = "langmuir_turbulence_averages_$rank.jld2",
-#                                                        overwrite_existing = true)
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$rank")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 #simulation.stop_iteration = 1e5
 run!(simulation; pickup = true)
