@@ -1,13 +1,14 @@
 using Pkg
 using MPI
 using CUDA
+using JLD2
 using Statistics
 using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-
+using Oceananigans.Fields: interior, set!
 mutable struct Params
     Nx::Int         # number of points in each of x direction
     Ny::Int         # number of points in each of y direction
@@ -27,7 +28,6 @@ mutable struct Params
     La_t::Float64   # Langmuir turbulence number
 end
 
-#defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 # Automatically distribute among available processors
@@ -40,7 +40,6 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 @show grid
 
-#stokes drift
 function stokes_velocity(z, u₁₀)
     u = Array{Float64}(undef, length(z))
     α = 0.00615
@@ -55,7 +54,7 @@ function stokes_velocity(z, u₁₀)
         for k in 1:nf
             u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
             σ = σ + df
-        end 
+        end
         u[i] = df * u_temp
     end
     return u
@@ -74,11 +73,12 @@ function dstokes_dz(z, u₁₀)
         for k in 1:nf
             du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
             σ = σ + df
-        end 
+        end
         dudz[i] = df * du_temp
     end
     return dudz
-end 
+end
+
 const z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
 const dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
@@ -101,21 +101,9 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             tracers = (:T),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
-@show model
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 
-# random seed
-Ξ(z) = randn() * exp(z / 4)
-
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
-uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
-
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
-@show simulation
-
+simulation = Simulation(model, Δt=30.0, stop_time = 96hours)
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
@@ -133,28 +121,39 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
-
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
-
-#output files
-function save_IC!(file, model)
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
-    file["IC/wind_speed"] = p.u₁₀
-    return nothing
-end
-
 output_interval = 10minutes
 
 fields_to_output = merge(model.velocities, model.tracers)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
+simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields_$(rank).jld2",
-                                                      overwrite_existing = true,
-                                                      init = save_IC!)
+                                                      overwrite_existing = false)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(Int(5.0e4)), prefix="model_checkpoint_$(rank)")
+# Load the checkpoint file manually
+file = jldopen("model_checkpoint_$(rank)_iteration50000.jld2", "r")
+t = file["NonhydrostaticModel/clock"]
 
-#simulation.stop_iteration = 1e5
-run!(simulation)#; pickup = true)
+# Now manually set them in your simulation
+simulation.model.clock.time = t.time
+simulation.model.clock.iteration = t.iteration
+
+u_full = Array(file["NonhydrostaticModel/u/data"])
+v_full = Array(file["NonhydrostaticModel/v/data"])
+w_full = Array(file["NonhydrostaticModel/w/data"])
+T_full = Array(file["NonhydrostaticModel/T/data"])
+
+u_interior = u_full[grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx]
+v_interior = v_full[grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx]
+w_interior = w_full[grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx]
+T_interior = T_full[grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx, grid.Hx+1:end - grid.Hx]
+
+set!(simulation.model.velocities.u, CuArray(reshape(u_interior, :)))
+set!(simulation.model.velocities.v, CuArray(reshape(v_interior, :)))
+set!(simulation.model.velocities.w, CuArray(reshape(w_interior, :)))
+set!(simulation.model.tracers.T, CuArray(reshape(T_interior, :)))
+close(file)
+
+simulation.Δt = 10.0
+run!(simulation) #; pickup = true) #"model_checkpoint_$(rank)_iteration50000.jld2") to run with the file, comment out the file you read in
