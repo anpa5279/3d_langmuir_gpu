@@ -79,7 +79,7 @@ function dstokes_dz(z, u₁₀)
     end
     return dudz
 end 
-const z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
+const z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 const dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
