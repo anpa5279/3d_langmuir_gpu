@@ -155,5 +155,5 @@ set!(simulation.model.velocities.w, CuArray(reshape(w_interior, :)))
 set!(simulation.model.tracers.T, CuArray(reshape(T_interior, :)))
 close(file)
 
-simulation.Δt = 10.0
+simulation.Δt = 30.0
 run!(simulation) #; pickup = true) #"model_checkpoint_$(rank)_iteration50000.jld2") to run with the file, comment out the file you read in
