@@ -32,13 +32,11 @@ p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0,
 
 # Automatically distribute among available processors
 arch = Distributed(GPU())
-@show arch
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
-@show grid
 
 #stokes drift
 function stokes_velocity(z, u₁₀)
@@ -155,7 +153,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 #simulation.stop_iteration = 1e5
 run!(simulation)#; pickup = true)
