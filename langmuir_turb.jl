@@ -113,7 +113,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=45.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -141,7 +141,7 @@ function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
     file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
     file["IC/wind_speed"] = p.u₁₀
-    file["IC/stokes_drifgt_field"] = new_dUSDdz
+    file["IC/stokes_drift_field"] = new_dUSDdz
     return nothing
 end
 
@@ -155,7 +155,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1000), prefix="model_checkpoint_$(rank)")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 #simulation.stop_iteration = 1e5
 run!(simulation)#; pickup = true)
