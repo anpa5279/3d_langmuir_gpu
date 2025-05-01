@@ -140,7 +140,7 @@ function save_IC!(file, model)
         file["IC/friction_velocity"] = u_f
         file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
         file["IC/wind_speed"] = p.u₁₀
-        file["IC/stokes_drift_field"] = new_dUSDdz
+        file["IC/stokes_drift_field"] = collect(new_dUSDdz.data.parent)
     end
     return nothing
 end
