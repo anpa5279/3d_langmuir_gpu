@@ -157,5 +157,4 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
 
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
-#simulation.stop_iteration = 1e5
 run!(simulation)#; pickup = true)
