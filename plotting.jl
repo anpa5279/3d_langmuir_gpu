@@ -55,7 +55,7 @@ function make_field_face(data, times)
     return field
 end
 
-function plot()
+function video()
     Nranks = 4
     fld_file="outputs/langmuir_turbulence_fields_0.jld2"
     f = jldopen(fld_file)
@@ -83,12 +83,20 @@ function plot()
     #                                    -grid.Hy+1 : p.Ny+grid.Hy,
     #                                    -grid.Hz+1 : p.Nz+grid.Hz,
     #                                    1 : Nt)
+<<<<<<< HEAD
     B_data =  Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
+=======
+    T_data =  Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
+>>>>>>> lang-temp-buoy
     U_data = Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
     V_data = Array{Float64}(undef, (1, 1, p.Nz, Int(Nt/2)))
     wu_data = Array{Float64}(undef, (1, 1, p.Nz + 1, Int(Nt/2)))
     wv_data =   Array{Float64}(undef, (1, 1, p.Nz + 1, Int(Nt/2)))
+<<<<<<< HEAD
     B_data .= 0
+=======
+    T_data .= 0
+>>>>>>> lang-temp-buoy
     U_data .= 0
     V_data .= 0
     wu_data .= 0
@@ -101,7 +109,7 @@ function plot()
         averages_file="outputs/langmuir_turbulence_averages_$(i).jld2"
 
         f = jldopen(fld_file)
-        B_temp = FieldTimeSeries(averages_file, "B")
+        T_temp = FieldTimeSeries(averages_file, "T_avg")
         U_temp = FieldTimeSeries(averages_file, "U")
         V_temp = FieldTimeSeries(averages_file, "V")
         W_temp = FieldTimeSeries(averages_file, "W")
@@ -141,7 +149,13 @@ function plot()
             #b = nothing
             GC.gc()
         end
+<<<<<<< HEAD
         B_data .= B_data .+ B_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
+=======
+        j = nothing
+        GC.gc()
+        T_data .= T_data .+ T_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
+>>>>>>> lang-temp-buoy
         U_data .= U_data .+ U_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
         V_data .= V_data .+ V_temp.data[:, :, 1:p.Nz, 1:Int(Nt/2)]
         wu_data .= wu_data .+ wu_temp.data[:, :, 1:p.Nz + 1, 1:Int(Nt/2)]
@@ -153,7 +167,7 @@ function plot()
         xrange = nothing
         Nr = nothing 
         shift = nothing
-        B_temp = nothing
+        T_temp = nothing
         U_temp = nothing
         V_temp = nothing
         wu_temp = nothing
@@ -166,7 +180,7 @@ function plot()
 
     #averaging
     println("Averaging data")
-    B_data = B_data ./ Nranks
+    T_data = T_data ./ Nranks
     U_data = U_data ./ Nranks
     V_data = V_data ./ Nranks
     wu_data = wu_data ./ Nranks
@@ -188,8 +202,8 @@ function plot()
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
     wu = FieldTimeSeries{Center, Center, Face}(grid, times)
     wv = FieldTimeSeries{Center, Center, Face}(grid, times)
-    B .= B_data
-    B_data = nothing
+    B .= g_Earth * p.β * (T_data .- p.T0)
+    T_data = nothing
     GC.gc()
     U .= U_data
     U_data = nothing
@@ -298,8 +312,35 @@ function plot()
 
     frames = 1:length(times)
 
-    record(fig, "plotting.mp4", frames, framerate=8) do i
+    record(fig, "langmuir_turbulence_temp_buoy.mp4", frames, framerate=8) do i
         n[] = i
         wprime2_obs[] = wprime2[-2, -2, :, i]
-    end 
+    end
+end
+
+function stokes_plot()
+    Nranks = 4
+    dudz = Array{Float64}(undef, (1, 1, p.Nz))
+    for i in 0:Nranks-1
+        println("Loading rank $i")
+
+        fld_file="outputs/langmuir_turbulence_fields_0.jld2"
+
+        f = jldopen(fld_file)
+        keys(f)
+        dudz = f["timeseries"]["dudz"]
+        GC.gc() 
+        close(f)
+    end
+    z = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+    n = Observable(1)
+    fig 
+    save("oceananigans_stokes_drift.png", fig)
+    #plotting velocity gradient profile
+    fig2 = Figure()
+    ax2 = Axis(fig2[1, 1], xlabel = "duˢ/dz [1/s]", ylabel = "z [m]", title = "Stokes drift gradient")
+    lines!(ax2, dudz, label = "Oceananigans Stokes drift gradient")
+    fig2
+    axislegend(ax2; position = :rb)
+    save("oceananigans_stokes_drift_gradient.png", fig2)
 end 
