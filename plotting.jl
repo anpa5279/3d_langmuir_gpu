@@ -311,42 +311,22 @@ function stokes_plot()
     for i in 0:Nranks-1
         println("Loading rank $i")
 
-        fld_file="outputs/langmuir_turbulence_fields_$(i).jld2"
+        fld_file="outputs/langmuir_turbulence_fields_0.jld2"
 
         f = jldopen(fld_file)
-        if i == 0 #first rank
-            shift = 0
-            Nr = Int(p.Nx / Nranks + grid.Hx)
-            xrange = 1 : Nr #last rank
-        elseif i == Nranks - 1
-            shift  = -2 * grid.Hx
-            Nr = Int(p.Nx / Nranks + grid.Hx)
-            xrange = grid.Hx + 1 : grid.Hx + Nr
-        else #middle ranks
-            shift = grid.Hx
-            Nr = Int(p.Nx / Nranks)
-            xrange = grid.Hx + 1 : grid.Hx + Nr
-        end 
-        nn = 1 + shift + i * Nr - grid.Hx
-        dudz = f["IC/stokes_drift_field"][1, nn:nn + Nr - 1, :, :]
+        keys(f)
+        dudz = f["timeseries"]["dudz"]
         GC.gc() 
         close(f)
     end
     z = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-    #plotting velocity profile
     n = Observable(1)
-    #fig = Figure()
-    #ax = Axis(fig[1, 1], xlabel = "uˢ [m/s]", ylabel = "z [m]", title = "Stokes drift")
-    #lines!(ax, u_data, z, label = "Oceananigans Stokes drift")
-    #lines!(ax, ncarles_stokes, ncarles_z, label = "NCAR-LES Stokes drift")
-    #axislegend(ax; position = :rb)
     fig 
     save("oceananigans_stokes_drift.png", fig)
     #plotting velocity gradient profile
     fig2 = Figure()
     ax2 = Axis(fig2[1, 1], xlabel = "duˢ/dz [1/s]", ylabel = "z [m]", title = "Stokes drift gradient")
     lines!(ax2, dudz, label = "Oceananigans Stokes drift gradient")
-    #lines!(ax2, ncarles_dudz, ncarles_z[2:length(ncarles_z)], label = "NCAR-LES Stokes drift gradient")
     fig2
     axislegend(ax2; position = :rb)
     save("oceananigans_stokes_drift_gradient.png", fig2)
