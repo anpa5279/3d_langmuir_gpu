@@ -40,7 +40,7 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))#grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 const z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -113,6 +113,7 @@ end
 output_interval = 30minutes
 
 u, v, w = model.velocities
+@show w
 w_fluct = fluctuation_xy(w)
 w_fluct2 = Field{Center, Center, Face}(grid)
 interior(w_fluct2) .= w_fluct.^2 / (u_f^2)
