@@ -30,53 +30,19 @@ end
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
+#referring to files with desiraed functions
+include("stokes.jl")
+include("fluctuations.jl")
+
 # Automatically distribute among available processors
 arch = Distributed(GPU())
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))#grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
-function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(z))
-    α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
-    a = 0.1
-    b = 5000.0
-    nf = 3^9
-    df = (b -  a) / nf
-    for i in 1:length(z)
-        σ = a + 0.5 * df
-        u_temp = 0.0
-        for k in 1:nf
-            u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
-            σ = σ + df
-        end 
-        u[i] = df * u_temp
-    end
-    return u
-end
-function dstokes_dz(z, u₁₀)
-    dudz = Array{Float64}(undef, length(z))
-    α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
-    a = 0.1
-    b = 5000.0
-    nf = 3^9
-    df = (b -  a) / nf
-    for i in 1:length(z)
-        σ = a + 0.5 * df
-        du_temp = 0.0
-        for k in 1:nf
-            du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
-            σ = σ + df
-        end 
-        dudz[i] = df * du_temp
-    end
-    return dudz
-end 
 const z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 const dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
@@ -140,22 +106,33 @@ function save_IC!(file, model)
         file["IC/friction_velocity"] = u_f
         file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
         file["IC/wind_speed"] = p.u₁₀
-        file["IC/stokes_drift_field"] = new_dUSDdz
     end
     return nothing
 end
 
-output_interval = 10minutes
+output_interval = 30minutes
 
-fields_to_output = merge(model.velocities, model.tracers)
+u, v, w = model.velocities
+w_fluct = fluctuation_xy(w)
+w_fluct2 = Field{Center, Center, Face}(grid)
+interior(w_fluct2) .= w_fluct.^2 / (u_f^2)
+U = Average(u, dims=(1, 2))
+V = Average(v, dims=(1, 2))
+T = Average(model.tracers.T, dims=(1, 2))
+wu = Average(w * u, dims=(1, 2))
+wv = Average(w * v, dims=(1, 2))
+w_fluct_output = Average(w_fluct2, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
+simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w, model.tracers.T),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/langmuir_turbulence_fields_$(rank).jld2",
+                                                      filename = "outputs/langmuir_turbulence_fields_$(rank).jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
+                                                      
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, T, wu, wv, w_fluct_output),
+                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
+                                                    filename = "outputs/langmuir_turbulence_averages_$(rank).jld2",
+                                                    overwrite_existing = true)
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
-
-#simulation.stop_iteration = 1e5
 run!(simulation)#; pickup = true)
