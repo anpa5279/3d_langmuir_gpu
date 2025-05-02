@@ -124,7 +124,7 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 w_fluct_output = Average(w_fluct2, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w, model.tracers.T),
+simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields_$(rank).jld2", #$(rank)
                                                       overwrite_existing = true,
