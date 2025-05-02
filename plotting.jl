@@ -29,18 +29,9 @@ end
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 grid = RectilinearGrid(size = (p.Nx, p.Ny, p.Nz), extent = (p.Lx, p.Ly, p.Lz), halo = (3, 3, 3))
-function VKE(a, u_f)
-    nt = length(a[1, 1, 1, :])
-    nz = length(a[1, 1, :, 1])
-    ny = length(a[1, :, 1, 1])
-    nx = length(a[:, 1, 1, 1])
-    a_avg_xy = Statistics.mean(a, dims=(1, 2))
-    a_prime = a .- a_avg_xy 
-    a_prime2 = a_prime.^2
-    aprime2_norm = Array{Float64}(undef, nz, nt)
-    aprime2_norm = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
-    return aprime2_norm
-end
+
+include("fluctuations.jl")
+include("stokes.jl")
 
 function make_field_center(data, times)
     field = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -206,7 +197,9 @@ function video()
     GC.gc()
     # function calls
     println("Calculating VKE")
-    wprime2 = VKE(w.data, u★)
+    w_fluct = fluctuations(w.data)
+    w_fluct2 = w_fluct.^2
+    wprime2 = Statistics.mean(a_prime2, dims=(1, 2)) / (u_f^2)
     initial_data = wprime2[-2, -2, :, 1] #negative indices because of the halo
     wprime2_obs = Observable(initial_data)
 
@@ -315,7 +308,7 @@ function stokes_plot()
 
         f = jldopen(fld_file)
         keys(f)
-        dudz = f["timeseries"]["dudz"]
+        dudz = f["stokes_drift_field"]
         GC.gc() 
         close(f)
     end
