@@ -6,7 +6,7 @@ function fluctuation_xy(a::Field)
     a_fluctuation = Field{Center, Center, Face}(a.grid)
     @show a_fluctuation
     # GPU-friendly broadcasting subtraction
-    a_fluctuation .= a.data .- a_avg_xy
+    a_fluctuation .= a.data .- a_avg_xy.data
     @show a_fluctuation
     return a_fluctuation
 end
