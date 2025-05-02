@@ -3,16 +3,10 @@ function fluctuation_xy(a::Field)
     a_avg_xy = Field(Average(a, dims=(1, 2)))  
     @show a_avg_xy
     compute!(a_avg_xy)                         # Evaluate the average on the GPU
-    # Step 2: Allocate fluctuation field with correct location and architecture
-    a_fluctuation = Field(a.grid, loc=a.location, architecture=a.architecture)
-
-    # Step 3: GPU-safe kernel to subtract average
-    @kernel function subtract_mean!(f, a, avg)
-        i, j, k = @index(Global, NTuple)
-        f[i, j, k] = a[i, j, k] - avg[i, j, k]
-    end
-
-    launch!(subtract_mean!, a.grid, a_fluctuation, a, a_avg_xy)
-
+    # Create an output Field with the same grid
+    a_fluctuation = Field(a - a_avg_xy)
+    @show a_fluctuation
+    compute!(a_fluctuation)                     # Evaluate the fluctuation on the GPU
+    @show a_fluctuation
     return a_fluctuation
 end
