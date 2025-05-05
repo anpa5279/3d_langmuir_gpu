@@ -9,14 +9,12 @@ function fluctuation_xy(a::Field)
     return a_fluctuation
 end
 function squared_norm_xy(a::Field, a_f)
-    # Compute the fluctuation
     a_fluct = fluctuation_xy(a)
     compute!(a_fluct)  # Ensure data is available on the device
-    @show a_fluct
+
     # Allocate result field with correct grid and topology
     a2 = Field{Center, Center, Face}(a.grid)
 
-    CUDA.@allowscalar a2.data = (a_fluct.data ^ 2) / (a_f ^ 2)
-    compute!(a2)  # Ensure data is available on the device
+    compute!(a2, (a_fluct.data ^ 2) / (a_f ^ 2))
     return a2
 end
