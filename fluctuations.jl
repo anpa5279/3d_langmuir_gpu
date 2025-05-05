@@ -4,7 +4,7 @@ function fluctuation_xy(a::Field)
     compute!(a_avg_xy)  # Compute the average field
     # Create fluctuation field with same grid and architecture
     a_fluctuation = Field{Center, Center, Face}(a.grid)
-    CUDA.allowscalar() a_fluctuation.= a .- a_avg_xy)
+    CUDA.allowscalar() a_fluctuation.= a .- a_avg_xy
 
     # GPU-friendly broadcast subtraction
     compute!(a_fluctuation)
