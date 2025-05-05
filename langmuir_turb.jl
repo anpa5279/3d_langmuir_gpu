@@ -121,13 +121,13 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 w_prime2_xy_norm = Average(w_fluct2, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w),
+simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields_$(rank).jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, T, wu, wv, w_prime2_xy_norm),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, T, wu, wv, w_prime2_xy_norm),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages_$(rank).jld2",
                                                     overwrite_existing = true)
