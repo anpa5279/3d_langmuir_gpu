@@ -4,9 +4,9 @@ function fluctuation_xy(a::Field)
     compute!(a_avg_xy)  # Now a_avg_xy.data is ready
     @show a_avg_xy
     # Create fluctuation field with same grid and architecture
-    a_fluctuation = Field{Center, Center, Face}(a.grid; architecture = architecture(a))
+    a_fluctuation = Field{Center, Center, Face}(a.grid, a - a_avg_xy)
 
     # GPU-friendly broadcast subtraction
-    set!(a_fluctuation, a.data .- a_avg_xy.data)
+    compute!(a_fluctuation)
     return a_fluctuation
 end
