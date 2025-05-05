@@ -114,10 +114,9 @@ output_interval = 30minutes
 
 u, v, w = model.velocities
 @show w
-w_fluct = Field{Center, Center, Face}(grid)
-w_fluct .= fluctuation_xy(w.data)
+w_fluct = fluctuation_xy(w)
 w_fluct2 = Field{Center, Center, Face}(grid)
-interior(w_fluct2) .= w_fluct.^2 / (u_f^2)
+w_fluct2 .= w_fluct.^2 / (u_f^2)
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(model.tracers.T, dims=(1, 2))
