@@ -5,17 +5,17 @@ function fluctuation_xy(a::Field)
     # Create fluctuation field with same grid and architecture
     a_fluctuation = Field{Center, Center, Face}(a.grid)
     CUDA.@allowscalar a_fluctuation.= a .- a_avg_xy
-
-    # GPU-friendly broadcast subtraction
     compute!(a_fluctuation)
     return a_fluctuation
 end
 function squared_norm_xy(a::Field, a_f)
+    # Compute the fluctuation
     a_fluct = fluctuation_xy(a)
+    compute!(a_fluct)  # Ensure data is available on the device
     @show a_fluct
+    # Allocate result field with correct grid and topology
     a2 = Field{Center, Center, Face}(a.grid)
-    CUDA.@allowscalar a2 .= (a_fluct.data).^2 ./ (a_f^2)
-    @show a2
-    compute!(a2)
+
+    @. a2.data = (a_fluct.data ^ 2) / (a_f ^ 2)
     return a2
 end
