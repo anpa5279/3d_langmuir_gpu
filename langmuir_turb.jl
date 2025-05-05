@@ -52,10 +52,8 @@ set!(new_dUSDdz, reshape(dudz, 1, 1, :))
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-@show u_bcs
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
-@show buoyancy
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
@@ -117,7 +115,7 @@ u, v, w = model.velocities
 @show w
 w_fluct = fluctuation_xy(w)
 w_fluct2 = Field{Center, Center, Face}(grid)
-w_fluct2 .= w_fluct.^2 / (u_f^2)
+CUDA.@allowscalar w_fluct2 .= w_fluct.^2 / (u_f^2)
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(model.tracers.T, dims=(1, 2))
