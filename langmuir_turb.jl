@@ -112,7 +112,6 @@ end
 output_interval = 30minutes
 
 u, v, w = model.velocities
-@show w
 w_fluct2 = squared_norm_xy(w, u_f)
 @show w_fluct2
 U = Average(u, dims=(1, 2))
