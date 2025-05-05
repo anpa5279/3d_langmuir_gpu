@@ -16,6 +16,7 @@ function squared_norm_xy(a::Field, a_f)
     # Allocate result field with correct grid and topology
     a2 = Field{Center, Center, Face}(a.grid)
 
-    @. a2.data = (a_fluct.data ^ 2) / (a_f ^ 2)
+    CUDA.@allowscalar a2.data = (a_fluct.data ^ 2) / (a_f ^ 2)
+    compute!(a2)  # Ensure data is available on the device
     return a2
 end
