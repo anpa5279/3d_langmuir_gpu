@@ -1,6 +1,6 @@
 function fluctuation_xy(a::Field)
     # Compute horizontal (x, y) average at each z level
-    a_avg_xy = Field(Average(a, dims=(1, 2)))  
+    a_avg_xy = Average(a, dims=(1, 2)) 
     @show a_avg_xy
     compute!(a_avg_xy)                         # Evaluate the average on the GPU
     # Create an output Field with the same grid
