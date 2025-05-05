@@ -114,8 +114,9 @@ output_interval = 30minutes
 u, v, w = model.velocities
 @show w
 w_fluct = fluctuation_xy(w)
-w_fluct2 = Field{Center, Center, Face}(grid)
-CUDA.@allowscalar w_fluct2 .= w_fluct.^2 / (u_f^2)
+@show w_fluct
+w_fluct2 = squared_norm_xy(w_fluct, u_f)
+@show w_fluct2
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(model.tracers.T, dims=(1, 2))
