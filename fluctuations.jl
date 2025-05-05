@@ -1,15 +1,14 @@
 function fluctuation_xy(a::Field)
     # Compute horizontal (x, y) average at each z level
     @show a
-    a_avg_xy = Field{Center, Center, Face}(a.grid)
-    a_avg_xy .= Average(a, dims=(1, 2))
-    compute!(a_avg_xy)                         # Evaluate the average on the GPU
+    # Create average field (wrapped around lazy Average)
+    a_avg_xy = Field(Average(a, dims=(1, 2)); architecture = architecture(a))
+    compute!(a_avg_xy)  # Now a_avg_xy.data is ready
     @show a_avg_xy
-    # Create an output Field with the same grid
-    a_fluctuation = Field{Center, Center, Face}(a.grid)
-    @show a_fluctuation
-    # GPU-friendly broadcasting subtraction
+    # Create fluctuation field with same grid and architecture
+    a_fluctuation = Field{Center, Center, Face}(a.grid; architecture = architecture(a))
+
+    # GPU-friendly broadcast subtraction
     set!(a_fluctuation, a.data .- a_avg_xy.data)
-    #CUDA.@allowscalar @. a_fluctuation.data = a.data .- a_avg_xy.data
     return a_fluctuation
 end
