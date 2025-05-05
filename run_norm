@@ -47,7 +47,6 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'using Pkg; Pkg.add("Adapt")'
 julia --project -e 'using Pkg; Pkg.update()'
 #julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("CairoMakie"); Pkg.add("Printf")'
 # Finally, let's run this thing
