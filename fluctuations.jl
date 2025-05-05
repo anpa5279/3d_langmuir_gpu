@@ -1,8 +1,6 @@
 function fluctuation_xy(a::Field)
-    # Compute horizontal (x, y) average at each z level
-    @show a
     # Create average field (wrapped around lazy Average)
-    a_avg_xy = Field(Average(a, dims=(1, 2)); architecture = architecture(a))
+    a_avg_xy = Field{Nothing, Nothing, Center}(a.grid, Average(a, dims=(1, 2)))
     compute!(a_avg_xy)  # Now a_avg_xy.data is ready
     @show a_avg_xy
     # Create fluctuation field with same grid and architecture
