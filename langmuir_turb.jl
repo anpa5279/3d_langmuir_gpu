@@ -28,7 +28,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(16, 16, 16, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -76,7 +76,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=45.0, stop_time = 4hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -109,7 +109,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 30minutes
+output_interval = 60minutes
 
 u, v, w = model.velocities
 w_fluct2 = squared_norm_xy(w, u_f)
@@ -123,13 +123,13 @@ w_prime2_xy_norm = Average(w_fluct2, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/langmuir_turbulence_fields_$(rank).jld2", #$(rank)
+                                                      filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, T, wu, wv, w_prime2_xy_norm),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "outputs/langmuir_turbulence_averages_$(rank).jld2",
+                                                    filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
