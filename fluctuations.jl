@@ -11,7 +11,9 @@ function fluctuation_xy(a::Field)
     return a_fluctuation
 end
 function squared_norm_xy(a::Field, a_f)
+    a_fluct = fluctuation_xy(a)
     a2 = Field{Center, Center, Face}(a.grid)
-    CUDA.@allowscalar a2 .= a .^ 2/ a_f^2
-    return a_fluctuation.^2
+    CUDA.@allowscalar a2 .= a_fluct.^2 ./ (a_f^2)
+    compute!(a2)
+    return a2
 end
