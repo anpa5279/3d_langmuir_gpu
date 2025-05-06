@@ -32,7 +32,7 @@ p = Params(16, 16, 16, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 
 #referring to files with desiraed functions
 include("stokes.jl")
-include("fluctuations.jl")
+#include("fluctuations.jl")
 
 # Automatically distribute among available processors
 arch = Distributed(GPU())
