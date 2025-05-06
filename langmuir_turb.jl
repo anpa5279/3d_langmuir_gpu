@@ -28,7 +28,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(16, 16, 16, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -76,7 +76,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time = 4hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
