@@ -62,7 +62,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
-                            closure = AnisotropicMinimumDissipation(),
+                            #closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs)) 
 @show model
@@ -125,7 +125,7 @@ simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv, w),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
