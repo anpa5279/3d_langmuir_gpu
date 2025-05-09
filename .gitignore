@@ -2,6 +2,8 @@ core
 daf
 outputs_temp/
 outputs/
+outputs*/
+scaling.o*
 data/
 ncarles_results/
 *.tar.gz
