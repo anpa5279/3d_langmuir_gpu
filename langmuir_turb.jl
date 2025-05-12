@@ -32,6 +32,7 @@ p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0,
 
 #referring to files with desiraed functions
 include("stokes.jl")
+include("smagorinksy_forcing.jl")
 #include("fluctuations.jl")
 
 # Automatically distribute among available processors
@@ -58,7 +59,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 #my own smagorinsky sub grid scale implementation
-smag = Forcing(smagorinksy_forcing, discrete_form=true, field_dependencies=(:u, :v, :w))
+smag = Forcing(smagorinksy_forcing!, discrete_form=true, field_dependencies=(:u, :v, :w))
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
