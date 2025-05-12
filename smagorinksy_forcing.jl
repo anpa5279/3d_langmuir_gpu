@@ -1,6 +1,15 @@
+using Oceananigans
+using Oceananigans.Operators
+using Oceananigans.Fields
+
+using Oceananigans.Grids: AbstractGrid
+
+using KernelAbstractions: @kernel, @index
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 using Oceananigans.AbstractOperations: ∂x, ∂y, ∂z
-using Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ
+
+include("scale_invariant_operators.jl")
+
 @kernel function smagorinksy_forcing!(i, j, k, grid, clock, model_fields, p)
     C = p.C
     grid = w.grid
