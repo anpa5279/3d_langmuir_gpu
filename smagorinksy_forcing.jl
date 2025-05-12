@@ -33,7 +33,7 @@ using Oceananigans.AbstractOperations: ∂x, ∂y, ∂z
     ∂τ∂x = Field(∂x(τ))
     ∂τ∂y= Field(∂y(τ))
     ∂τ∂z = Field(∂z(τ))
-    return @inbounds sqrt(∂τ∂x^2 + ∂τ∂y^2 + ∂τ∂z^2)
+    @inbounds sqrt(∂τ∂x^2 + ∂τ∂y^2 + ∂τ∂z^2)
 end
 
 @inline ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) =      tr_Σ²(i, j, k, grid, u, v, w) +
