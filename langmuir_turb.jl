@@ -59,7 +59,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 #my own smagorinsky sub grid scale implementation
-smag = Forcing(smagorinksy_forcing!, discrete_form=true, field_dependencies=(:u, :v, :w))
+smag_sgs = Forcing(smagorinksy_forcing!, discrete_form=true, field_dependencies=(:u, :v, :w))
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
