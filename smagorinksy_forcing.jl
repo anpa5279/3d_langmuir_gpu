@@ -1,4 +1,5 @@
-using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, ∂x, ∂y, ∂z
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.AbstractOperations: ∂x, ∂y, ∂z
 using Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ
 @kernel function smagorinksy_forcing!(i, j, k, grid, clock, model_fields, p)
     C = p.C
@@ -22,8 +23,8 @@ using Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ
     #calcaulate subgrid stress
     τ = -2 * νₑ * strain_rate
     #calculate the subgrid forcing
-    ∂τ∂x = ∂x(τ)
-    ∂τ∂y= ∂y(τ)
-    ∂τ∂z = ∂z(τ)
+    ∂τ∂x = Field(∂x(τ))
+    ∂τ∂y= Field(∂y(τ))
+    ∂τ∂z = Field(∂z(τ))
     return @inbounds sqrt(∂τ∂x^2 + ∂τ∂y^2 + ∂τ∂z^2)
 end
