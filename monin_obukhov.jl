@@ -1,6 +1,7 @@
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
 using Oceananigans.Utils: launch!, IterationInterval
+using Oceananigans.StokesDrifts: zerofunction
 
 using Adapt
 
@@ -18,19 +19,24 @@ import ..TurbulenceClosures:
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,
+    immersed_flux_divergence, 
+    immersed_∂ⱼ_τ₁ⱼ, 
+    immersed_∂ⱼ_τ₂ⱼ,
+    immersed_∂ⱼ_τ₃ⱼ,
+    immersed_∇_dot_qᶜ, 
     compute_diffusivities!,
     build_diffusivity_fields,
     tracer_diffusivities
 
 #####
-##### The turbulence closure proposed by Sullivan 1994.
+##### The turbulence closure proposed by Sullivan 1994. 
 #####
 
 struct SmagorinskyMoninObukhov{TD, C, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     coefficient :: C
     Pr :: P
 
-    function Smagorinsky{TD}(coefficient, Pr) where TD
+    function SmagorinskyMoninObukhov{TD}(coefficient, Pr) where TD
         P = typeof(Pr)
         C = typeof(coefficient)
         return new{TD, C, P}(coefficient, Pr)
@@ -53,7 +59,7 @@ SmagorinskyMoninObukhov(FT::DataType; kwargs...) = SmagorinskyMoninObukhov(Expli
 
 function with_tracers(tracers, closure::SmagorinskyMoninObukhov{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return Smagorinsky{TD}(closure.coefficient, Pr)
+    return SmagorinskyMoninObukhov{TD}(closure.coefficient, Pr)
 end
 
 @kernel function _compute_moninobukhov_viscosity!(diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
@@ -72,6 +78,7 @@ end
     @inbounds νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
 
+#the first term of the Smagorinsky Monin-Obukhov SGS viscosity
 @inline function square_smagorinskymoninobukhov_coefficient(i, j, k, grid, closure::SmagorinskyMoninObukhov,
                                                             diffusivity_fields, Σ²)
     i, j, k = @index(Global, NTuple)
@@ -82,7 +89,7 @@ end
     S_bar = sqrt(2Σ²)
     # prime of strain rate tensor
     prime_Σ² = prime_Σᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w) 
-    * prime_Σᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
+                * prime_Σᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
     S_prime = sqrt(2 * prime_Σ²)
     γ = S_prime / (S_bar + S_prime)
     # calculating isotropy factor
@@ -134,11 +141,38 @@ end
 @inline κᶜᶠᶜ(i, j, k, grid, c::SmagorinskyMoninObukhov, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
 @inline κᶜᶜᶠ(i, j, k, grid, c::SmagorinskyMoninObukhov, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
-Base.summary(closure::SmagorinskyMoninObukhov) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
+#the second term of the Smagorinsky Monin-Obukhov SGS viscosity introduced as a background diffusivity
+@inline function force_mo(i, j, k, grid, clock, model_fields)
+    u = model_fields.u
+    v = model_fields.v
+    w = model_fields.w
+    z1 = grid.z.Δᵃᵃᶜ / 2
+    ∂z_uˢ = model.stokes_drift.∂z_uˢ
+    ∂z_vˢ = model.stokes_drift.∂z_vˢ
+    if ∂z_vˢ == zerofunction
+        ∂z_Uˢ = ∂z_uˢ
+    else 
+        ∂z_Uˢ = sqrt(∂z_uˢ.data.^2 + ∂z_vˢ.data.^2)
+    end
+    ν_t = _compute_moninobukhov_viscosity!(diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
+    avg_ν_t = Average(ν_t)
+    van_karman = 0.4
+    u_friction = abs(model.velocities.u.boundary_conditions.top)
+    φ = (van_karman * z1 / u_friction) * ∂z_Uˢ
+    momentum_flux = sqrt(Average(u₁u₃ᶜᶜᶜ(i, j, k, grid, u, v, w))^2 + Average(u₂u₃ᶜᶜᶜ(i, j, k, grid, u, v, w))^2)
+    ν_T_star = u_friction * van_karman * z1 / φ - avg_ν_t - van_karman * z1 / (u_friction * φ) * momentum_flux
+    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
+    S_bar = sqrt(2Σ²)
+    ν_T = ν_T_star (van_karman * z1 / (u_friction * φ)) * S_bar
+end
+
+#display settings
+Base.summary(closure::SmagorinskyMoninObukhov) = string("Smagorinsky Monin-Obukhov with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
 function Base.show(io::IO, closure::SmagorinskyMoninObukhov)
     coefficient_summary = closure.coefficient isa Number ? closure.coefficient : summary(closure.coefficient)
     print(io, "Smagorinsky Monin-Obukhov closure with\n",
               "├── coefficient = ", coefficient_summary, "\n",
-              "└── Pr = ", closure.Pr)
+              "├── Pr = ", closure.Pr, "\n",
+              "└── additional fields for fluctuating strain rate calucations now in the model:")
 end
 
