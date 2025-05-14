@@ -43,8 +43,8 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
-const z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-const dudz = dstokes_dz(z_d, p.u₁₀)
+z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
 @show new_dUSDdz
@@ -71,10 +71,11 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 Ξ(z) = randn() * exp(z / 4)
 
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
-uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
+uᵢ(x, y, z) = stokes_velocity(z_d, p.u₁₀) * 1e-1 * Ξ(z)
+vᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+set!(model, u=uᵢ, v=vᵢ, w=wᵢ, T=Tᵢ)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
