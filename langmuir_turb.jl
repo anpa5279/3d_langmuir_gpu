@@ -1,6 +1,7 @@
 using Pkg
-using MPI
-using CUDA
+#using MPI
+#using CUDA
+using Random
 using Statistics
 using Printf
 using Oceananigans
@@ -32,23 +33,22 @@ p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 
 #referring to files with desiraed functions
 include("stokes.jl")
-include("smagorinksy_forcing.jl")
+include("smagorinsky_forcing.jl")
 #include("fluctuations.jl")
 
 # Automatically distribute among available processors
-arch = Distributed(GPU())
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
-println("Hello from process $rank out of $Nranks")
+#arch = Distributed(GPU())
+#rank = arch.local_rank
+#Nranks = MPI.Comm_size(arch.communicator)
+#println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz)) #grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
-@show new_dUSDdz
 
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
@@ -59,18 +59,35 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 #my own smagorinsky sub grid scale implementation
-smag_sgs = Forcing(smagorinksy_forcing!, discrete_form=true, field_dependencies=(:u, :v, :w))
+smag_sgsu = Forcing(smag_u, discrete_form=true, parameters=0.1)
+smag_sgsv = Forcing(smag_v, discrete_form=true, parameters=0.1)
+smag_sgsw = Forcing(smag_w, discrete_form=true, parameters=0.1)
+
+∂j_τ1j = Field{Center, Center, Center}(grid)
+∂j_τ2j = Field{Center, Center, Center}(grid)
+∂j_τ3j = Field{Center, Center, Center}(grid)
+∂j_τcj = Field{Center, Center, Center}(grid)
+
+
+νₑ = Field{Center, Center, Center}(grid)
+
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
+                            closure = nothing, 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)
-                            forcing = (u = smag_sgs, v = smag_sgs, w = smag_sgs, T = smag_sgs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs),
+                            forcing = (u = smag_sgsu, v = smag_sgsv, w = smag_sgsw),
+                            auxiliary_fields = (∂j_τ1j = ∂j_τ1j,
+                                                ∂j_τ2j = ∂j_τ2j,
+                                                ∂j_τ3j = ∂j_τ3j,
+                                                ∂j_τcj = ∂j_τcj,
+                                                νₑ = νₑ))
 @show model
 
 # random seed
-Ξ(z) = randn() * exp(z / 4)
+Ξ(z) = randn(Xoshiro(1234)) * exp(z / 4)
 
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
@@ -103,11 +120,11 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
-    if rank == 0
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
-        file["IC/wind_speed"] = p.u₁₀
-    end
+    #if rank == 0
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+    file["IC/wind_speed"] = p.u₁₀
+    #end
     return nothing
 end
 
