@@ -59,31 +59,21 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 #my own smagorinsky sub grid scale implementation
-smag_sgsu = Forcing(smag_u, discrete_form=true, parameters=0.1)
-smag_sgsv = Forcing(smag_v, discrete_form=true, parameters=0.1)
-smag_sgsw = Forcing(smag_w, discrete_form=true, parameters=0.1)
-
-∂j_τ1j = Field{Center, Center, Center}(grid)
-∂j_τ2j = Field{Center, Center, Center}(grid)
-∂j_τ3j = Field{Center, Center, Center}(grid)
-∂j_τcj = Field{Center, Center, Center}(grid)
-
-
 νₑ = Field{Center, Center, Center}(grid)
+u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true, parameters=0.1)
+v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true, parameters=0.1)
+w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true, parameters=0.1)
+T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true, parameters=0.1)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
-                            closure = nothing, 
+                            closure = nothing, #closure = Smagorinsky(coefficient=0.1)
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs),
-                            forcing = (u = smag_sgsu, v = smag_sgsv, w = smag_sgsw),
-                            auxiliary_fields = (∂j_τ1j = ∂j_τ1j,
-                                                ∂j_τ2j = ∂j_τ2j,
-                                                ∂j_τ3j = ∂j_τ3j,
-                                                ∂j_τcj = ∂j_τcj,
-                                                νₑ = νₑ))
+                            forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS), 
+                            auxiliary_fields = (νₑ = νₑ,))
 @show model
 
 # random seed
