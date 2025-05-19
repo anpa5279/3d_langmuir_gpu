@@ -2,10 +2,13 @@ using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃         
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃² 
 
-@inline ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) = tr_Σ²(i, j, k, grid, u, v, w) +
-                                            2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w) +
-                                            2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w) +
-                                            2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+    s = tr_Σ²(i, j, k, grid, u, v, w)
+    s += 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
+    s += 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+    s += 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+    return @inbounds s
+end
 
 function update_aux_fields!(sim)
     model = sim.model
