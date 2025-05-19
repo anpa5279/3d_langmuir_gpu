@@ -29,7 +29,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(16, 16, 16, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -64,6 +64,7 @@ u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true, parameters=0.1)
 v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true, parameters=0.1)
 w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true, parameters=0.1)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true, parameters=0.1)
+@show u_SGS
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -85,7 +86,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 4hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -121,6 +122,7 @@ end
 output_interval = 60minutes
 
 u, v, w = model.velocities
+νₑ = model.auxiliary_fields.νₑ
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
@@ -128,7 +130,7 @@ T = Average(model.tracers.T, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
+simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w, νₑ),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
