@@ -34,7 +34,7 @@ p = Params(16, 16, 16, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 #referring to files with desiraed functions
 include("stokes.jl")
 include("smagorinsky_forcing.jl")
-#include("fluctuations.jl")
+include("num_check.jl")
 
 # Automatically distribute among available processors
 #arch = Distributed(GPU())
@@ -87,10 +87,11 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
 
-simulation = Simulation(model, Δt=30.0, stop_time = 4hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 u, v, w = model.velocities
+νₑ = model.auxiliary_fields.νₑ
 for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
     νₑ[i, j, k] = smagorinsky_visc(i, j, k, grid, model.velocities, 0.1)
 end
@@ -134,7 +135,7 @@ T = Average(model.tracers.T, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
+simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w, νₑ),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
@@ -146,6 +147,7 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
                                                     overwrite_existing = true)
 
 simulation.callbacks[:visc_calc] = Callback(update_visc!, IterationInterval(1)) 
+simulation.callbacks[:nan_checker] = Callback(num_check, IterationInterval(1)) 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 run!(simulation)#; pickup = true
