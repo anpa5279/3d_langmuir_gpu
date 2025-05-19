@@ -125,7 +125,7 @@ flux_Ty_temp = flux_Ty
 flux_Tz_temp = flux_Tz 
 
 for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-    νₑ_temp[i, j, k] = smagorinsky_visc(i, j, k, grid, model.velocities, 0.1)
+    νₑ_temp[i, j, k] = smagorinsky_visc!(i, j, k, grid, model.velocities, 0.1)
     flux_ux_temp[i, j, k] = viscous_flux_ux(i, j, k, grid, νₑ_temp[i, j, k], u)
     flux_vx_temp[i, j, k] = viscous_flux_vx(i, j, k, grid, νₑ_temp[i, j, k], u, v)
     flux_wx_temp[i, j, k] = viscous_flux_wx(i, j, k, grid, νₑ_temp[i, j, k], u, w)
