@@ -37,12 +37,12 @@ include("smagorinsky_forcing.jl")
 include("num_check.jl")
 
 # Automatically distribute among available processors
-#arch = Distributed(GPU())
-#rank = arch.local_rank
-#Nranks = MPI.Comm_size(arch.communicator)
-#println("Hello from process $rank out of $Nranks")
+arch = Distributed(GPU())
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
+println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz)) #grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz)) #grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
