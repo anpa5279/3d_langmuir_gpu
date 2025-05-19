@@ -11,16 +11,27 @@ function update_aux_fields!(sim)
     model = sim.model
     grid = model.grid
     velocities = model.velocities
-    νₑ = model.auxiliary_fields.νₑ
 
     for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-        νₑ[i, j, k] = smagorinsky_visc(i, j, k, grid, velocities, 0.1)
+        model.auxiliary_fields.νₑ[i, j, k] = smagorinsky_visc!(i, j, k, grid, velocities, 0.1)
+        model.auxiliary_fields.flux_ux[i, j, k] = viscous_flux_ux(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u)
+        model.auxiliary_fields.flux_vx[i, j, k] = viscous_flux_vx(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, v)
+        model.auxiliary_fields.flux_wx[i, j, k] = viscous_flux_wx(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, w)
+        model.auxiliary_fields.flux_uy[i, j, k] = viscous_flux_uy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, v)
+        model.auxiliary_fields.flux_vy[i, j, k] = viscous_flux_vy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v)
+        model.auxiliary_fields.flux_wy[i, j, k] = viscous_flux_wy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v, w)
+        model.auxiliary_fields.flux_uz[i, j, k] = viscous_flux_uz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, w)
+        model.auxiliary_fields.flux_vz[i, j, k] = viscous_flux_vz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v, w)
+        model.auxiliary_fields.flux_wz[i, j, k] = viscous_flux_wz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], w)
+        model.auxiliary_fields.flux_Tx[i, j, k] = diffusive_flux_x(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
+        model.auxiliary_fields.flux_Ty[i, j, k] = diffusive_flux_y(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
+        model.auxiliary_fields.flux_Tz[i, j, k] = diffusive_flux_z(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
     end
 
     return nothing
 end
 
-function smagorinsky_visc(i, j, k, grid, velocities, C)
+function smagorinsky_visc!(i, j, k, grid, velocities, C)
     u = velocities.u
     v = velocities.v
     w = velocities.w
