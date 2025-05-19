@@ -38,60 +38,100 @@ end
 
 # Horizontal viscous fluxes for isotropic diffusivities
 
-@inline viscous_flux_ux(i, j, k, grid, ν, u) = - 2 * ν * Σ₁₁(i, j, k, grid, u)
-@inline viscous_flux_vx(i, j, k, grid, ν, u, v) = - 2 * ν * Σ₁₂(i, j, k, grid, u, v)
-@inline viscous_flux_wx(i, j, k, grid, ν, u, w) = - 2 * ν * Σ₁₃(i, j, k, grid, u, w)
-@inline viscous_flux_uy(i, j, k, grid, ν, u, v) = - 2 * ν * Σ₁₂(i, j, k, grid, u, v)
-@inline viscous_flux_vy(i, j, k, grid, ν, v) = - 2 * ν * Σ₂₂(i, j, k, grid, v)
-@inline viscous_flux_wy(i, j, k, grid, ν, v, w) = - 2 * ν * Σ₂₃(i, j, k, grid, v, w)
+@inline function viscous_flux_ux(i, j, k, grid, ν, u)
+    return @inbounds -2 * ν[i, j, k] * Σ₁₁(i, j, k, grid, u)
+end
+@inline function viscous_flux_vx(i, j, k, grid, ν, u, v)
+    return @inbounds -2 * ν[i, j, k] * Σ₁₂(i, j, k, grid, u, v)
+end
+@inline function viscous_flux_wx(i, j, k, grid, ν, u, w)
+    return @inbounds -2 * ν[i, j, k] * Σ₁₃(i, j, k, grid, u, w)
+end
+@inline function viscous_flux_uy(i, j, k, grid, ν, u, v)
+    return @inbounds -2 * ν[i, j, k] * Σ₁₂(i, j, k, grid, u, v)
+end
+@inline function viscous_flux_vy(i, j, k, grid, ν, v)
+    return @inbounds -2 * ν[i, j, k] * Σ₂₂(i, j, k, grid, v)
+end
+@inline function viscous_flux_wy(i, j, k, grid, ν, v, w)
+    return @inbounds -2 * ν[i, j, k] * Σ₂₃(i, j, k, grid, v, w)
+end
 
 # Vertical viscous fluxes for isotropic diffusivities
-@inline viscous_flux_uz(i, j, k, grid, ν, u, w) = - 2 * ν * Σ₁₃(i, j, k, grid, u, w)
-@inline viscous_flux_vz(i, j, k, grid, ν, v, w) = - 2 * ν * Σ₂₃(i, j, k, grid, v, w)
-@inline viscous_flux_wz(i, j, k, grid, ν, w) = - 2 * ν * Σ₃₃(i, j, k, grid, w)
+@inline function viscous_flux_uz(i, j, k, grid, ν, u, w)
+    return @inbounds -2 * ν[i, j, k] * Σ₁₃(i, j, k, grid, u, w)
+end
+@inline function viscous_flux_vz(i, j, k, grid, ν, v, w)
+    return @inbounds -2 * ν[i, j, k] * Σ₂₃(i, j, k, grid, v, w)
+end
+@inline function viscous_flux_wz(i, j, k, grid, ν, w)
+    return @inbounds -2 * ν[i, j, k] * Σ₃₃(i, j, k, grid, w)
+end
 
 #diffusivity
-@inline diffusive_flux_x(i, j, k, grid, C, c)= - C * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, C, c)= - C * ∂yᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, C, c)= - C * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline function diffusive_flux_x(i, j, k, grid, C, c)
+    return @inbounds - C[i, j, k]  * ∂xᶠᶜᶜ(i, j, k, grid, c)
+end 
+@inline function diffusive_flux_y(i, j, k, grid, C, c)
+    return @inbounds - C[i, j, k]  * ∂yᶜᶠᶜ(i, j, k, grid, c)
+end
+@inline function diffusive_flux_z(i, j, k, grid, C, c)
+    return @inbounds - C[i, j, k]  * ∂zᶜᶜᶠ(i, j, k, grid, c)
+end
 
 #these are the discrete forcing functions
 @inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid, clock, model_fields)
     u = model_fields.u 
     v = model_fields.v
     w = model_fields.w
-    ν = copy(model_fields.νₑ)
-    visc_flux_ux = viscous_flux_ux(i, j, k, grid, ν)
-    visc_flux_uy = viscous_flux_uy(i, j, k, grid, ν)
-    visc_flux_uz = viscous_flux_uz(i, j, k, grid, ν)
-    visc_flux_ux_f = viscous_flux_ux(i - 1, j, k, grid, ν)
-    visc_flux_uy_c = viscous_flux_uy(i, j + 1, k, grid, ν)
-    visc_flux_uz_c = viscous_flux_uz(i, j + 1, k, grid, ν)
-    return @inbounds - (finite_diff(i, j, k, grid, ux_flux, "x", "c") +
-                                      finite_diff(i, j, k, grid, uy_flux, "y", "f") +
-                                      finite_diff(i, j, k, grid, uz_flux, "z", "f"))
+    ν = model_fields.νₑ
+
+    visc_flux_ux = viscous_flux_ux(i, j, k, grid, ν, u)
+    visc_flux_uy = viscous_flux_uy(i, j, k, grid, ν, u, v)
+    visc_flux_uz = viscous_flux_uz(i, j, k, grid, ν, u, w)
+    visc_flux_ux_f = viscous_flux_ux(i - 1, j, k, grid, ν, u)
+    visc_flux_uy_c = viscous_flux_uy(i, j + 1, k, grid, ν, u, v)
+    visc_flux_uz_c = viscous_flux_uz(i, j, k + 1, grid, ν, u, w)
+    ux_flux = (visc_flux_ux - visc_flux_ux_f)/grid.Δxᶠᵃᵃ
+    uy_flux = (visc_flux_uy - visc_flux_uy_c)/grid.Δyᵃᶜᵃ
+    uz_flux = (visc_flux_uz - visc_flux_uz_c)/grid.z.Δᵃᵃᶜ
+    return @inbounds - (ux_flux + uy_flux + uz_flux)
 end
 
 @inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid, clock, model_fields)
     u = model_fields.u 
     v = model_fields.v
     w = model_fields.w
-    ν = copy(model_fields.νₑ)
+    ν = model_fields.νₑ
     
-    return @inbounds 1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, viscous_flux_vx, ν, u, v) +
-                                      δyᵃᶠᵃ(i, j, k, grid, Ay_qᶜᶜᶜ, viscous_flux_vy, ν, v) +
-                                      δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶠᶠ, viscous_flux_vz, ν, v, w))
+    visc_flux_vx = viscous_flux_vx(i, j, k, grid, ν, u, v)
+    visc_flux_vy = viscous_flux_vy(i, j, k, grid, ν, v)
+    visc_flux_vz = viscous_flux_vz(i, j, k, grid, ν, v, w)
+    visc_flux_vx_f = viscous_flux_vx(i + 1, j, k, grid, ν, u, v)
+    visc_flux_vy_c = viscous_flux_vy(i, j - 1, k, grid, ν, v)
+    visc_flux_vz_c = viscous_flux_vz(i, j, k +1, grid, ν, v, w)
+    vx_flux = (visc_flux_vx - visc_flux_vx_f)/grid.Δxᶜᵃᵃ
+    vy_flux = (visc_flux_vy - visc_flux_vy_c)/grid.Δyᵃᶠᵃ
+    vz_flux = (visc_flux_vz - visc_flux_vz_c)/grid.z.Δᵃᵃᶜ
+    return @inbounds - (vx_flux + vy_flux + vz_flux)
 end
 
 @inline function ∂ⱼ_τ₃ⱼ(i, j, k, grid, clock, model_fields)
     u = model_fields.u 
     v = model_fields.v
     w = model_fields.w
-    ν = copy(model_fields.νₑ)
+    ν = model_fields.νₑ
 
-    return @inbounds 1 / Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶠ, viscous_flux_wx, ν, u, w) +
-                                      δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶠ, viscous_flux_wy, ν, v, w) +
-                                      δzᵃᵃᶠ(i, j, k, grid, Az_qᶜᶜᶜ, viscous_flux_wz, ν, w))
+    visc_flux_wx = viscous_flux_wx(i, j, k, grid, ν, u, w)
+    visc_flux_wy = viscous_flux_wy(i, j, k, grid, ν, v, w)
+    visc_flux_wz = viscous_flux_wz(i, j, k, grid, ν, w)
+    visc_flux_wx_f = viscous_flux_wx(i + 1, j, k, grid, ν, u, w)
+    visc_flux_wy_c = viscous_flux_wy(i, j + 1, k, grid, ν, v, w)
+    visc_flux_wz_c = viscous_flux_wz(i, j, k - 1, grid, ν, w)
+    wx_flux = (visc_flux_wx - visc_flux_wx_f)/grid.Δxᶜᵃᵃ
+    wy_flux = (visc_flux_wy - visc_flux_wy_c)/grid.Δyᵃᶜᵃ
+    wz_flux = (visc_flux_wz - visc_flux_wz_c)/grid.z.Δᵃᵃᶠ
+    return @inbounds - (wx_flux + wy_flux + wz_flux)
 end
 
 @inline function ∇_dot_qᶜ(i, j, k, grid, clock, model_fields)
@@ -99,9 +139,16 @@ end
     v = model_fields.v
     w = model_fields.w
     scalar = model_fields.T
-    ν = copy(model_fields.νₑ)
+    ν = model_fields.νₑ
 
-    return @inbounds 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, diffusive_flux_x, scalar, ν) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, diffusive_flux_y, scalar, ν) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, diffusive_flux_z, scalar, ν))
+    diff_flux_x = diffusive_flux_x(i, j, k, grid, ν, scalar)
+    diff_flux_y = diffusive_flux_y(i, j, k, grid, ν, scalar)
+    diff_flux_z = diffusive_flux_z(i, j, k, grid, ν, scalar)
+    diff_flux_x_f = diffusive_flux_x(i + 1, j, k, grid, ν, scalar)
+    diff_flux_y_c = diffusive_flux_y(i, j + 1, k, grid, ν, scalar)
+    diff_flux_z_c = diffusive_flux_z(i, j, k + 1, grid, ν, scalar)
+    δxᶜᵃᵃ = (diff_flux_x - diff_flux_x_f)/grid.Δxᶜᵃᵃ
+    δyᵃᶜᵃ = (diff_flux_y - diff_flux_y_c)/grid.Δyᵃᶜᵃ
+    δzᵃᵃᶜ = (diff_flux_z - diff_flux_z_c)/grid.z.Δᵃᵃᶜ
+    return @inbounds -(δxᶜᵃᵃ + δyᵃᶜᵃ + δzᵃᵃᶜ)
 end
