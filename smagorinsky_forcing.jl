@@ -34,7 +34,7 @@ function update_aux_fields!(sim)
     return nothing
 end
 
-function smagorinsky_visc!(i, j, k, grid, velocities, C)
+@kernel function smagorinsky_visc!(i, j, k, grid, velocities, C)
     u = velocities.u
     v = velocities.v
     w = velocities.w
