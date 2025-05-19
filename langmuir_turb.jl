@@ -57,14 +57,14 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
-#coriolis = FPlane(f=1e-4) # s⁻¹
+
 #my own smagorinsky sub grid scale implementation
+u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true)
+v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true)
+w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
+T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
+
 νₑ = Field{Center, Center, Center}(grid)
-u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true, parameters=0.1)
-v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true, parameters=0.1)
-w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true, parameters=0.1)
-T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true, parameters=0.1)
-@show u_SGS
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -73,12 +73,12 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             closure = nothing, #closure = Smagorinsky(coefficient=0.1)
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs),
-                            forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS), 
+                            forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
                             auxiliary_fields = (νₑ = νₑ,))
 @show model
 
 # random seed
-Ξ(z) = randn(Xoshiro(1234)) * exp(z / 4)
+Ξ(z) = randn() * exp(z / 4) #Xoshiro(1234)
 
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
@@ -86,8 +86,14 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
+
 simulation = Simulation(model, Δt=30.0, stop_time = 4hours) #stop_time = 96hours,
 @show simulation
+
+u, v, w = model.velocities
+for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+    νₑ[i, j, k] = smagorinsky_visc(i, j, k, grid, model.velocities, 0.1)
+end
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -121,8 +127,6 @@ end
 
 output_interval = 60minutes
 
-u, v, w = model.velocities
-νₑ = model.auxiliary_fields.νₑ
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
@@ -130,7 +134,7 @@ T = Average(model.tracers.T, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
@@ -140,6 +144,8 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
+
+simulation.callbacks[:visc_calc] = Callback(update_visc!, IterationInterval(1)) 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
-run!(simulation)#; pickup = true)
+run!(simulation)#; pickup = true
