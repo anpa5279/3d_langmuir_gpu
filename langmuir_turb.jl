@@ -1,6 +1,6 @@
 using Pkg
-#using MPI
-#using CUDA
+using MPI
+using CUDA
 using Random
 using Statistics
 using Printf
