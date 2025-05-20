@@ -110,50 +110,21 @@ simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hou
 u, v, w = model.velocities
 T = model.tracers.T
 
-νₑ_temp = νₑ
-flux_ux_temp = flux_ux
-flux_vx_temp = flux_vx
-flux_wx_temp = flux_wx
-flux_uy_temp = flux_uy
-flux_vy_temp = flux_vy
-flux_wy_temp = flux_wy
-flux_uz_temp = flux_uz
-flux_vz_temp = flux_vz
-flux_wz_temp = flux_wz
-flux_Tx_temp = flux_Tx
-flux_Ty_temp = flux_Ty
-flux_Tz_temp = flux_Tz 
-
 for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-    νₑ_temp[i, j, k] = smagorinsky_visc!(i, j, k, grid, model.velocities, 0.1)
-    flux_ux_temp[i, j, k] = viscous_flux_ux(i, j, k, grid, νₑ_temp[i, j, k], u)
-    flux_vx_temp[i, j, k] = viscous_flux_vx(i, j, k, grid, νₑ_temp[i, j, k], u, v)
-    flux_wx_temp[i, j, k] = viscous_flux_wx(i, j, k, grid, νₑ_temp[i, j, k], u, w)
-    flux_uy_temp[i, j, k] = viscous_flux_uy(i, j, k, grid, νₑ_temp[i, j, k], u, v)
-    flux_vy_temp[i, j, k] = viscous_flux_vy(i, j, k, grid, νₑ_temp[i, j, k], v)
-    flux_wy_temp[i, j, k] = viscous_flux_wy(i, j, k, grid, νₑ_temp[i, j, k], v, w)
-    flux_uz_temp[i, j, k] = viscous_flux_uz(i, j, k, grid, νₑ_temp[i, j, k], u, w)
-    flux_vz_temp[i, j, k] = viscous_flux_vz(i, j, k, grid, νₑ_temp[i, j, k], v, w)
-    flux_wz_temp[i, j, k] = viscous_flux_wz(i, j, k, grid, νₑ_temp[i, j, k], w)
-    flux_Tx_temp[i, j, k] = diffusive_flux_x(i, j, k, grid, νₑ_temp[i, j, k], T)
-    flux_Ty_temp[i, j, k] = diffusive_flux_y(i, j, k, grid, νₑ_temp[i, j, k], T)
-    flux_Tz_temp[i, j, k] = diffusive_flux_z(i, j, k, grid, νₑ_temp[i, j, k], T)
+    model.auxiliary_fields.νₑ.data[i, j, k] = smagorinsky_visc!(i, j, k, grid, model.velocities, 0.1)
+    model.auxiliary_fields.flux_ux[i, j, k] = viscous_flux_ux(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u)
+    model.auxiliary_fields.flux_vx[i, j, k] = viscous_flux_vx(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, v)
+    model.auxiliary_fields.flux_wx[i, j, k] = viscous_flux_wx(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, w)
+    model.auxiliary_fields.flux_uy[i, j, k] = viscous_flux_uy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, v)
+    model.auxiliary_fields.flux_vy[i, j, k] = viscous_flux_vy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v)
+    model.auxiliary_fields.flux_wy[i, j, k] = viscous_flux_wy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v, w)
+    model.auxiliary_fields.flux_uz[i, j, k] = viscous_flux_uz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, w)
+    model.auxiliary_fields.flux_vz[i, j, k] = viscous_flux_vz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v, w)
+    model.auxiliary_fields.flux_wz[i, j, k] = viscous_flux_wz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], w)
+    model.auxiliary_fields.flux_Tx[i, j, k] = diffusive_flux_x(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
+    model.auxiliary_fields.flux_Ty[i, j, k] = diffusive_flux_y(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
+    model.auxiliary_fields.flux_Tz[i, j, k] = diffusive_flux_z(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
 end
-
-set!(model.auxiliary_fields.νₑ, νₑ_temp)
-set!(model.auxiliary_fields.flux_ux, flux_ux_temp)
-set!(model.auxiliary_fields.flux_vx, flux_vx_temp)
-set!(model.auxiliary_fields.flux_wx, flux_wx_temp)
-set!(model.auxiliary_fields.flux_uy, flux_uy_temp)
-set!(model.auxiliary_fields.flux_uy, flux_uy_temp)
-set!(model.auxiliary_fields.flux_vy, flux_vy_temp)
-set!(model.auxiliary_fields.flux_wy, flux_wy_temp)
-set!(model.auxiliary_fields.flux_uz, flux_uz_temp)
-set!(model.auxiliary_fields.flux_vz, flux_vz_temp)
-set!(model.auxiliary_fields.flux_wz, flux_wz_temp)
-set!(model.auxiliary_fields.flux_Tx, flux_Tx_temp)
-set!(model.auxiliary_fields.flux_Ty, flux_Ty_temp)
-set!(model.auxiliary_fields.flux_Tz, flux_Tz_temp)
 
 function progress(simulation)
     u, v, w = simulation.model.velocities

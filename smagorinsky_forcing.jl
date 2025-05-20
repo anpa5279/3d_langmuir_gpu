@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃
     s += 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
     s += 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
     s += 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
-    return @inbounds s
+    return s
 end
 
 function update_aux_fields!(sim)
@@ -34,7 +34,8 @@ function update_aux_fields!(sim)
     return nothing
 end
 
-@kernel function smagorinsky_visc!(i, j, k, grid, velocities, C)
+function smagorinsky_visc!(i, j, k, grid, velocities, C)
+    i, j, k = @index(Global, NTuple)
     u = velocities.u
     v = velocities.v
     w = velocities.w
@@ -46,7 +47,7 @@ end
     Δᶠ = cbrt(Δ³)
     cˢ² = C^2
 
-    return cˢ² * Δᶠ^2 * sqrt(2Σ²)
+    return @inbounds model.auxiliary_fields.νₑ.data[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
 
 # Horizontal viscous fluxes for isotropic diffusivities
