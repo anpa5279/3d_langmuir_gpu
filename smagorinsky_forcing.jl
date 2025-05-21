@@ -1,7 +1,11 @@
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃         
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃² 
+using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ
+using Oceananigans.Operators: volume
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
+# strain tensor squared and summed 
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     s = tr_Σ²(i, j, k, grid, u, v, w)
     s .+ 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
@@ -10,31 +14,10 @@ using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃
     return s
 end
 
-function update_aux_fields!(sim)
-    model = sim.model
-    grid = model.grid
-    velocities = model.velocities
+# viscosity
+@kernel function smagorinsky_visc!(grid, velocities, C)
+    i, j, k = @index(Global, NTuple)
 
-    for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-        model.auxiliary_fields.νₑ[i, j, k] = smagorinsky_visc!(i, j, k, grid, velocities, 0.1)
-        model.auxiliary_fields.flux_ux[i, j, k] = viscous_flux_ux(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u)
-        model.auxiliary_fields.flux_vx[i, j, k] = viscous_flux_vx(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, v)
-        model.auxiliary_fields.flux_wx[i, j, k] = viscous_flux_wx(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, w)
-        model.auxiliary_fields.flux_uy[i, j, k] = viscous_flux_uy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, v)
-        model.auxiliary_fields.flux_vy[i, j, k] = viscous_flux_vy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v)
-        model.auxiliary_fields.flux_wy[i, j, k] = viscous_flux_wy(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v, w)
-        model.auxiliary_fields.flux_uz[i, j, k] = viscous_flux_uz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], u, w)
-        model.auxiliary_fields.flux_vz[i, j, k] = viscous_flux_vz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], v, w)
-        model.auxiliary_fields.flux_wz[i, j, k] = viscous_flux_wz(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], w)
-        model.auxiliary_fields.flux_Tx[i, j, k] = diffusive_flux_x(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
-        model.auxiliary_fields.flux_Ty[i, j, k] = diffusive_flux_y(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
-        model.auxiliary_fields.flux_Tz[i, j, k] = diffusive_flux_z(i, j, k, grid, model.auxiliary_fields.νₑ[i, j, k], T)
-    end
-
-    return nothing
-end
-
-function smagorinsky_visc!(i, j, k, grid, velocities, C)
     u = velocities.u
     v = velocities.v
     w = velocities.w
@@ -45,7 +28,9 @@ function smagorinsky_visc!(i, j, k, grid, velocities, C)
     Δᶠ = cbrt(Δ³)
     cˢ² = C^2
 
-    return @inbounds model.auxiliary_fields.νₑ.data[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
+    νₑ = model.auxiliary_fields.νₑ
+
+    @inbounds νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
 
 # Horizontal viscous fluxes for isotropic diffusivities
@@ -81,42 +66,26 @@ end
 end
 
 #diffusivity
-@inline function diffusive_flux_x(i, j, k, grid, C, c)
-    return @inbounds - C[i, j, k]  * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline function diffusive_flux_x(i, j, k, grid, ν, c)
+    return @inbounds - ν[i, j, k]  * ∂xᶠᶜᶜ(i, j, k, grid, c)
 end 
-@inline function diffusive_flux_y(i, j, k, grid, C, c)
-    return @inbounds - C[i, j, k]  * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline function diffusive_flux_y(i, j, k, grid, ν, c)
+    return @inbounds - ν[i, j, k]  * ∂yᶜᶠᶜ(i, j, k, grid, c)
 end
-@inline function diffusive_flux_z(i, j, k, grid, C, c)
-    return @inbounds - C[i, j, k]  * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline function diffusive_flux_z(i, j, k, grid, ν, c)
+    return @inbounds - ν[i, j, k]  * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
-
-#####
-##### Base difference operators
-#####
-
-@inline δxᶜᵃᵃ(i, j, k, grid, u) = @inbounds u[i+1, j, k] - u[i,   j, k]
-@inline δxᶠᵃᵃ(i, j, k, grid, c) = @inbounds c[i,   j, k] - c[i-1, j, k]
-
-@inline δyᵃᶜᵃ(i, j, k, grid, v) = @inbounds v[i, j+1, k] - v[i, j,   k]
-@inline δyᵃᶠᵃ(i, j, k, grid, c) = @inbounds c[i, j,   k] - c[i, j-1, k]
-
-@inline δzᵃᵃᶜ(i, j, k, grid, w) = @inbounds w[i, j, k+1] - w[i, j,   k]
-@inline δzᵃᵃᶠ(i, j, k, grid, c) = @inbounds c[i, j,   k] - c[i, j, k-1]
 
 #these are the discrete forcing functions
 @inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid, clock, model_fields)
+    disc = time_discretization(ExplicitTimeDiscretization())
     u = model_fields.u 
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    viscous_flux_ux = model_fields.flux_ux
-    viscous_flux_uy = model_fields.flux_uy
-    viscous_flux_uz = model_fields.flux_uz
-    dflux_ux = δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux)
-    dflux_uy = δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy)
-    dflux_uz = δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz)
-    return @inbounds -(dflux_ux[i, j, k] + dflux_uy[i, j, k] + dflux_uz[i, j, k])
+    return -1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_qᶜᶜᶜ, viscous_flux_ux, ν, u) +
+                                      δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, viscous_flux_uy, ν, u, v) +
+                                      δzᵃᵃᶜ(i, j, k, grid, Az_qᶠᶜᶠ, viscous_flux_uz, ν, u, w))
 end
 
 @inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid, clock, model_fields)
@@ -124,13 +93,9 @@ end
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    viscous_flux_vx = model_fields.flux_vx
-    viscous_flux_vy = model_fields.flux_vy
-    viscous_flux_vz = model_fields.flux_vz
-    dflux_vx = δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx)
-    dflux_vy = δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy)
-    dflux_vz = δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz)
-    return @inbounds -(dflux_vx[i, j, k] + dflux_vy[i, j, k] + dflux_vz[i, j, k])
+    return -1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, viscous_flux_vx, ν, u, v) +
+                                      δyᵃᶠᵃ(i, j, k, grid, Ay_qᶜᶜᶜ, viscous_flux_vy, ν, v) +
+                                      δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶠᶠ, viscous_flux_vz, ν, v, w))
 end
 
 @inline function ∂ⱼ_τ₃ⱼ(i, j, k, grid, clock, model_fields)
@@ -138,26 +103,15 @@ end
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    viscous_flux_wx = model_fields.flux_wx
-    viscous_flux_wy = model_fields.flux_wy
-    viscous_flux_wz = model_fields.flux_wz
-    dflux_wx = δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx)
-    dflux_wy = δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy)
-    dflux_wz = δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz)
-    return @inbounds -(dflux_wx[i, j, k] + dflux_wy[i, j, k] + dflux_wz[i, j, k])
+    return -1 / Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶠ, viscous_flux_wx, ν, u, w) +
+                                      δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶠ, viscous_flux_wy, ν, v, w) +
+                                      δzᵃᵃᶠ(i, j, k, grid, Az_qᶜᶜᶜ, viscous_flux_wz, ν, w))
 end
 
 @inline function ∇_dot_qᶜ(i, j, k, grid, clock, model_fields)
-    u = model_fields.u 
-    v = model_fields.v
-    w = model_fields.w
     scalar = model_fields.T
     ν = model_fields.νₑ
-    diff_flux_x = model_fields.flux_Tx
-    diff_flux_y = model_fields.flux_Ty
-    diff_flux_z = model_fields.flux_Tz
-    dflux_x = δxᶜᵃᵃ(i, j, k, grid, diff_flux_x)
-    dflux_y = δyᵃᶜᵃ(i, j, k, grid, diff_flux_y)
-    dflux_z = δzᵃᵃᶜ(i, j, k, grid, diff_flux_z)
-    return @inbounds -(dflux_x[i, j, k] + dflux_y[i, j, k] + dflux_z[i, j, k])
+    return -1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, diffusive_flux_x, ν, scalar) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, diffusive_flux_y, ν, scalar) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, diffusive_flux_z, ν, scalar))
 end 
