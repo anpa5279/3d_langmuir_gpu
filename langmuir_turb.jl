@@ -76,8 +76,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs),
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
-                            auxiliary_fields = (νₑ = νₑ),),
-                            )
+                            auxiliary_fields = (νₑ = νₑ,))
 @show model
 
 # random seed
@@ -149,7 +148,7 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu
 function update_viscosity(sim)
     velocities = sim.model.velocities
     grid = sim.model.grid
-    launch!(arch, grid, smagorinsky_visc!, grid, velocities)
+    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, velocities)
 end 
 simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1))
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
