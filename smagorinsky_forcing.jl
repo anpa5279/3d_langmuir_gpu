@@ -80,7 +80,6 @@ end
 
 #these are the discrete forcing functions
 @inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid, clock, model_fields)
-    disc = time_discretization(ExplicitTimeDiscretization())
     u = model_fields.u 
     v = model_fields.v
     w = model_fields.w
