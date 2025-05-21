@@ -1,3 +1,5 @@
+using KernelAbstractions: @kernel, @index
+
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃         
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃² 
