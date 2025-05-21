@@ -8,6 +8,7 @@ using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
@@ -65,18 +66,6 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 νₑ = Field{Center, Center, Center}(grid)
-flux_ux = Field{Center, Center, Center}(grid)
-flux_vx = Field{Center, Center, Center}(grid)
-flux_wx = Field{Center, Center, Center}(grid)
-flux_uy = Field{Center, Center, Center}(grid)
-flux_vy = Field{Center, Center, Center}(grid)
-flux_wy = Field{Center, Center, Center}(grid)
-flux_uz = Field{Center, Center, Center}(grid)
-flux_vz = Field{Center, Center, Center}(grid)
-flux_wz = Field{Center, Center, Center}(grid)
-flux_Tx = Field{Center, Center, Center}(grid)
-flux_Ty = Field{Center, Center, Center}(grid)
-flux_Tz = Field{Center, Center, Center}(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -86,11 +75,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs),
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
-                            auxiliary_fields = (νₑ = νₑ,
-                                                flux_ux = flux_ux, flux_vx = flux_vx, flux_wx = flux_wx,
-                                                flux_uy = flux_uy, flux_vy = flux_vy, flux_wy = flux_wy,
-                                                flux_uz = flux_uz, flux_vz = flux_vz, flux_wz = flux_wz, 
-                                                flux_Tx = flux_Tx, flux_Ty = flux_Ty, flux_Tz = flux_Tz),
+                            auxiliary_fields = (νₑ = νₑ,),
                             )
 @show model
 
@@ -109,22 +94,6 @@ simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hou
 
 u, v, w = model.velocities
 T = model.tracers.T
-
-for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-    model.auxiliary_fields.νₑ.data[i, j, k] = smagorinsky_visc!(i, j, k, grid, model.velocities, 0.1)
-    model.auxiliary_fields.flux_ux[i, j, k] = viscous_flux_ux(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u)
-    model.auxiliary_fields.flux_vx[i, j, k] = viscous_flux_vx(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, v)
-    model.auxiliary_fields.flux_wx[i, j, k] = viscous_flux_wx(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, w)
-    model.auxiliary_fields.flux_uy[i, j, k] = viscous_flux_uy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, v)
-    model.auxiliary_fields.flux_vy[i, j, k] = viscous_flux_vy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v)
-    model.auxiliary_fields.flux_wy[i, j, k] = viscous_flux_wy(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v, w)
-    model.auxiliary_fields.flux_uz[i, j, k] = viscous_flux_uz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], u, w)
-    model.auxiliary_fields.flux_vz[i, j, k] = viscous_flux_vz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], v, w)
-    model.auxiliary_fields.flux_wz[i, j, k] = viscous_flux_wz(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], w)
-    model.auxiliary_fields.flux_Tx[i, j, k] = diffusive_flux_x(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
-    model.auxiliary_fields.flux_Ty[i, j, k] = diffusive_flux_y(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
-    model.auxiliary_fields.flux_Tz[i, j, k] = diffusive_flux_z(i, j, k, grid, model.auxiliary_fields.νₑ.data[i, j, k], T)
-end
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -173,9 +142,6 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
-
-simulation.callbacks[:field_calc] = Callback(update_aux_fields!, IterationInterval(1)) 
-simulation.callbacks[:nan_checker] = Callback(num_check, IterationInterval(1)) 
 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
