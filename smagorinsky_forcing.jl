@@ -4,9 +4,9 @@ using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃
 
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     s = tr_Σ²(i, j, k, grid, u, v, w)
-    s += 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
-    s += 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
-    s += 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+    s .+ 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
+    s .+ 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+    s .+ 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
     return s
 end
 
@@ -35,13 +35,11 @@ function update_aux_fields!(sim)
 end
 
 function smagorinsky_visc!(i, j, k, grid, velocities, C)
-    i, j, k = @index(Global, NTuple)
     u = velocities.u
     v = velocities.v
     w = velocities.w
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-    #@show Σ², Σ²_tensor
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
     Δᶠ = cbrt(Δ³)
