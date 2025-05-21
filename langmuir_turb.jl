@@ -9,6 +9,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Utils: launch!
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
@@ -65,7 +66,7 @@ v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true)
 w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
-νₑ = Field{Center, Center, Center}(grid)
+#νₑ = Field{Center, Center, Center}(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -75,7 +76,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs),
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
-                            auxiliary_fields = (νₑ = νₑ,),
+                            auxiliary_fields = (νₑ = smagorinsky_visc!(grid, velocities),),
                             )
 @show model
 
@@ -117,9 +118,11 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
-    file["IC/wind_speed"] = p.u₁₀
+    if rank == 0
+        file["IC/friction_velocity"] = u_f
+        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+        file["IC/wind_speed"] = p.u₁₀
+    end
     return nothing
 end
 
@@ -143,6 +146,12 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
 
+function update_viscosity(sim)
+    velocities = sim.model.velocities
+    grid = sim.model.grid
+    launch!(arch, grid, smagorinsky_visc!, grid, velocities)
+end 
+simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1))
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 run!(simulation) #; pickup = true

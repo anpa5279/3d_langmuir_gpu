@@ -17,7 +17,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 end
 
 # viscosity
-@kernel function smagorinsky_visc!(grid, velocities, C)
+@kernel function smagorinsky_visc!(grid, velocities)
     i, j, k = @index(Global, NTuple)
 
     u = velocities.u
@@ -28,6 +28,7 @@ end
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
     Δᶠ = cbrt(Δ³)
+    C = 0.1
     cˢ² = C^2
 
     νₑ = model.auxiliary_fields.νₑ
