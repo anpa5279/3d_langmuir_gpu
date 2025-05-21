@@ -4,8 +4,8 @@
 #PBS -N test
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=premium
-#PBS -l walltime=00:30:00
+#PBS -l job_priority=economy
+#PBS -l walltime=05:30:00
 #PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4 
 #PBS -l gpu_type=a100
 
