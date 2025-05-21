@@ -17,7 +17,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 end
 
 # viscosity
-@kernel function _smagorinsky_visc!(grid, velocities)
+@kernel function _smagorinsky_visc!(grid, velocities, νₑ)
     i, j, k = @index(Global, NTuple)
 
     u = velocities.u
@@ -30,8 +30,6 @@ end
     Δᶠ = cbrt(Δ³)
     C = 0.1
     cˢ² = C^2
-
-    νₑ = model.auxiliary_fields.νₑ
 
     @inbounds νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
