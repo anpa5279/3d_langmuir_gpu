@@ -17,7 +17,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 end
 
 # viscosity
-@kernel function smagorinsky_visc!(grid, velocities)
+@kernel function _smagorinsky_visc!(grid, velocities)
     i, j, k = @index(Global, NTuple)
 
     u = velocities.u
