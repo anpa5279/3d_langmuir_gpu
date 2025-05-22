@@ -1,12 +1,15 @@
 using Pkg
 using MPI
 using CUDA
+using Random
 using Statistics
 using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Utils: launch!
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
@@ -32,7 +35,8 @@ p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0,
 
 #referring to files with desiraed functions
 include("stokes.jl")
-#include("fluctuations.jl")
+include("smagorinsky_forcing.jl")
+include("num_check.jl")
 
 # Automatically distribute among available processors
 arch = Distributed(GPU())
@@ -40,14 +44,13 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz)) #grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
-const z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-const dudz = dstokes_dz(z_d, p.u₁₀)
+z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
-@show new_dUSDdz
 
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
@@ -56,19 +59,28 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
-#coriolis = FPlane(f=1e-4) # s⁻¹
+
+#my own smagorinsky sub grid scale implementation
+u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true)
+v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true)
+w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
+T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
+
+ν_t = Field{Center, Center, Center}(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
-                            closure = Smagorinsky(coefficient=0.1),
+                            closure = nothing, #closure = Smagorinsky(coefficient=0.1)
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs),
+                            forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
+                            auxiliary_fields = (ν_t = ν_t,))
 @show model
 
 # random seed
-Ξ(z) = randn() * exp(z / 4)
+Ξ(z) = randn() * exp(z / 4) #Xoshiro(1234)
 
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
@@ -76,8 +88,12 @@ wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
+
+u, v, w = model.velocities
+T = model.tracers.T
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -111,24 +127,27 @@ end
 
 output_interval = 60minutes
 
-u, v, w = model.velocities
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
-T = Average(model.tracers.T, dims=(1, 2))
+T = Average(T, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model,  (; u, w),
+ν_t = model.auxiliary_fields.ν_t
+
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, w, ν_t),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu, wv),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
+
+simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1))
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
-run!(simulation)#; pickup = true)
+run!(simulation) #; pickup = true
