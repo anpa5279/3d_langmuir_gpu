@@ -80,20 +80,23 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 @show model
 
 # random seed
-Ξ(z) = randn() * exp(z / 4) #Xoshiro(1234)
-
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
-uᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-
+r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
+r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
+@show "rand equations made"
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+@show "equations defined"
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+@show "model IC"
 
-
-simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
 u, v, w = model.velocities
 T = model.tracers.T
+
+νₑ = model.auxiliary_fields.νₑ
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
