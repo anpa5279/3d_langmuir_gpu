@@ -18,7 +18,7 @@ using Oceananigans.Utils: launch!
 end
 
 # viscosity
-@kernel function _smagorinsky_visc!(grid, u, v, w, νₑ)
+@kernel function smagorinsky_visc!(grid, u, v, w, νₑ)
     i, j, k = @index(Global, NTuple)
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
