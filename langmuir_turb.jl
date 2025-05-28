@@ -9,7 +9,6 @@ using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Utils: launch!
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
