@@ -148,13 +148,13 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
 
-function update_viscosity(sim)
-    velocities = sim.model.velocities
-    grid = sim.model.grid
-    νₑ = sim.model.auxiliary_fields.νₑ
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, νₑ)
-end 
-simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1))
+#function update_viscosity(sim)
+#    velocities = sim.model.velocities
+#    grid = sim.model.grid
+#    νₑ = sim.model.auxiliary_fields.νₑ
+#    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, νₑ)
+#end 
+#simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1))
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 run!(simulation) #; pickup = true
