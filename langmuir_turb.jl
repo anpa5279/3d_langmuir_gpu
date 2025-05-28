@@ -153,10 +153,12 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 function update_viscosity(model)
-    velocities = model.velocities
+    u = model.velocities.u
+    v = model.velocities.v
+    w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
-    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, velocities, νₑ)
+    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
 end 
 simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 run!(simulation) #; pickup = true
