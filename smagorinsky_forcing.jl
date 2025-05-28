@@ -80,7 +80,7 @@ end
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, ν)
+    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, u, v, w, ν)
     return -1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_qᶜᶜᶜ, viscous_flux_ux, ν, u) +
                                       δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, viscous_flux_uy, ν, u, v) +
                                       δzᵃᵃᶜ(i, j, k, grid, Az_qᶠᶜᶠ, viscous_flux_uz, ν, u, w))
@@ -91,7 +91,7 @@ end
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, ν)
+    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, u, v, w, ν)
     return -1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, viscous_flux_vx, ν, u, v) +
                                       δyᵃᶠᵃ(i, j, k, grid, Ay_qᶜᶜᶜ, viscous_flux_vy, ν, v) +
                                       δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶠᶠ, viscous_flux_vz, ν, v, w))
@@ -102,7 +102,7 @@ end
     v = model_fields.v
     w = model_fields.w
     ν = model_fields.νₑ
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, ν)
+    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, u, v, w, ν)
     return -1 / Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶠ, viscous_flux_wx, ν, u, w) +
                                       δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶠ, viscous_flux_wy, ν, v, w) +
                                       δzᵃᵃᶠ(i, j, k, grid, Az_qᶜᶜᶜ, viscous_flux_wz, ν, w))
@@ -114,7 +114,7 @@ end
     w = model_fields.w
     ν = model_fields.νₑ
     scalar = model_fields.T
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, ν)
+    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, u, v, w, ν)
     return -1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, diffusive_flux_x, ν, scalar) +
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, diffusive_flux_y, ν, scalar) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, diffusive_flux_z, ν, scalar))
