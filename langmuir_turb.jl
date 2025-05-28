@@ -91,6 +91,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 @show "model IC"
 update_state!(model; compute_tendencies = true)
+
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
@@ -148,13 +149,14 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
-function update_viscosity(sim)
-    velocities = sim.model.velocities
-    grid = sim.model.grid
-    νₑ = sim.model.auxiliary_fields.νₑ
-    launch!(arch, grid, :xyz, _smagorinsky_visc!, grid, velocities, νₑ)
-end 
-simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
+function update_viscosity(model)
+    velocities = model.velocities
+    grid = model.grid
+    νₑ = model.auxiliary_fields.νₑ
+    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, velocities, νₑ)
+end 
+simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 run!(simulation) #; pickup = true
