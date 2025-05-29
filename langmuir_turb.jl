@@ -7,6 +7,7 @@ using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+using OceanBioME
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
@@ -45,9 +46,6 @@ grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 
-us = stokes_velocity(z_d, p.u₁₀)
-new_us = Field{Nothing, Nothing, Center}(grid)
-set!(new_us, reshape(us, 1, 1, :))
 dudz = dstokes_dz(z_d, p.u₁₀)
 new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
 set!(new_dUSDdz, reshape(dudz, 1, 1, :))
@@ -62,10 +60,13 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
+#adding biogeochemistry into model
+biogeochemistry = NutrientPhytoplanktonZooplanktonDetritus(; grid)
+
+model = NonhydrostaticModel(; grid, biogeochemistry, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:T),
+                            tracers = (:N, :P, :Z, :D, :T),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs)) 
@@ -75,10 +76,12 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 Ξ(z) = randn() * exp(z / 4)
 
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * Ξ(z)
-vᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-wᵢ(x, y, z) = u_f * 1e-1 * Ξ(z)
-
-set!(model, u=new_us, v=vᵢ, w=wᵢ, T=Tᵢ)
+wᵢ(x, y, z) = u_f * 1e-1
+uᵢ(x, y, z) = u_f * 1e-1
+Pᵢ(x, y, z) = 0.3 * exp(0.1*z)
+Zᵢ(x, y, z) = 0.2 * exp(0.1*z)
+Nᵢ(x, y, z) = 1.6 *  exp(-0.2*(z - p.Lz))
+set!(model, u=uᵢ, v=vᵢ, w=wᵢ, T=Tᵢ, P=Pᵢ, Z=Zᵢ, N=Nᵢ)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
@@ -121,7 +124,7 @@ U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(model.tracers.T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w),
+simulation.output_writers[:fields] = JLD2OutputWriter(model,  (; u, w, model.tracers),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
