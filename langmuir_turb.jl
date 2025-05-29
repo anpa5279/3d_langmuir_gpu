@@ -61,12 +61,11 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
 #coriolis = FPlane(f=1e-4) # s⁻¹
 
 #adding biogeochemistry into model
-biogeochemistry = NutrientPhytoplanktonZooplanktonDetritus(; grid)
+biogeochemistry = NutrientPhytoplanktonZooplanktonDetritus(; grid, open_bottom=true)
 
 model = NonhydrostaticModel(; grid, biogeochemistry, buoyancy, #coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
-                            tracers = (:N, :P, :Z, :D, :T),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs)) 
