@@ -11,6 +11,7 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Fields: CenterField, FieldBoundaryConditions
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
@@ -45,7 +46,7 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz)) #grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -68,9 +69,9 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
-νₑ = CenterField(grid, boundary_conditions= default_eddy_viscosity_bcs)
-#νₑ = Field{Center, Center, Center}(grid)
+#default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center))) #the defaults are automatic
+#νₑ = CenterField(grid, boundary_conditions= default_eddy_viscosity_bcs)
+νₑ = Field{Center, Center, Center}(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -163,5 +164,22 @@ function update_viscosity(model)
     νₑ = model.auxiliary_fields.νₑ
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
 end 
+
+#function update_viscosity(model)
+#    u = model.velocities.u
+#    v = model.velocities.v
+#    w = model.velocities.w
+#    grid = model.grid
+#    νₑ = model.auxiliary_fields.νₑ
+#    for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+#        Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        # Filter width
+#        Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
+#        Δᶠ = cbrt(Δ³)
+#        C = 0.1
+#        cˢ² = C^2
+#        νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
+#    end
+#end 
 simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 run!(simulation) #; pickup = true
