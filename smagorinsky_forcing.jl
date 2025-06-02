@@ -5,6 +5,7 @@ using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, �
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃² 
 using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ
 using Oceananigans.Operators: volume
+using Oceananigans.Operators: ℑxyᶜᶜᵃ, ℑxyᶠᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶠ
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Utils: launch!
 
@@ -33,45 +34,45 @@ end
 
 # Horizontal viscous fluxes for isotropic diffusivities
 
-@inline function viscous_flux_ux(i, j, k, grid, ν, u)
+@inline function viscous_flux_ux(i, j, k, grid, ν, u)#
     return @inbounds -2 * ν[i, j, k] * Σ₁₁(i, j, k, grid, u)
 end
-@inline function viscous_flux_vx(i, j, k, grid, ν, u, v)
-    return @inbounds -2 * ν[i, j, k] * Σ₁₂(i, j, k, grid, u, v)
+@inline function viscous_flux_vx(i, j, k, grid, ν, u, v)#
+    return -2 * ℑxyᶠᶠᵃ(i, j, k, grid, ν) * Σ₁₂(i, j, k, grid, u, v)
 end
-@inline function viscous_flux_wx(i, j, k, grid, ν, u, w)
-    return @inbounds -2 * ν[i, j, k] * Σ₁₃(i, j, k, grid, u, w)
+@inline function viscous_flux_wx(i, j, k, grid, ν, u, w) #
+    return -2 * ℑxzᶠᵃᶠ(i, j, k, grid, ν) * Σ₁₃(i, j, k, grid, u, w)
 end
-@inline function viscous_flux_uy(i, j, k, grid, ν, u, v)
-    return @inbounds -2 * ν[i, j, k] * Σ₁₂(i, j, k, grid, u, v)
+@inline function viscous_flux_uy(i, j, k, grid, ν, u, v) #
+    return -2 * ℑxyᶠᶠᵃ(i, j, k, grid, ν) * Σ₁₂(i, j, k, grid, u, v)
 end
-@inline function viscous_flux_vy(i, j, k, grid, ν, v)
+@inline function viscous_flux_vy(i, j, k, grid, ν, v) #
     return @inbounds -2 * ν[i, j, k] * Σ₂₂(i, j, k, grid, v)
 end
-@inline function viscous_flux_wy(i, j, k, grid, ν, v, w)
-    return @inbounds -2 * ν[i, j, k] * Σ₂₃(i, j, k, grid, v, w)
+@inline function viscous_flux_wy(i, j, k, grid, ν, v, w) #
+    return -2 * ℑyzᵃᶠᶠ(i, j, k, grid, ν) * Σ₂₃(i, j, k, grid, v, w)
 end
 
 # Vertical viscous fluxes for isotropic diffusivities
-@inline function viscous_flux_uz(i, j, k, grid, ν, u, w)
-    return @inbounds -2 * ν[i, j, k] * Σ₁₃(i, j, k, grid, u, w)
+@inline function viscous_flux_uz(i, j, k, grid, ν, u, w) #
+     return -2 * ℑxzᶠᵃᶠ(i, j, k, grid, ν) * Σ₁₃(i, j, k, grid, u, w)
 end
-@inline function viscous_flux_vz(i, j, k, grid, ν, v, w)
-    return @inbounds -2 * ν[i, j, k] * Σ₂₃(i, j, k, grid, v, w)
+@inline function viscous_flux_vz(i, j, k, grid, ν, v, w) #
+    return -2 * ℑyzᵃᶠᶠ(i, j, k, grid, ν) * Σ₂₃(i, j, k, grid, v, w)
 end
-@inline function viscous_flux_wz(i, j, k, grid, ν, w)
+@inline function viscous_flux_wz(i, j, k, grid, ν, w) #
     return @inbounds -2 * ν[i, j, k] * Σ₃₃(i, j, k, grid, w)
 end
 
 #diffusivity
-@inline function diffusive_flux_x(i, j, k, grid, ν, c)
-    return @inbounds - ν[i, j, k]  * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline function diffusive_flux_x(i, j, k, grid, ν, c) #
+    return - ℑxzᶠᵃᶠ(i, j, k, grid, ν) * ∂xᶠᶜᶜ(i, j, k, grid, c)
 end 
-@inline function diffusive_flux_y(i, j, k, grid, ν, c)
-    return @inbounds - ν[i, j, k]  * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline function diffusive_flux_y(i, j, k, grid, ν, c) #
+    return @inbounds - ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂yᶜᶠᶜ(i, j, k, grid, c)
 end
-@inline function diffusive_flux_z(i, j, k, grid, ν, c)
-    return @inbounds - ν[i, j, k]  * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline function diffusive_flux_z(i, j, k, grid, ν, c) #
+    return @inbounds - ℑzᵃᵃᶠ(i, j, k, grid, ν) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 #these are the discrete forcing functions
