@@ -16,3 +16,5 @@ langmuir_turbulence_temp_buoy.mp4
 test.o*
 data/
 *.png
+local.jl
+classic_smag.jl
