@@ -72,18 +72,18 @@ required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()
 const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 
 #Dickson and Goyet 1994, who references Roy et al. 1993,  Dickson 1990, and Millero 1994
-@inline K1(T, S) = exp(-2307.1266 / (T + 273.15) + 2.83655 - 1.5529413 * log(T + 273.15) +
+@inline K_1(T, S) = exp(-2307.1266 / (T + 273.15) + 2.83655 - 1.5529413 * log(T + 273.15) +
             (-4.0484 / (T + 273.15) - 0.20760841) * sqrt(S) + 0.08468345 * S -
             0.00654208 * S^1.5 + log(1 - 0.001005 * S))
 
-@inline K2(T, S) = exp(-3351.6106 / (T + 273.15) - 9.226508 - 0.2005743 * log((T + 273.15)) +
+@inline K_2(T, S) = exp(-3351.6106 / (T + 273.15) - 9.226508 - 0.2005743 * log((T + 273.15)) +
             (-23.9722 / (T + 273.15) - 0.106901773)* sqrt(S) + 0.1130822 * S -
             0.00846934 * S^1.5 + log(1 - 0.001005 * S))
 
-@inline Kw(T, S) = exp(-13847.26 / (T + 273.15) + 148.9652 - 23.6521 * log((T + 273.15)) + 
+@inline K_w(T, S) = exp(-13847.26 / (T + 273.15) + 148.9652 - 23.6521 * log((T + 273.15)) + 
             (118.67 / (T + 273.15) - 5.977 + 1.0495 * log((T + 273.15))) * sqrt(S) - 0.01615 * S)
 
-@inline Kb(T, S) = exp((-8966.90 - 2890.53 * sqrt(S) - 77.942 * S + 1.728 * S^1.5 - 
+@inline K_b(T, S) = exp((-8966.90 - 2890.53 * sqrt(S) - 77.942 * S + 1.728 * S^1.5 - 
             0.0996 * S^2) / (T + 273.15) + (148.0248 + 137.1942 * sqrt(S) + 
             1.62142 * S) + (-24.4344 - 25.085 * sqrt(S) -0.2474 * S) * log((T + 273.15)) 
             + 0.053105 * sqrt(S) * (T + 273.15))
@@ -102,9 +102,9 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 @inline beta7(alpha7, K2, Kb) = alpha7* K2/ Kb # kg/mol/s
 #updating tracers 
 @inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    K1 = K1(T, S)
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
+    K1 = K_1(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -114,12 +114,11 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K1 = K1(T, S)
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
-    Kb = Kb(T, S)
+    K1 = K_1(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+    Kb = K_b(T, S)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -132,16 +131,14 @@ end
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
 
-    return (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ +
-            (a3 * H + b4 + a7 * BOH₃) * CO₃
+    return (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
-    Kb = Kb(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+    Kb = K_b(T, S)
 
     a3 = bgc.alpha3
     b3 = beta3(a3, K2)
@@ -154,11 +151,10 @@ end
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K1 = K1(T, S)
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
+    K1 = K_1(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -171,11 +167,10 @@ end
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
-    Kb = Kb(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+    Kb = K_b(T, S)
 
     a2 = alpha2(bgc.A1, bgc.E1, T)
     b2 = beta2(a2, Kw, K2)
@@ -186,16 +181,14 @@ end
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
 
-    return - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) -
-            (a6 * OH * BOH₃ - b6 * BOH₄)
+    return - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
-    Kb = Kb(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+    Kb = K_b(T, S)
 
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
@@ -206,11 +199,10 @@ end
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:BOH₄}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     
-    K2 = K2(T, S)
-    Kw = Kw(T, S)
-    Kb = Kb(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+    Kb = K_b(T, S)
 
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
@@ -220,6 +212,7 @@ end
     println("T = ", T, " S = ", S)
     println("Kw = ", Kw, " Kb = ", Kb, " K2 = ", K2)
     println("BOH₃ = ", BOH₃, " BOH₄ = ", BOH₄, " HCO₃ = ", HCO₃, " CO₃ = ", CO₃)
+    println(- b7 * BOH₄ * HCO₃ + a7 * BOH₃ * CO₃ + (a6 * OH * BOH₃ - b6 * BOH₄))
     if isnan(BOH₄) error("BOH₄ is NaN, check your inputs") end
     if isnan(BOH₃) error("BOH₃ is NaN, check your inputs") end
     if isnan(HCO₃) error("HCO₃ is NaN, check your inputs") end
