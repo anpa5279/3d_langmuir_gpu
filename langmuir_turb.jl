@@ -10,7 +10,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using OceanBioME: Biogeochemistry
 include("cc.jl")
-using .CC: CarbonateChemistry #local module
+using .CC #: CarbonateChemistry #local module
 mutable struct Params
     Nx::Int         # number of points in each of x direction
     Ny::Int         # number of points in each of y direction
@@ -65,7 +65,9 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
-biogeochemistry = CarbonateChemistry(; grid = grid)
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
+
+#DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> p.T0, salinity = (args...) -> 35))
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
@@ -73,7 +75,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
 @show model
 
 # random seed
@@ -82,9 +84,9 @@ r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, H = 6.31e-9, HCO₃ = 1.67e-3, OH = 9.6e-6, S = 35.0)
+set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, H = 6.31e-9, HCO₃ = 1.67e-3, OH = 9.6e-6, T=Tᵢ, S = 35)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 0.5hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -117,10 +119,17 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 60minutes
+output_interval = 10minutes
 
 u, v, w = model.velocities
-BOH₃, BOH₄, CO₂, CO₃, H, HCO₃, OH, S, T = model.tracers
+BOH₃ = model.tracers.BOH₃
+BOH₄ = model.tracers.BOH₄
+CO₂ = model.tracers.CO₂
+CO₃ = model.tracers.CO₃
+H = model.tracers.H 
+HCO₃ = model.tracers.HCO₃
+OH = model.tracers.OH
+T = model.tracers.T
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
@@ -136,6 +145,6 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
