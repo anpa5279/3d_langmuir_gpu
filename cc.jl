@@ -1,60 +1,57 @@
 module CC
-using OceanBioME, Oceananigans
 using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry
-using Oceananigans.Units
+using OceanBioME: setup_velocity_fields, Biogeochemistry, ScaleNegativeTracers
+using OceanBioME.Light: default_surface_PAR
+using Oceananigans.Grids: AbstractGrid
+using KernelAbstractions
 
 import Oceananigans.Biogeochemistry: required_biogeochemical_tracers,
                                      required_biogeochemical_auxiliary_fields,
                                      biogeochemical_drift_velocity
+import OceanBioME: conserved_tracers
 
-@kwdef struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
+struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     #Zeebe and Wolf Gladrow 2001
-    A1:: FT = 4.70e7 # kg/mol/s
-    E1:: FT = 32.2 # kJ/mol
-    A6:: FT = 4.58e10 # kg/mol/s
-    E6:: FT = 20.8 # kJ/mol
-    A7:: FT = 3.05e10 # kg/mol/s
-    E7:: FT = 20.8 # kJ/mol
+    A1:: FT
+    E1:: FT 
+    A6:: FT
+    E6:: FT
+    A7:: FT
+    E7:: FT
     #Dickson and Goyet 1994
-    alpha3 :: FT = 5e10 # kg/mol/s
-    alpha4 :: FT = 6.0e9 # kg/mol/s
-    alpha5:: FT = 1.40e-3 # kg/mol/s
-
-    # sinking
-    sinking_velocities :: W
+    alpha3 :: FT
+    alpha4 :: FT
+    alpha5 :: FT
+    sinking_velocities::W
 end
 
 function CarbonateChemistry(; grid::AbstractGrid{FT},
-                                        #Zeebe and Wolf Gladrow 2001
-                                        A1:: FT = 4.70e7, # kg/mol/s
-                                        E1:: FT = 32.2, # kJ/mol
-                                        A6:: FT = 4.58e10, # kg/mol/s
-                                        E6:: FT = 20.8, # kJ/mol
-                                        A7:: FT = 3.05e10, # kg/mol/s
-                                        E7:: FT = 20.8, # kJ/mol
-                                        alpha3 :: FT = 5e10, # kg/mol/s
-                                        alpha4 :: FT = 6.0e9, # kg/mol/s
-                                        alpha5:: FT = 1.40e-3, # kg/mol/s
+                            #Zeebe and Wolf Gladrow 2001
+                            A1:: FT = 4.70e7, # kg/mol/s
+                            E1:: FT = 32.2, # kJ/mol
+                            A6:: FT = 4.58e10, # kg/mol/s
+                            E6:: FT = 20.8, # kJ/mol
+                            A7:: FT = 3.05e10, # kg/mol/s
+                            E7:: FT = 20.8, # kJ/mol
+                            alpha3 :: FT = 5e10, # kg/mol/s
+                            alpha4 :: FT = 6.0e9, # kg/mol/s
+                            alpha5:: FT = 1.40e-3, # kg/mol/s
 
-                                        light_attenuation = nothing, 
-                                        
-                                        sediment_model = nothing,
-    
-                                        sinking_speeds = nothing,
-                                        open_bottom = true,
+                            light_attenuation = default_surface_PAR, 
+                            
+                            sediment_model = nothing,
 
-                                        scale_negatives = false,
-                                        invalid_fill_value = NaN,
-                                                                                
-                                        particles = nothing,
-                                        modifiers = ScaleNegativeTracers(:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄)) where {FT}
+                            sinking_speeds = nothing,
+                            open_bottom::Bool = true,
 
-    sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
+                            scale_negatives = true,
+                            invalid_fill_value = NaN,
+                                                                    
+                            particles = nothing,
+                            modifiers = nothing) where {FT}
 
-    underlying_biogeochemistry = CarbonateChemistry(A1, E1, A6, E6, A7, E7, alpha1, alpha2, 
-                                                    alpha3, alpha4, alpha5, alpha6, alpha7, 
-                                                    beta1, beta2, beta3, beta4, beta5, beta6, beta7,
-                                                    sinking_velocities)
+    sinking_velocities = nothing
+    underlying_biogeochemistry = CarbonateChemistry(A1, E1, A6, E6, A7, E7, alpha3, alpha4, alpha5, sinking_velocities)
 
     if scale_negatives
         scaler = ScaleNegativeTracers(underlying_biogeochemistry, grid; invalid_fill_value)
@@ -62,30 +59,28 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
     end
 
     return Biogeochemistry(underlying_biogeochemistry;
-                           light_attenuation = light_attenuation_model, 
-                           sediment = sediment_model, 
+                           light_attenuation = default_surface_PAR, 
+                           sediment = nothing, 
                            particles,
                            modifiers)
 end
 
-const CC = CarbonateChemistry
-
-required_biogeochemical_tracers(::CC) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄, :T, :S)
-required_biogeochemical_auxiliary_fields(::CC) = (:K1, :K2, :Kb, :Kw,
+required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄, :T, :S)
+required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = (:K1, :K2, :Kb, :Kw,
                                                   :alpha1, :beta1, :alpha2, :beta2,
                                                   :beta3, :beta4, :beta5, :alpha6, :beta6, 
                                                   :alpha7, :beta7)
 
 #functions needed to update dc/dt
-function update_biogeochemical_state!(bgc::CC, model)
+function update_biogeochemical_state!(bgc::CarbonateChemistry, model)
     arch = model.architecture
     grid = model.grid
 
-    launch!(arch, grid, :xyz, _compute_cc_vars!, grid, fields(model), bgc)
+    launch!(arch, grid, :xyz, _compute_CarbonateChemistry_vars!, grid, fields(model), bgc)
 
     return nothing 
 end 
-@kernel function _compute_cc_vars!(grid, model_fields, bgc)
+@kernel function _compute_CarbonateChemistry_vars!(grid, model_fields, bgc)
     i, j, k = @index(Global, NTuple)
 
     T = @inbounds model_fields.T[i, j, k]
@@ -100,7 +95,7 @@ end
             (-23.9722 / (T + 273.15) - 0.106901773)* sqrt(S) + 0.1130822 * S + 
             0.00846934 * S^1.5 + log(1 - 0.001005 * S))
     @inbounds Kb[i, j, k] = exp((-8966.90 - 2890.53 * sqrt(S) - 77.942 * S + 1.728 * S^1.5 + 
-            0.0996 * S^2) / (T + 273.15) + (148.0248 + 137.1942 * Sqrt (S) + 
+            0.0996 * S^2) / (T + 273.15) + (148.0248 + 137.1942 * sqrt(S) + 
             1.62142 * S) + + (-24.4344 - 25.085 * sqrt(S) -0.2474 * S) * log((T + 273.15)) 
             + 0.053105 * sqrt(S) * (T + 273.15))
     @inbounds Kw[i, j, k] = exp(-13847.26 / (T + 273.15) + 148.9652 - 23.6521 * log((T + 273.15)) + 
@@ -121,34 +116,46 @@ end
 end 
 
 #updating tracers 
-@inline function (bgc::CC)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return - (alpha1 + alpha2 * OH) * CO₂ + (beta1 * H + beta2) * CO₂
 end
 
-@inline function (bgc::CC)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return (alpha1 + alpha2 * OH) * CO₂ - (beta1 * H + beta2 + beta3 + alpha4 * OH + beta7 * BOH₄) * HCO₃ +
             (alpha3 * H + beta4 + alpha7 * BOH₃) * CO₃
 end
 
-@inline function (bgc::CC)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return (beta3 + alpha4 * OH + beta7 * BOH₄) * HCO₃ - (alpha3 * H + beta4 + alpha7 * BOH₃) * CO₃
 end
 
-@inline function (bgc::CC)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return alpha1 * CO₂ - (beta1 * H - beta3) * HCO₃ - alpha3 * H * CO₃ + (alpha5 - beta5 * H * OH)
 end
 
-@inline function (bgc::CC)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return - alpha2 * OH * CO₂ + (beta2 - alpha4 * OH) * HCO₃ + beta4 * CO₃ + (alpha5 - beta5 * H * OH) -
             (alpha6 * OH * BOH₃ - beta6 * BOH₄)
 end
 
-@inline function (bgc::CC)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return beta7 * BOH₄ * HCO₃ - alpha7 * BOH₃ * CO₃ - (alpha6 * OH * BOH₃ - beta6 * BOH₄)
 end
 
-@inline function (bgc::CC)(::Val{:BOH₄}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:BOH₄}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     return - beta7 * BOH₄ * HCO₃ + alpha7 * BOH₃ * CO₃ + (alpha6 * OH * BOH₃ - beta6 * BOH₄)
 end
+
+#default drift velocity 
+@inline function biogeochemical_drift_velocity(bgc::CarbonateChemistry, ::Val{tracer_name}) where tracer_name
+    return (u = ZeroField(), v = ZeroField(), w = ZeroField())
+end
+
+#conserving tracers
+@inline conserved_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄)
+
+summary(::CarbonateChemistry{FT}) where {FT} = string("CarbonateChemistryr model")
+show(io::IO, model::CarbonateChemistry{FT}) where {FT} = print(io, string("CarbonateChemistryr model"))
+
 
 end

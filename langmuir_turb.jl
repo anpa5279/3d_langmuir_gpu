@@ -7,7 +7,8 @@ using Oceananigans
 #using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-
+using OceanBioME: Biogeochemistry
+using .CC: CarbonateChemistry #local module
 mutable struct Params
     Nx::Int         # number of points in each of x direction
     Ny::Int         # number of points in each of y direction
@@ -28,10 +29,11 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
+#include("cc.jl")
 
 # Automatically distribute among available processors
 #arch = Distributed(GPU())
@@ -62,14 +64,20 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
+biogeochemistry = CarbonateChemistry(; grid = grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
+                            biogeochemistry, 
                             timestepper = :RungeKutta3,
-                            tracers = (:T),
                             closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs),
+                            auxiliary_fields = (:K1, :K2, :Kb, :Kw, :alpha1, :beta1, 
+                                                :alpha2, :beta2, :beta3, :beta4, 
+                                                :beta5, :alpha6, :beta6, :alpha7, 
+                                                :beta7)
+                            ) 
 @show model
 
 # random seed
@@ -84,7 +92,7 @@ set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 @show "model IC"
 update_state!(model; compute_tendencies = true)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
