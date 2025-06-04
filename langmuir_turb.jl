@@ -82,7 +82,7 @@ r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, H = 6.31e-9, HCO₃ = 1.67e-3, OH = 9.6e-6, S = 35.0)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
@@ -120,14 +120,13 @@ end
 output_interval = 60minutes
 
 u, v, w = model.velocities
-T = model.tracers.T
-νₑ = model.diffusivity_fields.νₑ
+BOH₃, BOH₄, CO₂, CO₃, H, HCO₃, OH, S, T = model.tracers
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, H, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
