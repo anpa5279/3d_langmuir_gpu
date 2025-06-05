@@ -16,29 +16,30 @@ import OceanBioME: conserved_tracers
 
 struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     #Zeebe and Wolf Gladrow 2001
-    A1:: FT
-    E1:: FT 
-    A7:: FT
-    E7:: FT
-    A8:: FT
-    E8:: FT
+    A1:: FT # kg/mol/s
+    E1:: FT # J/mol
+    A7:: FT # kg/mol/s
+    E7:: FT # J/mol
+    A8:: FT # kg/mol/s
+    E8:: FT # J/mol
     #Dickson and Goyet 1994
-    alpha3 :: FT
-    alpha4 :: FT
-    alpha5 :: FT
+    alpha3:: FT # kg/mol/s
+    alpha4:: FT # kg/mol/s
+    alpha5:: FT # kg/mol/s
     sinking_velocities::W
 end
 
 function CarbonateChemistry(; grid::AbstractGrid{FT},
                             #Zeebe and Wolf Gladrow 2001
                             A1:: FT = 4.70e7, # kg/mol/s
-                            E1:: FT = 23.2, # kJ/mol
+                            E1:: FT = 1000 * 23.2, # J/mol
                             A7:: FT = 4.58e10, # kg/mol/s
-                            E7:: FT = 20.8, # kJ/mol
+                            E7:: FT = 1000 * 20.8, # J/mol
                             A8:: FT = 3.05e10, # kg/mol/s
-                            E8:: FT = 20.8, # kJ/mol
-                            alpha3 :: FT = 5e10, # kg/mol/s
-                            alpha4 :: FT = 6.0e9, # kg/mol/s
+                            E8:: FT = 1000 * 20.8, # J/mol
+                            #Dickson and Goyet 1994
+                            alpha3:: FT = 5e10, # kg/mol/s
+                            alpha4:: FT = 6.0e9, # kg/mol/s
                             alpha5:: FT = 1.40e-3, # kg/mol/s
 
                             light_attenuation = default_surface_PAR, 
@@ -54,7 +55,7 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                             particles = nothing,
                             modifiers = nothing) where {FT}
 
-    sinking_velocities = nothing
+    sinking_velocities = sinking_speeds
     underlying_biogeochemistry = CarbonateChemistry(A1, E1, A7, E7, A8, E8, alpha3, alpha4, alpha5, sinking_velocities)
 
     if scale_negatives
@@ -92,7 +93,7 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 @inline alpha1(T) = exp(1246.98 - 6.19e4 / (T + 273.15) - 183.0 * log(T + 273.15)) # kg/mol/s
 @inline beta1(alpha1, K1) = alpha1/ K1 # 1/s
 @inline alpha2(A1, E1, T) = A1 * exp(-E1 / (R * (T + 273.15))) # kg/mol/s
-@inline beta2(alpha2, Kw, K2) = alpha2 * Kw/ K2# 1/s
+@inline beta2(alpha2, Kw, K1) = alpha2 * Kw/ K1# 1/s
 @inline beta3(alpha3, K2) = alpha3 * K2 # 1/s
 @inline beta4(alpha4, Kw, K2) = alpha4 * Kw/ K2 # 1/s
 @inline beta5(alpha5, Kw) = alpha5 / Kw # kg/mol/s
@@ -100,6 +101,7 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 @inline beta6(alpha6, Kw, Kb) =  alpha6* Kw/ Kb # 1/s
 @inline alpha7(A8, E8, T) = A8 * exp(-E8 / (R * (T + 273.15))) # kg/mol/s
 @inline beta7(alpha7, K2, Kb) = alpha7* K2/ Kb # kg/mol/s
+
 #updating tracers 
 @inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     K1 = K_1(T, S)
@@ -109,7 +111,9 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
     a2 = alpha2(bgc.A1, bgc.E1, T)
-    b2 = beta2(a2, Kw, K2)
+    b2 = beta2(a2, Kw, K1)
+    #println("a1 = ", a1, " b1 = ", b1, " a2 = ", a2, " b2 = ", b2)
+    if isnan(CO₂) error("CO₂ concentration is NaN") end
     return - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
 end
 
@@ -123,14 +127,15 @@ end
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
     a2 = alpha2(bgc.A1, bgc.E1, T)
-    b2 = beta2(a2, Kw, K2)
+    b2 = beta2(a2, Kw, K1)
     a3 = bgc.alpha3
     b3 = beta3(a3, K2)
     a4 = bgc.alpha4
     b4 = beta4(a4, Kw, K2)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-
+    #println("a3 = ", a3, " b3 = ", b3, " a4 = ", a4, " b4 = ", b4)
+    if isnan(HCO₃) error("HCO₃ concentration is NaN") end
     return (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
 end
 
@@ -146,7 +151,7 @@ end
     b4 = beta4(a4, Kw, K2)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-    
+    if isnan(CO₃) error("CO₃ concentration is NaN") end
     return (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
 end
 
@@ -162,25 +167,27 @@ end
     b3 = beta3(a3, K2)
     a5 = bgc.alpha5
     b5 = beta5(a5, Kw)
-
+    #println("a5 = ", a5, " b5 = ", b5)
+    if isnan(H) error("H concentration is NaN") end
     return a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    
+    K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
 
     a2 = alpha2(bgc.A1, bgc.E1, T)
-    b2 = beta2(a2, Kw, K2)
+    b2 = beta2(a2, Kw, K1)
     a4 = bgc.alpha4
     b4 = beta4(a4, Kw, K2)
     a5 = bgc.alpha5
     b5 = beta5(a5, Kw)
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
-
+    #println("a6 = ", a6, " b6 = ", b6)
+    if isnan(OH) error("OH concentration is NaN") end
     return - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
 end
 
@@ -194,34 +201,14 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-
+    #println("a7 = ", a7, " b7 = ", b7)
+    #println("BOH₃ = ", BOH₃, " BOH₄ = ", BOH₄, " HCO₃ = ", HCO₃, " CO₃ = ", CO₃, " H = ", H, " OH = ", OH, " CO₂ = ", CO₂)
+    if isnan(BOH₃) error("BOH₃ concentration is NaN") end
+    if isnan(BOH₄) error("BOH₄ concentration is NaN") end
     return b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:BOH₄}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-    Kb = K_b(T, S)
-
-    a6 = alpha6(bgc.A7, bgc.E8, T)
-    b6 = beta6(a6, Kw, Kb)
-    a7 = alpha7(bgc.A8, bgc.E8, T)
-    b7 = beta7(a7, K2, Kb)
-    println("alpha6 = ", a6, " beta6 = ", b6, " alpha7 = ", a7, " beta7 = ", b7)
-    println("T = ", T, " S = ", S)
-    println("Kw = ", Kw, " Kb = ", Kb, " K2 = ", K2)
-    println("BOH₃ = ", BOH₃, " BOH₄ = ", BOH₄, " HCO₃ = ", HCO₃, " CO₃ = ", CO₃)
-    println(- b7 * BOH₄ * HCO₃ + a7 * BOH₃ * CO₃ + (a6 * OH * BOH₃ - b6 * BOH₄))
-    if isnan(BOH₄) error("BOH₄ is NaN, check your inputs") end
-    if isnan(BOH₃) error("BOH₃ is NaN, check your inputs") end
-    if isnan(HCO₃) error("HCO₃ is NaN, check your inputs") end
-    if isnan(CO₃) error("CO₃ is NaN, check your inputs") end
-    if isnan(CO₂) error("CO₂ is NaN, check your inputs") end
-    if isnan(H) error("H is NaN, check your inputs") end
-    if isnan(OH) error("OH is NaN, check your inputs") end
-    return - b7 * BOH₄ * HCO₃ + a7 * BOH₃ * CO₃ + (a6 * OH * BOH₃ - b6 * BOH₄)
-end
+@inline (bgc::CarbonateChemistry)(::Val{:BOH₄}, args...) = -bgc(Val(:BOH₃), args...)
 
 #default drift velocity 
 @inline function biogeochemical_drift_velocity(bgc::CarbonateChemistry, ::Val{tracer_name}) where tracer_name
@@ -231,4 +218,4 @@ end
 #conserving tracers
 @inline conserved_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄)
 
-end
+end #end of module
