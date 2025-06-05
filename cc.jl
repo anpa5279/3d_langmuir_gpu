@@ -27,6 +27,18 @@ struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     alpha4:: FT # kg/mol/s
     alpha5:: FT # kg/mol/s
     sinking_velocities::W
+    function CarbonateChemistry(A1:: FT, # kg/mol/s
+                                E1:: FT, # J/mol
+                                A7:: FT, # kg/mol/s
+                                E7:: FT, # J/mol
+                                A8:: FT, # kg/mol/s
+                                E8:: FT, # J/mol
+                                alpha3:: FT, # kg/mol/s
+                                alpha4:: FT, # kg/mol/s
+                                alpha5:: FT, # kg/mol/s
+                                sinking_velocities::W) where {FT, W}
+        return new{FT, W}(A1, E1, A7, E7, A8, E8, alpha3, alpha4, alpha5, sinking_velocities)
+    end
 end
 
 function CarbonateChemistry(; grid::AbstractGrid{FT},
@@ -42,7 +54,7 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                             alpha4:: FT = 6.0e9, # kg/mol/s
                             alpha5:: FT = 1.40e-3, # kg/mol/s
 
-                            light_attenuation = default_surface_PAR, 
+                            light_attenuation = nothing, 
                             
                             sediment_model = nothing,
 
@@ -54,8 +66,13 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                                                                     
                             particles = nothing,
                             modifiers = nothing) where {FT}
+    if sinking_speeds == nothing
+        sinking_speeds = (CO₂ = 0.0, HCO₃ = 0.0, CO₃ = 0.0, H = 0.0, OH = 0.0, BOH₃ = 0.0, BOH₄ = 0.0)
+        sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
+    else
+        sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
+    end
 
-    sinking_velocities = sinking_speeds
     underlying_biogeochemistry = CarbonateChemistry(A1, E1, A7, E7, A8, E8, alpha3, alpha4, alpha5, sinking_velocities)
 
     if scale_negatives
@@ -64,6 +81,9 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
     end
 
     return Biogeochemistry(underlying_biogeochemistry;
+                           light_attenuation = light_attenuation, 
+                           sediment = sediment_model,
+                           particles = particles,
                            modifiers)
 end
 
@@ -114,7 +134,8 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     b2 = beta2(a2, Kw, K1)
     #println("a1 = ", a1, " b1 = ", b1, " a2 = ", a2, " b2 = ", b2)
     if isnan(CO₂) error("CO₂ concentration is NaN") end
-    return - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
+    dcdt = - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
+    return dcdt
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
@@ -136,11 +157,11 @@ end
     b7 = beta7(a7, K2, Kb)
     #println("a3 = ", a3, " b3 = ", b3, " a4 = ", a4, " b4 = ", b4)
     if isnan(HCO₃) error("HCO₃ concentration is NaN") end
-    return (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
+    dcdt = (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
+    return dcdt
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
@@ -152,11 +173,11 @@ end
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
     if isnan(CO₃) error("CO₃ concentration is NaN") end
-    return (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
+    dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
+    return dcdt
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -169,7 +190,8 @@ end
     b5 = beta5(a5, Kw)
     #println("a5 = ", a5, " b5 = ", b5)
     if isnan(H) error("H concentration is NaN") end
-    return a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
+    dcdt = a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
+    return dcdt
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
@@ -188,11 +210,11 @@ end
     b6 = beta6(a6, Kw, Kb)
     #println("a6 = ", a6, " b6 = ", b6)
     if isnan(OH) error("OH concentration is NaN") end
-    return - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
+    dcdt = - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
+    return dcdt
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
@@ -205,7 +227,8 @@ end
     #println("BOH₃ = ", BOH₃, " BOH₄ = ", BOH₄, " HCO₃ = ", HCO₃, " CO₃ = ", CO₃, " H = ", H, " OH = ", OH, " CO₂ = ", CO₂)
     if isnan(BOH₃) error("BOH₃ concentration is NaN") end
     if isnan(BOH₄) error("BOH₄ concentration is NaN") end
-    return b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)
+    dcdt = b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)
+    return dcdt
 end
 
 @inline (bgc::CarbonateChemistry)(::Val{:BOH₄}, args...) = -bgc(Val(:BOH₃), args...)
