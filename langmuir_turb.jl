@@ -68,7 +68,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρ
 #negative_tracer_scaling = ScaleNegativeTracers((:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄))
 #biogeochemistry = Biogeochemistry(CarbonateChemistry(; sinking_velocities = nothing);
 #                                 modifiers = negative_tracer_scaling)
-biogeochemistry = CarbonateChemistry(; grid)#, scale_negatives = true)
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 
 #DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> p.T0, salinity = (args...) -> 35))
 

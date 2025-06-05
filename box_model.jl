@@ -26,7 +26,7 @@ p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
 
-biogeochemistry = CarbonateChemistry(; grid)
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 
 model = BoxModel(; biogeochemistry, clock)
 
