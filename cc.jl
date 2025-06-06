@@ -2,40 +2,49 @@ module CC #any edits made to this file, restart julia to see changes
 
 export CarbonateChemistry
 
-using OceanBioME: setup_velocity_fields, Biogeochemistry, ScaleNegativeTracers
-using OceanBioME.Light: default_surface_PAR
-
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Fields: ZeroField
+using OceanBioME: Biogeochemistry, ScaleNegativeTracers
 using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry
+
+using Oceananigans.Units
+using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: AbstractGrid
+
+using OceanBioME.Light: TwoBandPhotosyntheticallyActiveRadiation, default_surface_PAR
+using OceanBioME: setup_velocity_fields, show_sinking_velocities
+using OceanBioME.BoxModels: BoxModel
+
+import Base: show, summary
 
 import Oceananigans.Biogeochemistry: required_biogeochemical_tracers,
                                      required_biogeochemical_auxiliary_fields,
                                      biogeochemical_drift_velocity
-import OceanBioME: conserved_tracers
+
+import OceanBioME: redfield, conserved_tracers, maximum_sinking_velocity, chlorophyll
+
+import Adapt: adapt_structure, adapt
 
 struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     #Zeebe and Wolf Gladrow 2001
-    A1:: FT # kg/mol/s
-    E1:: FT # J/mol
-    A7:: FT # kg/mol/s
-    E7:: FT # J/mol
-    A8:: FT # kg/mol/s
-    E8:: FT # J/mol
+    A1 :: FT # kg/mol/s
+    E1 :: FT # J/mol
+    A7 :: FT # kg/mol/s
+    E7 :: FT # J/mol
+    A8 :: FT # kg/mol/s
+    E8 :: FT # J/mol
     #Dickson and Goyet 1994
-    alpha3:: FT # kg/mol/s
-    alpha4:: FT # kg/mol/s
-    alpha5:: FT # kg/mol/s
-    sinking_velocities::W
-    function CarbonateChemistry(A1:: FT, # kg/mol/s
-                                E1:: FT, # J/mol
-                                A7:: FT, # kg/mol/s
-                                E7:: FT, # J/mol
-                                A8:: FT, # kg/mol/s
-                                E8:: FT, # J/mol
-                                alpha3:: FT, # kg/mol/s
-                                alpha4:: FT, # kg/mol/s
-                                alpha5:: FT, # kg/mol/s
+    alpha3 :: FT # kg/mol/s
+    alpha4 :: FT # kg/mol/s
+    alpha5 :: FT # kg/mol/s
+    sinking_velocities :: W
+    function CarbonateChemistry(A1::FT, # kg/mol/s
+                                E1::FT, # J/mol
+                                A7::FT, # kg/mol/s
+                                E7::FT, # J/mol
+                                A8::FT, # kg/mol/s
+                                E8::FT, # J/mol
+                                alpha3::FT, # kg/mol/s
+                                alpha4::FT, # kg/mol/s
+                                alpha5::FT, # kg/mol/s
                                 sinking_velocities::W) where {FT, W}
         return new{FT, W}(A1, E1, A7, E7, A8, E8, alpha3, alpha4, alpha5, sinking_velocities)
     end
@@ -43,35 +52,30 @@ end
 
 function CarbonateChemistry(; grid::AbstractGrid{FT},
                             #Zeebe and Wolf Gladrow 2001
-                            A1:: FT = 4.70e7, # kg/mol/s
-                            E1:: FT = 1000 * 23.2, # J/mol
-                            A7:: FT = 4.58e10, # kg/mol/s
-                            E7:: FT = 1000 * 20.8, # J/mol
-                            A8:: FT = 3.05e10, # kg/mol/s
-                            E8:: FT = 1000 * 20.8, # J/mol
+                            A1::FT = 4.70e7, # kg/mol/s
+                            E1::FT = 1000 * 23.2, # J/mol
+                            A7::FT = 4.58e10, # kg/mol/s
+                            E7::FT = 1000 * 20.8, # J/mol
+                            A8::FT = 3.05e10, # kg/mol/s
+                            E8::FT = 1000 * 20.8, # J/mol
                             #Dickson and Goyet 1994
-                            alpha3:: FT = 5e10, # kg/mol/s
-                            alpha4:: FT = 6.0e9, # kg/mol/s
-                            alpha5:: FT = 1.40e-3, # kg/mol/s
+                            alpha3::FT = 5e10, # kg/mol/s
+                            alpha4::FT = 6.0e9, # kg/mol/s
+                            alpha5::FT = 1.40e-3, # kg/mol/s
 
-                            light_attenuation = nothing, 
+                            light_attenuation_model::LA = nothing, 
                             
-                            sediment_model = nothing,
+                            sediment_model::S = nothing,
 
-                            sinking_speeds = nothing,
+                            sinking_speeds = (CO₂ = 0.0, HCO₃ = 0.0, CO₃ = 0.0, H = 0.0, OH = 0.0, BOH₃ = 0.0, BOH₄ = 0.0),
                             open_bottom::Bool = true,
 
                             scale_negatives = false,
                             invalid_fill_value = NaN,
                                                                     
-                            particles = nothing,
-                            modifiers = nothing) where {FT}
-    if sinking_speeds == nothing
-        sinking_speeds = (CO₂ = 0.0, HCO₃ = 0.0, CO₃ = 0.0, H = 0.0, OH = 0.0, BOH₃ = 0.0, BOH₄ = 0.0)
-        sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
-    else
-        sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
-    end
+                            particles::P = nothing,
+                            modifiers::M = nothing) where {FT, LA, S, P, M}
+    sinking_velocities = setup_velocity_fields(sinking_speeds, grid, open_bottom)
 
     underlying_biogeochemistry = CarbonateChemistry(A1, E1, A7, E7, A8, E8, alpha3, alpha4, alpha5, sinking_velocities)
 
@@ -81,9 +85,9 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
     end
 
     return Biogeochemistry(underlying_biogeochemistry;
-                           light_attenuation = light_attenuation, 
+                           light_attenuation = light_attenuation_model, 
                            sediment = sediment_model,
-                           particles = particles,
+                           particles,
                            modifiers)
 end
 
@@ -235,10 +239,30 @@ end
 
 #default drift velocity 
 @inline function biogeochemical_drift_velocity(bgc::CarbonateChemistry, ::Val{tracer_name}) where tracer_name
-    return (u = ZeroField(), v = ZeroField(), w = ZeroField())
+    if tracer_name in keys(bgc.sinking_velocities)
+        return (u = ZeroField(), v = ZeroField(), w = bgc.sinking_velocities[tracer_name])
+    else
+        return (u = ZeroField(), v = ZeroField(), w = ZeroField())
+    end
 end
 
 #conserving tracers
 @inline conserved_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄)
+
+adapt_structure(to, CarbonateChemistry::CarbonateChemistry) = 
+    CarbonateChemistry(adapt(to, CarbonateChemistry.A1),
+                                             adapt(to, CarbonateChemistry.E1),
+                                             adapt(to, CarbonateChemistry.A7),
+                                             adapt(to, CarbonateChemistry.E7),
+                                             adapt(to, CarbonateChemistry.A8),
+                                             adapt(to, CarbonateChemistry.E8),
+                                             adapt(to, CarbonateChemistry.alpha3),
+                                             adapt(to, CarbonateChemistry.alpha4),
+                                             adapt(to, CarbonateChemistry.alpha5),
+
+                                             adapt(to, CarbonateChemistry.sinking_velocities))
+
+@inline maximum_sinking_velocity(bgc::CarbonateChemistry) = 0.0
+@inline sinking_tracers(bgc::CarbonateChemistry) = keys(bgc.sinking_velocities)
 
 end #end of module
