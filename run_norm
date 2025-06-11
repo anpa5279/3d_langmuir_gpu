@@ -9,6 +9,9 @@
 #PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4 
 #PBS -l gpu_type=a100
 
+rm -rf outputs
+mkdir outputs
+
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
 export JULIA_NUM_THREADS=64
