@@ -1,11 +1,11 @@
 using Pkg
-using MPI
-using CUDA
+#using MPI
+#using CUDA
 using Random
 using Statistics
 using Printf
 using Oceananigans
-using Oceananigans.DistributedComputations
+#using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -33,7 +33,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -41,12 +41,12 @@ include("smagorinsky_forcing.jl")
 include("num_check.jl")
 
 # Automatically distribute among available processors
-arch = Distributed(GPU())
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
-println("Hello from process $rank out of $Nranks")
+#arch = Distributed(GPU())
+#rank = arch.local_rank
+#Nranks = MPI.Comm_size(arch.communicator)
+#println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))#grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -83,12 +83,12 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 @show model
 
 # random seed
-r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
+#r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
+#r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
 @show "rand equations made"
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz #* 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+uᵢ(x, y, z) = u_f #* 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+wᵢ(x, y, z) = u_f #* 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 @show "equations defined"
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 @show "model IC"
@@ -124,30 +124,37 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
-    if rank == 0
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
-        file["IC/wind_speed"] = p.u₁₀
-    end
+    @show a = p.La_t^2 * stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+    @show b = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+    @show p.u₁₀
+    file["IC/friction_velocity"] = p.La_t^2 * stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+    file["IC/wind_speed"] = p.u₁₀
     return nothing
 end
+#function save_IC!(file, model)
+#    if rank == nothing || rank == 0
+#        file["IC/friction_velocity"] = u_f
+#        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
+#        file["IC/wind_speed"] = p.u₁₀
+#    end
+#    return nothing
+#end
 
-output_interval = 60minutes
+output_interval = 20minutes
 
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
-wu = Average(w * u, dims=(1, 2))
-wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, νₑ),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T, wu, wv),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, wu, wv),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
@@ -162,6 +169,7 @@ function update_viscosity(model)
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
+    fill_halo_regions!(νₑ)
 end 
 simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 run!(simulation) #; pickup = true
