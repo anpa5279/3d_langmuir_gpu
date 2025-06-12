@@ -6,15 +6,15 @@
 #PBS -j oe
 #PBS -l job_priority=regular
 #PBS -l walltime=05:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1 
+#PBS -l select=1:ncpus=1:mpiprocs=1:ngpus=1 
 #PBS -l gpu_type=a100
 
 rm -rf outputs
 mkdir outputs
 
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+export JULIA_NUM_PRECOMPILE_TASKS=1
+export JULIA_NUM_THREADS=1
 
 # Load critical modules
 module --force purge
@@ -45,7 +45,7 @@ exec \$*
 EoF_s
 
 chmod +x launch.sh
-
+julia --project -e 'using Pkg; Pkg.instantiate()'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
