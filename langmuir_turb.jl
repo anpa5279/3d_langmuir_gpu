@@ -34,7 +34,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
+p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -76,7 +76,15 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
                             auxiliary_fields = (νₑ = νₑ,))
 @show model
-
+# random seed
+r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
+r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
+@show "rand equations made"
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+@show "equations defined"
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
@@ -84,18 +92,20 @@ simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hou
 
 u, v, w = model.velocities
 T = model.tracers.T
-
+@show T
+@show T.data.parent
 νₑ = model.auxiliary_fields.νₑ
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
-
+    T = model.tracers.T
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, T = %.1e, wall time: %s\n",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
+		   maximum(T)
                    prettytime(simulation.run_wall_time))
 
     @info msg
