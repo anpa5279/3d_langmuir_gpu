@@ -40,7 +40,12 @@ p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 include("stokes.jl")
 include("smagorinsky_forcing.jl")
 # Automatically distribute among available processors
-arch = GPU()#arch = Distributed(GPU())
+arch = Distributed(GPU())
+
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
+println("Hello from process $rank out of $Nranks")
+#arch = GPU()#arch = Distributed(GPU())
 
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 #stokes drift
@@ -93,19 +98,17 @@ simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hou
 u, v, w = model.velocities
 T = model.tracers.T
 @show T
-@show T.data.parent
 νₑ = model.auxiliary_fields.νₑ
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
     T = model.tracers.T
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, T = %.1e, wall time: %s\n",
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-		   maximum(T)
                    prettytime(simulation.run_wall_time))
 
     @info msg
@@ -151,6 +154,9 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    fill_halo_regions!(w)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
     fill_halo_regions!(νₑ)
 end 
