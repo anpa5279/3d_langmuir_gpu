@@ -13,6 +13,7 @@ using Oceananigans.TimeSteppers: update_state!
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Fields: CenterField, FieldBoundaryConditions
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
 
 mutable struct Params
     Nx::Int         # number of points in each of x direction
