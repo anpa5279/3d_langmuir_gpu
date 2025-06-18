@@ -4,6 +4,7 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 using MPI
 using CUDA
+using Oceananigans.DistributedComputations
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
 mutable struct Params
@@ -27,17 +28,22 @@ end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+# Automatically distribute among available processors
+arch = Distributed(GPU())
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
+println("Hello from process $rank out of $Nranks")
 
-grid = BoxModelGrid()
-clock = Clock(time = zero(grid))
+grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(0.01, 0.01, 0.01))#BoxModelGrid()
+#clock = Clock(time = zero(grid))
 
 biogeochemistry = CarbonateChemistry(; grid)
 
-model = BoxModel(; biogeochemistry, clock)
+model = NonhydrostaticModel(; grid, biogeochemistry)#model = BoxModel(; biogeochemistry, clock)
 
 set!(model, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 20.0, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)#BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
 
-simulation = Simulation(model, Δt=1e-8, stop_time = 60seconds) #stop_time = 96hours,
+simulation = Simulation(model, Δt=1e-7, stop_time = 60seconds) #stop_time = 96hours,
 @show simulation
 
 output_interval = 3seconds # 15 minutes
