@@ -3,7 +3,6 @@ using Oceananigans.Units
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 using MPI
-using CUDA
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
 mutable struct Params
