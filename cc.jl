@@ -177,6 +177,8 @@ end
 end
 
 @inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+    
+    K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
@@ -191,7 +193,7 @@ end
     b5 = beta5(a5, Kw)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-    
+
     H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     if isnan(CO₃) error("CO₃ concentration is NaN") end
     dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
