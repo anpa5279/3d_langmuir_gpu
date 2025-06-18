@@ -181,6 +181,8 @@ end
     Kw = K_w(T, S)
     Kb = K_b(T, S)
 
+    a1 = alpha1(T)
+    b1 = beta1(a1, K1)
     a3 = bgc.alpha3
     b3 = beta3(a3, K2)
     a4 = bgc.alpha4
@@ -189,6 +191,7 @@ end
     b5 = beta5(a5, Kw)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
+    
     H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     if isnan(CO₃) error("CO₃ concentration is NaN") end
     dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
@@ -201,6 +204,8 @@ end
     Kw = K_w(T, S)
     Kb = K_b(T, S)
 
+    a1 = alpha1(T)
+    b1 = beta1(a1, K1)
     a2 = alpha2(bgc.A1, bgc.E1, T)
     b2 = beta2(a2, Kw, K1)
     a3 = bgc.alpha3
