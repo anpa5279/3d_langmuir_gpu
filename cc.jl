@@ -91,8 +91,8 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                            modifiers)
 end
 
-required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄, :T, :S)
-required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()
+required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T, :S)
+required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = (:H,)
 
 const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 
@@ -126,8 +126,10 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 @inline alpha7(A8, E8, T) = A8 * exp(-E8 / (R * (T + 273.15))) # kg/mol/s
 @inline beta7(alpha7, K2, Kb) = alpha7* K2/ Kb # kg/mol/s
 
+#QSS approximation
+@inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -136,13 +138,19 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     b1 = beta1(a1, K1)
     a2 = alpha2(bgc.A1, bgc.E1, T)
     b2 = beta2(a2, Kw, K1)
+    a3 = bgc.alpha3
+    b3 = beta3(a3, K2)
+    a5 = bgc.alpha5
+    b5 = beta5(a5, Kw)
+
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     #println("a1 = ", a1, " b1 = ", b1, " a2 = ", a2, " b2 = ", b2)
     if isnan(CO₂) error("CO₂ concentration is NaN") end
     dcdt = - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
     
     K1 = K_1(T, S)
     K2 = K_2(T, S)
@@ -157,15 +165,18 @@ end
     b3 = beta3(a3, K2)
     a4 = bgc.alpha4
     b4 = beta4(a4, Kw, K2)
+    a5 = bgc.alpha5
+    b5 = beta5(a5, Kw)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-    #println("a3 = ", a3, " b3 = ", b3, " a4 = ", a4, " b4 = ", b4)
+
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     if isnan(HCO₃) error("HCO₃ concentration is NaN") end
     dcdt = (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
@@ -174,31 +185,17 @@ end
     b3 = beta3(a3, K2)
     a4 = bgc.alpha4
     b4 = beta4(a4, Kw, K2)
+    a5 = bgc.alpha5
+    b5 = beta5(a5, Kw)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     if isnan(CO₃) error("CO₃ concentration is NaN") end
     dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
-    K1 = K_1(T, S)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-
-    a1 = alpha1(T)
-    b1 = beta1(a1, K1)
-    a3 = bgc.alpha3
-    b3 = beta3(a3, K2)
-    a5 = bgc.alpha5
-    b5 = beta5(a5, Kw)
-    #println("a5 = ", a5, " b5 = ", b5)
-    if isnan(H) error("H concentration is NaN") end
-    dcdt = a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
-    return dcdt
-end
-
-@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -206,19 +203,23 @@ end
 
     a2 = alpha2(bgc.A1, bgc.E1, T)
     b2 = beta2(a2, Kw, K1)
+    a3 = bgc.alpha3
+    b3 = beta3(a3, K2)
     a4 = bgc.alpha4
     b4 = beta4(a4, Kw, K2)
     a5 = bgc.alpha5
     b5 = beta5(a5, Kw)
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
+
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
     #println("a6 = ", a6, " b6 = ", b6)
     if isnan(OH) error("OH concentration is NaN") end
     dcdt = - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
