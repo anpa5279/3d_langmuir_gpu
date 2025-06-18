@@ -46,11 +46,10 @@ BOH₃ = model.fields.BOH₃
 BOH₄ = model.fields.BOH₄
 CO₂ = model.fields.CO₂
 CO₃ = model.fields.CO₃
-H = model.fields.H 
 HCO₃ = model.fields.HCO₃
 OH = model.fields.OH
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; BOH₃, BOH₄, CO₂, CO₃, H, HCO₃, OH),
+simulation.output_writers[:fields] = JLD2Writer(model, (; BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/box_model.jld2", #$(rank)
                                                       overwrite_existing = true)
