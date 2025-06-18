@@ -6,7 +6,11 @@
 #PBS -j oe
 ###PBS -l job_priority=regular
 #PBS -l walltime=00:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=64
+#PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4:mem=384GB
+#PBS -l gpu_type=a100
+
+rm -rf outputs
+mkdir outputs
 
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
@@ -19,6 +23,8 @@ module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
 module list
 
 # Utter mystical incantations to perform various miracles
+export MPICH_GPU_SUPPORT_ENABLED=1
+export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
@@ -26,6 +32,11 @@ export JULIA_CUDA_MEMORY_POOL=none
 # Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
 cat > launch.sh << EoF_s
 #! /bin/bash
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
+export LOCAL_RANK=\${PMI_LOCAL_RANK}
+export GLOBAL_RANK=\${PMI_RANK}
 
 exec \$*
 EoF_s
