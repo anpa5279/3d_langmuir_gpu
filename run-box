@@ -6,7 +6,8 @@
 #PBS -j oe
 ###PBS -l job_priority=regular
 #PBS -l walltime=00:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=64
+#PBS -l select=1:ncpus=64:mpiprocs=64:ngpus=1:mem=20gb
+#PBS -l gpu_type=a100
 
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
