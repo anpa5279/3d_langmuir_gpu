@@ -27,11 +27,8 @@ end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
 p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
-arch = Distributed(GPU())
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
-println("Hello from process $rank out of $Nranks")
-grid = BoxModelGrid(arch;)
+
+grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
 
 biogeochemistry = CarbonateChemistry(; grid)
