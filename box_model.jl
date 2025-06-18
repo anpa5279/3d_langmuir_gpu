@@ -37,7 +37,7 @@ model = BoxModel(; biogeochemistry, clock)
 
 set!(model, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 20.0, CO₃ = 3.15e-4, HCO₃ = 20.0, OH = 9.6e-6, T=25, S = 35)#BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
 
-simulation = Simulation(model, Δt=1e-7, stop_time = 60seconds) #stop_time = 96hours,
+simulation = Simulation(model, Δt=1e-8, stop_time = 60seconds) #stop_time = 96hours,
 @show simulation
 
 output_interval = 3seconds # 15 minutes
