@@ -32,7 +32,6 @@ chmod +x launch.sh
 
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using MPIPreferences; MPIPreferences.reset_preferences!()'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(libmpi="libmpi.so", mpiexec="mpiexec", abi="OpenMPI")'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
