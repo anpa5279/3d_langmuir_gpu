@@ -34,7 +34,11 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))#BoxModelGrid()
+grid = RectilinearGrid(arch; 
+                       size=(1, 1, 1),
+                       x=(0.0, 1.0),
+                       y=(0.0, 1.0),
+                       z=(-1.0, 0.0))#BoxModelGrid()
 #clock = Clock(time = zero(grid))
 
 biogeochemistry = CarbonateChemistry(; grid)
