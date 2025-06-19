@@ -11,20 +11,18 @@ fld_file="outputs/box_model.jld2"
 CO₂_oc = FieldTimeSeries(fld_file, "CO₂")
 CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
 HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
-H_oc = FieldTimeSeries(fld_file, "H")
 OH_oc = FieldTimeSeries(fld_file, "OH")
 BOH₃_oc = FieldTimeSeries(fld_file, "BOH₃")
 BOH₄_oc = FieldTimeSeries(fld_file, "BOH₄")
-t = CO₂_oc.times
+t = CO₂_oc.times[1:11]
 dt = Float64[t.step][1]
 
-CO₂_oc = vec(CO₂_oc.data)
-CO₃_oc = vec(CO₃_oc.data)
-HCO₃_oc = vec(HCO₃_oc.data)
-H_oc = vec(H_oc.data)
-OH_oc = vec(OH_oc.data)
-BOH₃_oc = vec(BOH₃_oc.data)
-BOH₄_oc = vec(BOH₄_oc.data)
+CO₂_oc = vec(CO₂_oc.data[1:11])
+CO₃_oc = vec(CO₃_oc.data[1:11])
+HCO₃_oc = vec(HCO₃_oc.data[1:11])
+OH_oc = vec(OH_oc.data[1:11])
+BOH₃_oc = vec(BOH₃_oc.data[1:11])
+BOH₄_oc = vec(BOH₄_oc.data[1:11])
 
 # opening fortran output file
 fortran_file = "outputs/cc.hst"
@@ -50,7 +48,7 @@ for lines in readlines(f)
      # Split the line into string tokens and parse to Float64
      values = parse.(Float64, split(lines))
      #@show round(values[1]*24*60*60)
-     if rem(round(values[1]*24*60*60, digits = 3), dt) == 0.0 || line_count == 0
+     if (rem(round(values[1]*24*60*60, digits = 3), dt) == 0.0 || line_count == 0) 
           # increment line_count
           global line_count += 1 
           # Store in respective arrays (assuming correct ordering in file)

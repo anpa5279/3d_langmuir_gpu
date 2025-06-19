@@ -9,7 +9,7 @@ using .CC #: CarbonateChemistry #local module
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
 
-biogeochemistry = CarbonateChemistry(; grid)
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 
 model = BoxModel(; biogeochemistry, clock)
 
