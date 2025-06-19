@@ -2,10 +2,10 @@
 
 #PBS -A UCUB0166 
 #PBS -N 0d-box
-#PBS -q develop
+#PBS -q main
 #PBS -j oe
-###PBS -l job_priority=regular
-#PBS -l walltime=08:00:00
+#PBS -l job_priority=economy
+#PBS -l walltime=10:00:00
 #PBS -l select=1:ncpus=64:mpiprocs=1
 
 rm -rf outputs
