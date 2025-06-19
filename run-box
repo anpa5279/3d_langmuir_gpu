@@ -1,15 +1,12 @@
 #!/bin/bash
 
 #PBS -A UCUB0166 
-#PBS -N boxmodel
+#PBS -N 0d-box
 #PBS -q develop
 #PBS -j oe
 ###PBS -l job_priority=regular
-#PBS -l walltime=00:30:00
+#PBS -l walltime=01:00:00
 #PBS -l select=1:ncpus=64:mpiprocs=1
-
-rm -rf testing1
-mkdir testing1
 
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
@@ -22,7 +19,7 @@ module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
 module list
 
 # Utter mystical incantations to perform various miracles
-export JULIA_CUDA_MEMORY_POOL=none
+export PALS_TRANSFER=false
 
 # Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
 cat > launch.sh << EoF_s
@@ -35,6 +32,9 @@ chmod +x launch.sh
 
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using Pkg; Pkg.instantiate()'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(libmpi="libmpi.so", mpiexec="mpiexec", abi="OpenMPI")'
+# Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
+# 2. Update packages to the environment that we need to use. not always necessary
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("OceanBioME")'
-julia --project -e 'MPIPreferences.use_system_binary(library_names=["libmpi"], mpiexec="mpiexec", abi="MPICH")'
-mpiexec ./launch.sh julia --project box-model.jl
+# Finally, let's run this thing
+mpiexec ./launch.sh julia --project box_model.jl
