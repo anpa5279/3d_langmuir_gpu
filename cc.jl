@@ -21,8 +21,6 @@ import Oceananigans.Biogeochemistry: required_biogeochemical_tracers,
 
 import OceanBioME: redfield, conserved_tracers, maximum_sinking_velocity, chlorophyll
 
-import Adapt: adapt_structure, adapt
-
 struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     #Zeebe and Wolf Gladrow 2001
     A1 :: FT # kg/mol/s
@@ -256,19 +254,6 @@ end
 
 #conserving tracers
 @inline conserved_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄)
-
-adapt_structure(to, CarbonateChemistry::CarbonateChemistry) = 
-    CarbonateChemistry(adapt(to, CarbonateChemistry.A1),
-                                             adapt(to, CarbonateChemistry.E1),
-                                             adapt(to, CarbonateChemistry.A7),
-                                             adapt(to, CarbonateChemistry.E7),
-                                             adapt(to, CarbonateChemistry.A8),
-                                             adapt(to, CarbonateChemistry.E8),
-                                             adapt(to, CarbonateChemistry.alpha3),
-                                             adapt(to, CarbonateChemistry.alpha4),
-                                             adapt(to, CarbonateChemistry.alpha5),
-
-                                             adapt(to, CarbonateChemistry.sinking_velocities))
 
 @inline maximum_sinking_velocity(bgc::CarbonateChemistry) = 0.0
 @inline sinking_tracers(bgc::CarbonateChemistry) = keys(bgc.sinking_velocities)
