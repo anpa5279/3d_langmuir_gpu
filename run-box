@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #PBS -A UCUB0166  
-#PBS -N scaling
+#PBS -N box-model
 #PBS -j oe
 #PBS -q main
 #PBS -l job_priority=economy 
-#PBS -l walltime=02:50:00
+#PBS -l walltime=14:00:00
 #PBS -l select=1:ncpus=64:mpiprocs=1
 
 # Use moar processes for precompilation to speed things up
@@ -14,7 +14,7 @@ export JULIA_NUM_THREADS=64
 
 # Load critical modules
 module --force purge
-module load ncarenv/23.09 gcc/12.4.0 openmpi/5.0.7
+module load ncarenv/23.09 gcc/12.2.0 openmpi/5.0.7
 
 module list
 
