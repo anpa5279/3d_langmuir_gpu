@@ -6,23 +6,22 @@
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
-#PBS -l select=1:ncpus=64:mpiprocs=4
+#PBS -l select=1:ncpus=64:mpiprocs=64
 
 ##rm -rf outputs
-mkdir outputs-testing4
+mkdir outputs-testing64
 
-# Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+# Set Julia threading (optional: for non-MPI threading)
+export JULIA_NUM_THREADS=1   # Usually 1 with MPI per-core
 
-# Load critical modules
+# Load only CPU-relevant modules
 module --force purge
-module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
+module load ncarenv/23.09 cray-mpich/8.1.29
 
-# Utter mystical incantations to perform various miracles
-export JULIA_MPI_HAS_CUDA=true
-export PALS_TRANSFER=false
-export JULIA_CUDA_MEMORY_POOL=none
+# Avoid all GPU-related settings
+unset JULIA_MPI_HAS_CUDA
+unset JULIA_CUDA_MEMORY_POOL
+unset PALS_TRANSFER
 
 
 # Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
@@ -38,11 +37,9 @@ chmod +x launch.sh
 # 1. Instantiate (we only need to do this once, but this also may be the first time you are running this code)
 julia --project -e 'using Pkg; Pkg.instantiate()'
 # 2. Add some packages to the environment that we need to use
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("OceanBioME")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Oceananigans"); Pkg.add("OceanBioME")'
 # 3. Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
-# 4. Build MPI and CUDA in advance for yucks
-julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 # Finally, let's run this thing
-mpiexec -n 4 ./launch.sh julia --project box-model.jl
+mpiexec -n 64 ./launch.sh julia --project box-model.jl

@@ -28,7 +28,7 @@ OH = model.fields.OH
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs-testing4/box_model.jld2", #$(rank)
+                                                      filename = "outputs-testing64/box_model.jld2", #$(rank)
                                                       overwrite_existing = true)
 
 function progress(simulation)
