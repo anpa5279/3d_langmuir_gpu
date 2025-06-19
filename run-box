@@ -7,6 +7,7 @@
 #PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
 #PBS -l select=1:ncpus=64:mpiprocs=1:ngpu=1:mem=84GB
+#PBS -l gpu_type=a100
 
 rm -rf outputs1
 mkdir outputs1
