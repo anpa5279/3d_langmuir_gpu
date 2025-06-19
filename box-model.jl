@@ -67,6 +67,6 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(3e7))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1e7))
 @info "Running the model..."
 run!(simulation)
