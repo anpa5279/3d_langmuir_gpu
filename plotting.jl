@@ -110,7 +110,7 @@ pf = plot(CO₂p, CO₃p, HCO₃p, OHp, BOH₃p, BOH₄p, layout = (3, 2), label
            xlabelfont = font(10), 
            ylabelfont = font(10), 
            titlefontsize = 12)
-png(pf, "outputs/box_model-rkc77.png")
+png(pf, "outputs/box_model.png")
 
 #plotting percent differences
 #CO₂
