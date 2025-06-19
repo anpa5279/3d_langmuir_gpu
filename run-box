@@ -9,7 +9,7 @@
 #PBS -l select=1:ncpus=64:mpiprocs=4
 
 ##rm -rf outputs
-mkdir outputs-testing
+mkdir outputs-testing4
 
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
