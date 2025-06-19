@@ -52,7 +52,7 @@ OH = model.fields.OH
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/box_model.jld2", #$(rank)
+                                                      filename = "outputscpu/box_model.jld2", #$(rank)
                                                       overwrite_existing = true)
 
 function progress(simulation)
