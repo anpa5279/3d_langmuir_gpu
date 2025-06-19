@@ -1,45 +1,48 @@
 #!/bin/bash
 
-#PBS -A UCUB0166 
-#PBS -N 0d-box
-#PBS -q main
+#PBS -A UCUB0166  
+#PBS -N scaling
 #PBS -j oe
-#PBS -l job_priority=economy
-#PBS -l walltime=10:00:00
+#PBS -q main
+#PBS -l job_priority=economy 
+#PBS -l walltime=02:50:00
 #PBS -l select=1:ncpus=64:mpiprocs=1
 
-rm -rf outputs
-mkdir outputs
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
 export JULIA_NUM_THREADS=64
 
 # Load critical modules
 module --force purge
-module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
+module load ncarenv/23.09 gcc/12.4.0 openmpi/5.0.7
 
 module list
 
 # Utter mystical incantations to perform various miracles
-export JULIA_MPI_HAS_CUDA=trueAdd commentMore actions
+unset MPICH_GPU_SUPPORT_ENABLED
+unset MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED
+unset CUDA_VISIBLE_DEVICES
 export PALS_TRANSFER=false
-export JULIA_CUDA_MEMORY_POOL=none
 
 # Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
 cat > launch.sh << EoF_s
 #! /bin/bash
+export LOCAL_RANK=\${PMI_LOCAL_RANK}
+export GLOBAL_RANK=\${PMI_RANK}
 
 exec \$*
+
 EoF_s
 
 chmod +x launch.sh
 
-# Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
+# 1. Instantiate Julia environment
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
-julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
-# Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
-# 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("OceanBioME")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Oceananigans"); Pkg.add("Printf")'
+# 2. Set MPIPreferences for OpenMPI CPU
+# 2. Reset and set MPIPreferences for OpenMPI CPU
+julia --project -e 'using MPIPreferences; MPIPreferences.reset_preferences!()'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(libmpi="libmpi.so", mpiexec="mpiexec", abi="OpenMPI")'
+# 3. Build MPI in advance
+julia --project -e 'using MPI'
 # Finally, let's run this thing
-mpiexec ./launch.sh julia --project box-model.jl
