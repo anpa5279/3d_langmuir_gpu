@@ -6,10 +6,10 @@
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
-#PBS -l select=1:ncpus=64:mpiprocs=1
+#PBS -l select=1:ncpus=64:mpiprocs=2
 
-rm -rf outputs
-mkdir outputs
+##rm -rf outputs
+mkdir outputs-testing
 
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
@@ -45,4 +45,4 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 # Finally, let's run this thing
-mpiexec ./launch.sh julia --project box-model.jl
+mpiexec -n 2 ./launch.sh julia --project box-model.jl
