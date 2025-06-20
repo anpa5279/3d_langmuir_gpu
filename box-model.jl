@@ -1,6 +1,7 @@
 using OceanBioME, Oceananigans
 using Oceananigans.Units
 using Oceananigans.BuoyancyFormulations: g_Earth
+using OceanBioME: Biogeochemistry, ScaleNegativeTracers
 using Printf
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
@@ -9,7 +10,8 @@ using .CC #: CarbonateChemistry #local module
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
 
-biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
+#modifier = ScaleNegativeTracers((:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH))
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)#$, modifiers = modifier)
 
 model = BoxModel(; biogeochemistry, clock)
 
@@ -29,7 +31,7 @@ OH = model.fields.OH
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs1/box_model.jld2", #$(rank)
+                                                      filename = "outputs/box_model-pos.jld2", #$(rank)
                                                       overwrite_existing = true)
 
 function progress(simulation)
