@@ -19,7 +19,7 @@ import Oceananigans.Biogeochemistry: required_biogeochemical_tracers,
                                      required_biogeochemical_auxiliary_fields,
                                      biogeochemical_drift_velocity
 
-import OceanBioME: redfield, conserved_tracers, maximum_sinking_velocity, chlorophyll
+import OceanBioME: conserved_tracers, maximum_sinking_velocity
 
 struct CarbonateChemistry{FT, W} <: AbstractContinuousFormBiogeochemistry
     #Zeebe and Wolf Gladrow 2001
@@ -103,12 +103,12 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
             (-23.9722 / (T + 273.15) - 0.106901773)* sqrt(S) + 0.1130822 * S -
             0.00846934 * S^1.5 + log(1 - 0.001005 * S))
 
-@inline K_w(T, S) = exp(-13847.26 / (T + 273.15) + 148.9652 - 23.6521 * log((T + 273.15)) + 
+@inline K_w(T, S) = exp(-13847.26 / (T + 273.15) + 148.9652 - 23.6521 * log((T + 273.15)) +
             (118.67 / (T + 273.15) - 5.977 + 1.0495 * log((T + 273.15))) * sqrt(S) - 0.01615 * S)
 
 @inline K_b(T, S) = exp((-8966.90 - 2890.53 * sqrt(S) - 77.942 * S + 1.728 * S^1.5 - 
             0.0996 * S^2) / (T + 273.15) + (148.0248 + 137.1942 * sqrt(S) + 
-            1.62142 * S) + (-24.4344 - 25.085 * sqrt(S) -0.2474 * S) * log((T + 273.15)) 
+            1.62142 * S) + (-24.4344 - 25.085 * sqrt(S) -0.2474 * S) * log((T + 273.15))
             + 0.053105 * sqrt(S) * (T + 273.15))
 
 #Zeebe and Wolf Gladrow 2001

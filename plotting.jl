@@ -4,26 +4,39 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-
+model = 1 # 0 for box model, 1 for 0d case
 # opening oceananigans output file
-fld_file="outputs/box_model.jld2"
+if model == 0
+     fld_file="outputs/box_model.jld2"
+     image = "outputs/box_model.png"
+     CO₂_oc = FieldTimeSeries(fld_file, "CO₂")
+     CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
+     HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
+     OH_oc = FieldTimeSeries(fld_file, "OH")
+     BOH₃_oc = FieldTimeSeries(fld_file, "BOH₃")
+     BOH₄_oc = FieldTimeSeries(fld_file, "BOH₄")
+     t = CO₂_oc.times[1:11]
+     dt = Float64[t.step][1]
 
-CO₂_oc = FieldTimeSeries(fld_file, "CO₂")
-CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
-HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
-OH_oc = FieldTimeSeries(fld_file, "OH")
-BOH₃_oc = FieldTimeSeries(fld_file, "BOH₃")
-BOH₄_oc = FieldTimeSeries(fld_file, "BOH₄")
-t = CO₂_oc.times[1:11]
-dt = Float64[t.step][1]
-
-CO₂_oc = vec(CO₂_oc.data[1:11])
-CO₃_oc = vec(CO₃_oc.data[1:11])
-HCO₃_oc = vec(HCO₃_oc.data[1:11])
-OH_oc = vec(OH_oc.data[1:11])
-BOH₃_oc = vec(BOH₃_oc.data[1:11])
-BOH₄_oc = vec(BOH₄_oc.data[1:11])
-
+     CO₂_oc = vec(CO₂_oc.data[1:11])
+     CO₃_oc = vec(CO₃_oc.data[1:11])
+     HCO₃_oc = vec(HCO₃_oc.data[1:11])
+     OH_oc = vec(OH_oc.data[1:11])
+     BOH₃_oc = vec(BOH₃_oc.data[1:11])
+     BOH₄_oc = vec(BOH₄_oc.data[1:11])
+else
+     @load "outputs/0d-case.jld2" t u 
+     image = "outputs/0d-case.png"
+     u = reduce(hcat, sol.u)'
+     CO₂_oc = u[:, 1]
+     CO₃_oc = u[:, 2]
+     HCO₃_oc = u[:, 3]
+     OH_oc = u[:, 4]
+     BOH₃_oc = u[:, 5]
+     BOH₄_oc = u[:, 6]
+     dt = 0.05
+end 
+N = length(t)
 # opening fortran output file
 fortran_file = "outputs/cc.hst"
 f = open(fortran_file)
@@ -45,11 +58,8 @@ BOH₄_d = Float64[]
 line_count = 0              
 
 for lines in readlines(f)
-     # Split the line into string tokens and parse to Float64
-     values = parse.(Float64, split(lines))
-     #@show round(values[1]*24*60*60)
-     if (rem(round(values[1]*24*60*60, digits = 3), dt) == 0.0 || line_count == 0) 
-          # increment line_count
+     if N > line_count
+          values = parse.(Float64, split(lines))
           global line_count += 1 
           # Store in respective arrays (assuming correct ordering in file)
           push!(CO₂_f,   values[2]/(1e6))
@@ -58,12 +68,14 @@ for lines in readlines(f)
           push!(BOH₃_f,  values[5]/(1e6))
           push!(BOH₄_f,  values[6]/(1e6))
           push!(OH_f,    values[7]/(1e6))
-          push!(CO₂_d,  (CO₂_oc[line_count] - CO₂_f[line_count]) / CO₂_oc[line_count] * 100)
-          push!(CO₃_d,  (CO₃_oc[line_count] - CO₃_f[line_count]) / CO₃_oc[line_count] * 100)
-          push!(HCO₃_d, (HCO₃_oc[line_count] - HCO₃_f[line_count]) / HCO₃_oc[line_count] * 100)
-          push!(OH_d,   (OH_oc[line_count] - OH_f[line_count]) / OH_oc[line_count] * 100) 
-          push!(BOH₃_d, (BOH₃_oc[line_count] - BOH₃_f[line_count]) / BOH₃_oc[line_count] * 100)
-          push!(BOH₄_d, (BOH₄_oc[line_count] - BOH₄_f[line_count]) / BOH₄_oc[line_count] * 100)
+          push!(CO₂_d,  (CO₂_oc[line_count] - CO₂_f[line_count]) / CO₂_f[line_count] * 100)
+          push!(CO₃_d,  (CO₃_oc[line_count] - CO₃_f[line_count]) / CO₃_f[line_count] * 100)
+          push!(HCO₃_d, (HCO₃_oc[line_count] - HCO₃_f[line_count]) / HCO₃_f[line_count] * 100)
+          push!(OH_d,   (OH_oc[line_count] - OH_f[line_count]) / OH_f[line_count] * 100) 
+          push!(BOH₃_d, (BOH₃_oc[line_count] - BOH₃_f[line_count]) / BOH₃_f[line_count] * 100)
+          push!(BOH₄_d, (BOH₄_oc[line_count] - BOH₄_f[line_count]) / BOH₄_f[line_count] * 100)
+     else
+          break 
      end 
 
 end
@@ -108,7 +120,7 @@ pf = plot(CO₂p, CO₃p, HCO₃p, OHp, BOH₃p, BOH₄p, layout = (3, 2), label
            xlabelfont = font(10), 
            ylabelfont = font(10), 
            titlefontsize = 12)
-png(pf, "outputs/box_model.png")
+png(pf, image)
 
 #plotting percent differences
 #CO₂
