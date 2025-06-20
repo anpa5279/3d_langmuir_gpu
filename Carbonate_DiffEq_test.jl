@@ -105,7 +105,7 @@ end
 #----------------------------------------------------------------------------------
 # Run script
 #----------------------------------------------------------------------------------
-CO₂ = 7.57e-6
+CO₂ = 7.57e-1
 HCO₃ = 1.67e-3
 CO₃ = 3.15e-4
 BOH₃ = 2.97e-4
@@ -117,9 +117,11 @@ min = 60.0 # seconds per minute
 hr = 60.0 * min # minutes per hour
 day = 24hr # hours per day
 
-t_final = 1hr # final time, in seconds
-dt_out = 2min # output rate, not solver timestep size, in seconds
+t_final = 60# 1hr # final time, in seconds
+dt_out = 0.05#2min # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
 prob = ODEProblem(carbonate_rhs!, c_0, tspan)
 sol = solve(prob, alg_hints = [:stiff], reltol = 1e-8, abstol = 1e-8, saveat = dt_out)
+
+@save "outputs/carbonate-diffeq-test.jld2" t=sol.t u=sol.u

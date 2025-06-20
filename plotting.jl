@@ -4,11 +4,12 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-model = 1 # 0 for box model, 1 for 0d case
+model = 1 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case
 # opening oceananigans output file
 if model == 0
      fld_file="outputs/box_model.jld2"
      image = "outputs/box_model.png"
+     pd_image = "outputs/percent_difference_box.png"
      CO₂_oc = FieldTimeSeries(fld_file, "CO₂")
      CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
      HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
@@ -24,16 +25,31 @@ if model == 0
      OH_oc = vec(OH_oc.data[1:11])
      BOH₃_oc = vec(BOH₃_oc.data[1:11])
      BOH₄_oc = vec(BOH₄_oc.data[1:11])
+elseif model == 1
+     @load "outputs/carbonate-diffeq-test.jld2" t u 
+     image = "outputs/carbonate-diffeq-test.png"
+     pd_image = "outputs/percent_difference_carbonate-diffeq-test.png"
+     u = reduce(hcat, sol.u)'
+     CO₂_oc = u[:, 1]
+     HCO₃_oc = u[:, 2]
+     CO₃_oc = u[:, 3]
+     H_oc = u[:, 4]
+     OH_oc = u[:, 5]
+     BOH₃_oc = u[:, 6]
+     BOH₄_oc = u[:, 7]
+     dt = 0.05
 else
      @load "outputs/0d-case.jld2" t u 
      image = "outputs/0d-case.png"
+     pd_image = "outputs/percent_difference_0d-case.png"
      u = reduce(hcat, sol.u)'
      CO₂_oc = u[:, 1]
-     CO₃_oc = u[:, 2]
-     HCO₃_oc = u[:, 3]
-     OH_oc = u[:, 4]
-     BOH₃_oc = u[:, 5]
-     BOH₄_oc = u[:, 6]
+     HCO₃_oc = u[:, 2]
+     CO₃_oc = u[:, 3]
+     H_oc = u[:, 4]
+     OH_oc = u[:, 5]
+     BOH₃_oc = u[:, 6]
+     BOH₄_oc = u[:, 7]
      dt = 0.05
 end 
 N = length(t)
@@ -160,4 +176,4 @@ pf = plot(CO₂p, CO₃p, HCO₃p, OHp, BOH₃p, BOH₄p, layout = (3, 2), legen
            xlabelfont = font(10), 
            ylabelfont = font(10), 
            titlefontsize = 12)
-png(pf, "outputs/percent-difference.png")
+png(pf, pd_image)

@@ -89,8 +89,8 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                            modifiers)
 end
 
-required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T, :S)
-required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = (:H,)
+required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :H, :OH, :BOH₃, :BOH₄, :T, :S)
+required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()#(:H,)
 
 const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 
@@ -127,7 +127,7 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
 #QSS approximation
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -148,7 +148,7 @@ const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     
     K1 = K_1(T, S)
     K2 = K_2(T, S)
@@ -174,7 +174,7 @@ end
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     
     K1 = K_1(T, S)
     K2 = K_2(T, S)
@@ -198,7 +198,25 @@ end
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:H}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
+    K1 = K_1(T, S)
+    K2 = K_2(T, S)
+    Kw = K_w(T, S)
+
+    a1 = alpha1(T)
+    b1 = beta1(a1, K1)
+    a3 = bgc.alpha3
+    b3 = beta3(a3, K2)
+    a5 = bgc.alpha5
+    b5 = beta5(a5, Kw)
+    #println("a5 = ", a5, " b5 = ", b5)
+    if isnan(H) error("H concentration is NaN") end
+    dcdt = a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
+    return dcdt
+end
+
+
+@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -224,7 +242,7 @@ end
     return dcdt
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄, T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
     Kb = K_b(T, S)
