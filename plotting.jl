@@ -100,27 +100,27 @@ end
 
 # CO₂
 CO₂p = plot(t, [CO₂_oc CO₂_f],
-     xlabel = "t (s)", ylabel = "CO₂ (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "CO₂ (mol/kg)",
      title = "CO₂")
 # CO₃
 CO₃p = plot(t, [CO₃_oc CO₃_f],
-     xlabel = "t (s)", ylabel = "CO₃ (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "CO₃ (mol/kg)",
      title = "CO₃")
 # HCO₃
 HCO₃p = plot(t, [HCO₃_oc HCO₃_f],
-     xlabel = "t (s)", ylabel = "HCO₃ (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "HCO₃ (mol/kg)",
      title = "HCO₃")
 # OH
 OHp = plot(t, [OH_oc OH_f],
-     xlabel = "t (s)", ylabel = "OH (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "OH (mol/kg)",
      title = "OH")
 # BOH₃
 BOH₃p = plot(t, [BOH₃_oc BOH₃_f],
-     xlabel = "t (s)", ylabel = "BOH₃ (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "BOH₃ (mol/kg)",
      title = "BOH₃")
 # BOH₄
 BOH₄p = plot(t, [BOH₄_oc BOH₄_f],
-     xlabel = "t (s)", ylabel = "BOH₄ (mol m⁻³)",
+     xlabel = "t (s)", ylabel = "BOH₄ (mol/kg)",
      title = "BOH₄")
 # layout 
 gr()
