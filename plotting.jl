@@ -14,8 +14,8 @@ if model == 0
      CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
      HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
      OH_oc = FieldTimeSeries(fld_file, "OH")
-     BOH₃_oc = FieldTimeSeries(fld_file, "BOH₃")
-     BOH₄_oc = FieldTimeSeries(fld_file, "BOH₄")
+     BOH₃_oc = FieldTimeSeries(fld_file, "B(OH)₃")
+     BOH₄_oc = FieldTimeSeries(fld_file, "B(OH)₄")
      t = CO₂_oc.times[1:11]
      dt = Float64[t.step][1]
 
@@ -115,12 +115,12 @@ OHp = plot(t[1:stepping], [OH_oc[1:stepping] OH_f[1:stepping]],
      title = "OH")
 # BOH₃
 BOH₃p = plot(t[1:stepping], [BOH₃_oc[1:stepping] BOH₃_f[1:stepping]],
-     xlabel = "t (s)", ylabel = "BOH₃ (mol/kg)",
-     title = "BOH₃")
+     xlabel = "t (s)", ylabel = "B(OH)₃ (mol/kg)",
+     title = "B(OH)₃")
 # BOH₄
 BOH₄p = plot(t[1:stepping], [BOH₄_oc[1:stepping] BOH₄_f[1:stepping]],
-     xlabel = "t (s)", ylabel = "BOH₄ (mol/kg)",
-     title = "BOH₄")
+     xlabel = "t (s)", ylabel = "B(OH)₄ (mol/kg)",
+     title = "B(OH)₄")
 # layout 
 gr()
 pf = plot(CO₂p, CO₃p, HCO₃p, OHp, BOH₃p, BOH₄p, layout = (3, 2), label = ["Oceananigans" "Fortran Miniapp"], legend = :outertop,         # << shared legend at the top
@@ -156,12 +156,12 @@ OHp = plot(t[1:stepping], OH_d[1:stepping],
      title = "OH")
 # BOH₃
 BOH₃p = plot(t[1:stepping], BOH₃_d[1:stepping],
-     xlabel = "t (s)", ylabel = "BOH₃ %",
-     title = "BOH₃")
+     xlabel = "t (s)", ylabel = "B(OH)₃ %",
+     title = "B(OH)₃")
 # BOH₄
 BOH₄p = plot(t[1:stepping], BOH₄_d[1:stepping],
-     xlabel = "t (s)", ylabel = "BOH₄ %",
-     title = "BOH₄")
+     xlabel = "t (s)", ylabel = "B(OH)₄ %",
+     title = "B(OH)₄")
 # layout 
 gr()
 pf = plot(CO₂p, CO₃p, HCO₃p, OHp, BOH₃p, BOH₄p, layout = (3, 2), legend = false,         # << shared legend at the top
