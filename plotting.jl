@@ -42,7 +42,7 @@ else
      @load "outputs/0d-case.jld2" t u 
      image = "outputs/0d-case.png"
      pd_image = "outputs/percent_difference_0d-case.png"
-     u = reduce(hcat, sol.u)'
+     u = reduce(hcat, u)'
      CO₂_oc = u[:, 1]/(1e6)
      HCO₃_oc = u[:, 2]/(1e6)
      CO₃_oc = u[:, 3]/(1e6)
@@ -50,7 +50,6 @@ else
      BOH₃_oc = u[:, 5]/(1e6)
      BOH₄_oc = u[:, 6]/(1e6)
      dt = 0.05
-     println("dt = ", dt)
 end 
 N = length(t)
 # opening fortran output file
@@ -97,29 +96,29 @@ for lines in readlines(f)
 end
 
 # plotting results
-
+stepping = 26 #N
 # CO₂
-CO₂p = plot(t, [CO₂_oc CO₂_f],
+CO₂p = plot(t[1:stepping], [CO₂_oc[1:stepping] CO₂_f[1:stepping]],
      xlabel = "t (s)", ylabel = "CO₂ (mol/kg)",
      title = "CO₂")
 # CO₃
-CO₃p = plot(t, [CO₃_oc CO₃_f],
+CO₃p = plot(t[1:stepping], [CO₃_oc[1:stepping] CO₃_f[1:stepping]],
      xlabel = "t (s)", ylabel = "CO₃ (mol/kg)",
      title = "CO₃")
 # HCO₃
-HCO₃p = plot(t, [HCO₃_oc HCO₃_f],
+HCO₃p = plot(t[1:stepping], [HCO₃_oc[1:stepping] HCO₃_f[1:stepping]],
      xlabel = "t (s)", ylabel = "HCO₃ (mol/kg)",
      title = "HCO₃")
 # OH
-OHp = plot(t, [OH_oc OH_f],
+OHp = plot(t[1:stepping], [OH_oc[1:stepping] OH_f[1:stepping]],
      xlabel = "t (s)", ylabel = "OH (mol/kg)",
      title = "OH")
 # BOH₃
-BOH₃p = plot(t, [BOH₃_oc BOH₃_f],
+BOH₃p = plot(t[1:stepping], [BOH₃_oc[1:stepping] BOH₃_f[1:stepping]],
      xlabel = "t (s)", ylabel = "BOH₃ (mol/kg)",
      title = "BOH₃")
 # BOH₄
-BOH₄p = plot(t, [BOH₄_oc BOH₄_f],
+BOH₄p = plot(t[1:stepping], [BOH₄_oc[1:stepping] BOH₄_f[1:stepping]],
      xlabel = "t (s)", ylabel = "BOH₄ (mol/kg)",
      title = "BOH₄")
 # layout 
@@ -140,27 +139,27 @@ png(pf, image)
 
 #plotting percent differences
 #CO₂
-CO₂p = plot(t, CO₂_d,
+CO₂p = plot(t[1:stepping], CO₂_d[1:stepping],
      xlabel = "t (s)", ylabel = "CO₂ %",
      title = "CO₂")
 # CO₃
-CO₃p = plot(t, CO₃_d,
+CO₃p = plot(t[1:stepping], CO₃_d[1:stepping],
      xlabel = "t (s)", ylabel = "CO₃ %",
      title = "CO₃")
 # HCO₃
-HCO₃p = plot(t, HCO₃_d,
+HCO₃p = plot(t[1:stepping], HCO₃_d[1:stepping],
      xlabel = "t (s)", ylabel = "HCO₃ %",
      title = "HCO₃")
 # OH
-OHp = plot(t, OH_d,
+OHp = plot(t[1:stepping], OH_d[1:stepping],
      xlabel = "t (s)", ylabel = "OH %",
      title = "OH")
 # BOH₃
-BOH₃p = plot(t, BOH₃_d,
+BOH₃p = plot(t[1:stepping], BOH₃_d[1:stepping],
      xlabel = "t (s)", ylabel = "BOH₃ %",
      title = "BOH₃")
 # BOH₄
-BOH₄p = plot(t, BOH₄_d,
+BOH₄p = plot(t[1:stepping], BOH₄_d[1:stepping],
      xlabel = "t (s)", ylabel = "BOH₄ %",
      title = "BOH₄")
 # layout 

@@ -12,7 +12,7 @@ grid = RectilinearGrid(size=(1, 1, 1), extent=(1.0, 1.0, 1.0))
 bgc = CarbonateChemistry(; grid, scale_negatives = true)#$, 
 
 #converting mol/kg to umol/kg
-perturb = 1e1 # perturbation factor for initial conditions
+perturb = 1e3 # perturbation factor for initial conditions
 CO₂ = 7.57e-6 * 1e6 * perturb
 HCO₃ = 1.67e-3 * 1e6 #* perturb
 CO₃ = 3.15e-4 * 1e6 #* perturb
@@ -47,7 +47,7 @@ dt_out = 0.05 # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
 prob = ODEProblem(boxmodel_ode!, c_0, tspan)
-sol = solve(prob, Rosenbrock23(), reltol = 1e-10, abstol = 1e-12, saveat = dt_out)
+sol = solve(prob, Rosenbrock23(), reltol = 1e-6, abstol = 1e-10, saveat = dt_out)#solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = dt_out)
 
 @save "outputs/0d-case.jld2" t=sol.t u=sol.u
 
