@@ -4,7 +4,7 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-model = 1 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case
+model = 2 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case
 # opening oceananigans output file
 if model == 0
      fld_file="outputs/box_model.jld2"
@@ -43,14 +43,14 @@ else
      image = "outputs/0d-case.png"
      pd_image = "outputs/percent_difference_0d-case.png"
      u = reduce(hcat, sol.u)'
-     CO₂_oc = u[:, 1]
-     HCO₃_oc = u[:, 2]
-     CO₃_oc = u[:, 3]
-     H_oc = u[:, 4]
-     OH_oc = u[:, 5]
-     BOH₃_oc = u[:, 6]
-     BOH₄_oc = u[:, 7]
+     CO₂_oc = u[:, 1]/(1e6)
+     HCO₃_oc = u[:, 2]/(1e6)
+     CO₃_oc = u[:, 3]/(1e6)
+     OH_oc = u[:, 4]/(1e6)
+     BOH₃_oc = u[:, 5]/(1e6)
+     BOH₄_oc = u[:, 6]/(1e6)
      dt = 0.05
+     println("dt = ", dt)
 end 
 N = length(t)
 # opening fortran output file
