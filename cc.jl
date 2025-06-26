@@ -90,7 +90,7 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
 end
 
 required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T, :S)
-required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()#(:H,)
+required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()#(:stage)#(:H,)
 
 const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 
@@ -233,8 +233,6 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-    #println("a7 = ", a7, " b7 = ", b7)
-    #println("BOH₃ = ", BOH₃, " BOH₄ = ", BOH₄, " HCO₃ = ", HCO₃, " CO₃ = ", CO₃, " H = ", H, " OH = ", OH, " CO₂ = ", CO₂)
     if isnan(BOH₃) error("BOH₃ concentration is NaN") end
     if isnan(BOH₄) error("BOH₄ concentration is NaN") end
     dcdt = b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)

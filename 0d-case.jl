@@ -43,12 +43,10 @@ function boxmodel_ode!(du, u, p, t)
 end
 
 t_final = 60 # final time, in seconds
-dt_out = 0.05 # output rate, not solver timestep size, in seconds
+dt_out = 0.00001 # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
 prob = ODEProblem(boxmodel_ode!, c_0, tspan)
-sol = solve(prob, Rosenbrock23(), reltol = 1e-6, abstol = 1e-10, saveat = dt_out)#solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = dt_out)
+sol = solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = dt_out) #solve(prob, Rosenbrock23(), reltol = 1e-6, abstol = 1e-10, saveat = dt_out)#solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = dt_out) #tstop = , dt = 0.05)
 
 @save "outputs/0d-case.jld2" t=sol.t u=sol.u
-
-

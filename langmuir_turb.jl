@@ -11,6 +11,8 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using OceanBioME: Biogeochemistry
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
+#include("strang-rk3.jl") #local module
+#using .SRK3
 mutable struct Params
     Nx::Int         # number of points in each of x direction
     Ny::Int         # number of points in each of y direction
@@ -37,13 +39,13 @@ p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 include("stokes.jl")
 
 # Automatically distribute among available processors
-#arch = Distributed(GPU())
-#rank = arch.local_rank
-#Nranks = MPI.Comm_size(arch.communicator)
+arch = Distributed(GPU())
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
 #println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(CPU(); size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
-#grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+#grid = RectilinearGrid(CPU(); size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -72,7 +74,7 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             biogeochemistry, 
-                            timestepper = :RungeKutta3,
+                            timestepper = :StrangRungeKutta3,
                             closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
