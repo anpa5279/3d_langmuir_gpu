@@ -5,6 +5,7 @@ rm -rf $jobn
 mkdir $jobn
 
 cp box-model.jl $jobn/
+cp cc.jl $jobn/
 
 cd $jobn/
 touch Project.toml
