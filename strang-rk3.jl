@@ -1,0 +1,174 @@
+module SRK3
+
+using Oceananigans.Architectures: architecture
+using Oceananigans: fields
+
+"""
+    StrangRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
+
+Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
+time-stepping scheme described by [LeMoin1991](@citet).
+"""
+struct StrangRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+                 γ¹ :: FT
+                 γ² :: FT
+                 γ³ :: FT
+                 ζ² :: FT
+                 ζ³ :: FT
+                 Gⁿ :: TG
+                 G⁻ :: TG
+    implicit_solver :: TI
+end
+
+function StrangRungeKutta3TimeStepper(grid, prognostic_fields;
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
+
+    γ¹ = 8 // 15
+    γ² = 5 // 12
+    γ³ = 3 // 4
+
+    ζ² = -17 // 60
+    ζ³ = -5 // 12
+
+    FT = eltype(grid)
+
+    return StrangRungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+end
+
+#####
+##### Time steppping
+#####
+TimeStepper(::Val{:StrangRungeKutta3}, args...; kwargs...) =
+    StrangRungeKutta3TimeStepper(args...; kwargs...)
+
+function time_step!(model::AbstractModel{<:StrangRungeKutta3TimeStepper}, Δt; callbacks=[])
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
+
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
+
+    γ¹ = model.timestepper.γ¹
+    γ² = model.timestepper.γ²
+    γ³ = model.timestepper.γ³
+
+    ζ² = model.timestepper.ζ²
+    ζ³ = model.timestepper.ζ³
+
+    first_stage_Δt  = γ¹ * Δt
+    second_stage_Δt = (γ² + ζ²) * Δt
+    third_stage_Δt  = (γ³ + ζ³) * Δt
+
+    # Compute the next time step a priori to reduce floating point error accumulation
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
+    #input carboante chemistry calculation here
+
+    #
+    # First stage
+    #
+
+    strang_rk3_substep!(model, Δt, γ¹, nothing)
+
+    tick!(model.clock, first_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = first_stage_Δt
+
+    calculate_pressure_correction!(model, first_stage_Δt)
+    pressure_correct_velocities!(model, first_stage_Δt)
+
+    cache_previous_tendencies!(model)
+    update_state!(model, callbacks; compute_tendencies = true)
+    step_lagrangian_particles!(model, first_stage_Δt)
+
+    #
+    # Second stage
+    #
+
+    strang_rk3_substep!(model, Δt, γ², ζ²)
+
+    tick!(model.clock, second_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = second_stage_Δt
+
+    calculate_pressure_correction!(model, second_stage_Δt)
+    pressure_correct_velocities!(model, second_stage_Δt)
+
+    cache_previous_tendencies!(model)
+    update_state!(model, callbacks; compute_tendencies = true)
+    step_lagrangian_particles!(model, second_stage_Δt)
+
+    #
+    # Third stage
+    #
+
+    strang_rk3_substep!(model, Δt, γ³, ζ³)
+
+    # This adjustment of the final time-step reduces the accumulation of
+    # round-off error when Δt is added to model.clock.time. Note that we still use
+    # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
+    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
+
+    tick!(model.clock, third_stage_Δt)
+    model.clock.last_stage_Δt = corrected_third_stage_Δt
+    model.clock.last_Δt = Δt
+
+    calculate_pressure_correction!(model, third_stage_Δt)
+    pressure_correct_velocities!(model, third_stage_Δt)
+
+    update_state!(model, callbacks; compute_tendencies = true)
+    step_lagrangian_particles!(model, third_stage_Δt)
+
+    #input carboante chemistry calculation here
+
+    return nothing
+end
+
+#####
+##### Time stepping in each substep
+#####
+
+stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
+stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
+
+function strang_rk3_substep!(model, Δt, γⁿ, ζⁿ)
+
+    grid = model.grid
+    arch = architecture(grid)
+    model_fields = prognostic_fields(model)
+
+    for (i, field) in enumerate(model_fields)
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        launch!(arch, grid, :xyz, strang_rk3_substep_field!, kernel_args...; exclude_periphery=true)
+
+        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
+        tracer_index = Val(i - 3) # assumption
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       tracer_index,
+                       model.clock,
+                       stage_Δt(Δt, γⁿ, ζⁿ))
+    end
+
+    return nothing
+end
+
+@kernel function strang_rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+    end
+end
+
+@kernel function strang_rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
+    end
+end
+
+end #module

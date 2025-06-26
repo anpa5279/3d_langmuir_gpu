@@ -1,50 +1,68 @@
 #!/bin/bash
 
-#PBS -A UCUB0166
-#PBS -N box-model
+jobn=box
+rm -rf $jobn
+mkdir $jobn
+
+cp box-model.jl $jobn/
+
+cd $jobn/
+touch Project.toml
+cat > EXEC_STEP << EXEC
+#!/bin/sh
+
+#PBS -A UCUB0166 
+#PBS -N $jobn
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
-#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=15GB
+#PBS -l walltime=0:10:00
+#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=200GB
 #PBS -l gpu_type=a100
-rm -rf outputs1
-mkdir outputs1
-# Threading and precompile settings
+# Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
 export JULIA_NUM_THREADS=64
 
-# Load modules
+# Load critical modules
 module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
 
 module list
 
-# Set environment variables for MPI + CUDA
+# Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-# Wrapper script to bind CUDA device
-cat > launch.sh << 'EOF'
-#!/bin/bash
+# Write down a script that binds MPI processes to GPUs (taken from Derecho documentation)
+cat > launch.sh << 'EoF_s'
+#! /bin/bash
+
 export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
-export LOCAL_RANK=${PMI_LOCAL_RANK:-0}
-export GLOBAL_RANK=${PMI_RANK:-0}
-export CUDA_VISIBLE_DEVICES=0  # Only 1 GPU available; bind to GPU 0
+export LOCAL_RANK=${OMPI_COMM_WORLD_LOCAL_RANK:-${PMI_LOCAL_RANK:-0}}
+export GLOBAL_RANK=${OMPI_COMM_WORLD_RANK:-${PMI_RANK:-0}}
+export CUDA_VISIBLE_DEVICES=0  # One GPU per node
 
 echo "Global Rank ${GLOBAL_RANK} / Local Rank ${LOCAL_RANK} / CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} / $(hostname)"
+
 exec \$*
-EOF
+EoF_s
+
 
 chmod +x launch.sh
 
-# Set up Julia environment (assumes packages are already added in your environment)
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
+# Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
+# Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
+# 2. Update packages to the environment that we need to use. not always necessary
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf")'
+# Finally, let's run this thing
+mpiexec --ppn 1 ./launch.sh julia --project oceananigans.jl
+EXEC
 
-mpiexec -n 1 ./launch.sh julia --project box-model.jl
+qsub < EXEC_STEP
