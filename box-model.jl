@@ -6,10 +6,6 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
-
-arch = Distributed(GPU())
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
 #rank = MPI.Comm_rank(MPI.COMM_WORLD)
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
@@ -33,7 +29,7 @@ OH = model.fields.OH
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/box_model.jld2", #$(rank)
+                                                      filename = "box_model.jld2", #$(rank)
                                                       overwrite_existing = true)
 
 function progress(simulation)
