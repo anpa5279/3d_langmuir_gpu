@@ -1,10 +1,15 @@
 using OceanBioME, Oceananigans
 using Oceananigans.Units
+using MPI
+using CUDA
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
 
+arch = Distributed(GPU())
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
 #rank = MPI.Comm_rank(MPI.COMM_WORLD)
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
