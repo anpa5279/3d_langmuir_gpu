@@ -17,8 +17,8 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=5:10:00
-#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=200GB
+#PBS -l walltime=00:15:00
+#PBS -l select=1:ncpus=64:mpiprocs=64:ngpus=1:mem=200GB
 #PBS -l gpu_type=a100
 # Use moar processes for precompilation to speed things up
 export JULIA_NUM_PRECOMPILE_TASKS=64
