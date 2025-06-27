@@ -17,11 +17,11 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=00:15:00
+#PBS -l walltime=12:15:00
 #PBS -l select=1:ncpus=1:mpiprocs=1
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+export JULIA_NUM_PRECOMPILE_TASKS=1
+export JULIA_NUM_THREADS=1
 
 # Load critical modules
 module --force purge
