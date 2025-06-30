@@ -35,7 +35,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+p = Params(8, 8, 8, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -76,7 +76,7 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             biogeochemistry, 
-                            timestepper = :RungeKutta3, #:StrangRungeKutta3,
+                            timestepper = :SplitCCRungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
@@ -85,12 +85,12 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 # random seed
 r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+#Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 0.5hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=0.05, stop_time = 60seconds) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -111,7 +111,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=0.05seconds)
 
 #output files
 function save_IC!(file, model)
@@ -123,14 +123,13 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 10minutes
+output_interval = 0.05
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
 BOH₄ = model.tracers.BOH₄
 CO₂ = model.tracers.CO₂
 CO₃ = model.tracers.CO₃
-H = model.tracers.H 
 HCO₃ = model.tracers.HCO₃
 OH = model.tracers.OH
 T = model.tracers.T
@@ -139,7 +138,7 @@ U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, H, HCO₃, OH),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,

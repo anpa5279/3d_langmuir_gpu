@@ -1,19 +1,21 @@
+Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using OceanBioME, Oceananigans
 using Oceananigans.Units
 #using MPI
 #using CUDA
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
-include("cc.jl")
-using .CC #: CarbonateChemistry #local module
+#include("cc.jl")
+#using .CC #: CarbonateChemistry #local module
 #rank = MPI.Comm_rank(MPI.COMM_WORLD)
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
 
 model = BoxModel(; biogeochemistry = CarbonateChemistry(; grid), clock)
 
-#perturb = 1e3
-set!(model, BOH₃ = 402.20819091796875, BOH₄ = 13.791823387145996, CO₂ = 7178.716796875, CO₃ = 37.70258331298828, HCO₃ = 2338.58056640625, OH = 0.8224052786827087, T=25, S = 35)#set!(model, BOH₃ = 2.97e-4 * 1e6, BOH₄ = 1.19e-4 * 1e6, CO₂ = 7.57e-6 * 1e6 * perturb, CO₃ = 3.15e-4 * 1e6, HCO₃ = 1.67e-3 * 1e6, OH = 9.6e-6 * 1e6, T=25, S = 35)
+perturb = 1e3
+set!(model, BOH₃ = 2.97e-4 * 1e6, BOH₄ = 1.19e-4 * 1e6, CO₂ = 7.57e-6 * 1e6 * perturb, CO₃ = 3.15e-4 * 1e6, HCO₃ = 1.67e-3 * 1e6, OH = 9.6e-6 * 1e6, T=25, S = 35)
 
 simulation = Simulation(model, Δt=1e-7, stop_time = 3seconds)
 @show simulation

@@ -4,7 +4,7 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-model = 0 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case
+model = 3 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case, 3 for testing SplitCCRungeKutta3 in oceananigans, 4 for 3D space testing 
 # opening oceananigans output file
 if model == 0
      fld_file="outputs/box_model.jld2"
@@ -30,6 +30,23 @@ if model == 0
           push!(BOH₄_oc,  f["timeseries/BOH₄"][i][1, 1, 1])
           push!(OH_oc,    f["timeseries/OH"][i][1, 1, 1])
      end
+     t1_end = t[end]
+     close(f)
+     #opening second output file
+     fld_file="outputs/box_model2.jld2"
+     f = jldopen(fld_file)
+     # reading the fields
+     t_index = keys(f["timeseries/t"])
+     for i in t_index
+          #@show i
+          push!(t, f["timeseries/t"][i] + t1_end)
+          push!(CO₂_oc,   f["timeseries/CO₂"][i][1, 1, 1])
+          push!(HCO₃_oc,  f["timeseries/HCO₃"][i][1, 1, 1])
+          push!(CO₃_oc,   f["timeseries/CO₃"][i][1, 1, 1])
+          push!(BOH₃_oc,  f["timeseries/BOH₃"][i][1, 1, 1])
+          push!(BOH₄_oc,  f["timeseries/BOH₄"][i][1, 1, 1])
+          push!(OH_oc,    f["timeseries/OH"][i][1, 1, 1])
+     end
 elseif model == 1
      @load "outputs/carbonate-diffeq-test.jld2" t u 
      image = "outputs/carbonate-diffeq-test.png"
@@ -43,7 +60,7 @@ elseif model == 1
      BOH₃_oc = u[:, 6]
      BOH₄_oc = u[:, 7]
      dt = 0.05
-else
+elseif model == 2
      @load "outputs/0d-case.jld2" t u 
      image = "outputs/0d-case-.png"
      pd_image = "outputs/percent_difference_0d-case-.png"
@@ -55,6 +72,62 @@ else
      BOH₃_oc = u[:, 5]
      BOH₄_oc = u[:, 6]
      dt = 0.05
+elseif model == 3
+     fld_file="split-testing.jld2"
+     image = "outputs/split-testing.png"
+     pd_image = "outputs/percent_difference_split.png"
+     f = jldopen(fld_file)
+     # reading the fields
+     t_index = keys(f["timeseries/t"])
+     CO₂_oc = Float64[] #FieldTimeSeries(fld_file, "CO₂"; backend=OnDisk())
+     CO₃_oc = Float64[] #FieldTimeSeries(fld_file, "CO₃"; backend=OnDisk())
+     HCO₃_oc = Float64[] #FieldTimeSeries(fld_file, "HCO₃"; backend=OnDisk())
+     OH_oc = Float64[] #FieldTimeSeries(fld_file, "OH"; backend=OnDisk())
+     BOH₃_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₃"; backend=OnDisk())
+     BOH₄_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₄"; backend=OnDisk())
+     t = Float64[] #
+     for i in t_index
+          #@show i
+          push!(t, f["timeseries/t"][i])
+          push!(CO₂_oc,   f["timeseries/CO₂"][i][1, 1, 1])
+          push!(HCO₃_oc,  f["timeseries/HCO₃"][i][1, 1, 1])
+          push!(CO₃_oc,   f["timeseries/CO₃"][i][1, 1, 1])
+          push!(BOH₃_oc,  f["timeseries/BOH₃"][i][1, 1, 1])
+          push!(BOH₄_oc,  f["timeseries/BOH₄"][i][1, 1, 1])
+          push!(OH_oc,    f["timeseries/OH"][i][1, 1, 1])
+     end
+     close(f)
+elseif model == 4
+     fld_file="outputs/langmuir_turbulence_fields.jld2"
+     image = "outputs/split-testing.png"
+     pd_image = "outputs/percent_difference_split.png"
+     f = jldopen(fld_file)
+     # reading the fields
+     t_index = keys(f["timeseries/t"])
+     CO₂_oc = Float64[] #FieldTimeSeries(fld_file, "CO₂"; backend=OnDisk())
+     CO₃_oc = Float64[] #FieldTimeSeries(fld_file, "CO₃"; backend=OnDisk())
+     HCO₃_oc = Float64[] #FieldTimeSeries(fld_file, "HCO₃"; backend=OnDisk())
+     OH_oc = Float64[] #FieldTimeSeries(fld_file, "OH"; backend=OnDisk())
+     BOH₃_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₃"; backend=OnDisk())
+     BOH₄_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₄"; backend=OnDisk())
+     t = Float64[] #
+     for i in t_index
+          #@show i
+          push!(t, f["timeseries/t"][i])
+          CO₂_avg = mean(f["timeseries/CO₂"][i])
+          push!(CO₂_oc,   CO₂_avg)
+          HCO₃_avg = mean(f["timeseries/HCO₃"][i])
+          push!(HCO₃_oc,  HCO₃_avg)
+          CO₃_avg = mean(f["timeseries/CO₃"][i])
+          push!(CO₃_oc,   CO₃_avg)
+          BOH₃_avg = mean(f["timeseries/BOH₃"][i])
+          push!(BOH₃_oc,  BOH₃_avg)
+          BOH₄_avg = mean(f["timeseries/BOH₄"][i]) # average over the whole domain
+          push!(BOH₄_oc,  BOH₄_avg)
+          OH_avg = mean(f["timeseries/OH"][i])
+          push!(OH_oc,    OH_avg)
+     end
+     close(f)
 end 
 N = length(t)
 # opening fortran output file

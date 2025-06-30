@@ -8,7 +8,6 @@ using DiffEqCallbacks
 include("cc.jl")
 using .CC #: CarbonateChemistry #local module
 
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1.0, 1.0, 1.0))
 bgc = CarbonateChemistry(; grid, scale_negatives = true)#$, 
 
 #converting mol/kg to umol/kg
@@ -42,8 +41,8 @@ function boxmodel_ode!(du, u, p, t)
     du[6] = bgc(Val(:BOH₄), 0, 0, 0, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
 end
 
-t_final = 60 # final time, in seconds
-dt_out = 0.00001 # output rate, not solver timestep size, in seconds
+t_final = 180 # final time, in seconds
+dt_out = 30#0.00001 # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
 prob = ODEProblem(boxmodel_ode!, c_0, tspan)
