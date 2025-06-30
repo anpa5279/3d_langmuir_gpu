@@ -1,11 +1,11 @@
 #!/bin/bash
 
-jobn=box
+jobn=split-3d-test
 rm -rf $jobn
 mkdir $jobn
 
-cp box-model.jl $jobn/
-cp cc.jl $jobn/
+cp langmuir_turb.jl $jobn/
+cp stokes.jl $jobn/
 
 cd $jobn/
 touch Project.toml

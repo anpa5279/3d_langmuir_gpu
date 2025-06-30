@@ -124,7 +124,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 0.05
+output_interval = 30minutes
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
@@ -141,13 +141,13 @@ T = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
+                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "outputs/langmuir_turbulence_averages.jld2",
+                                                    filename = "langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3000000), prefix="model_checkpoint")
 
