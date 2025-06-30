@@ -13,13 +13,13 @@ if model == 0
      f = jldopen(fld_file)
      # reading the fields
      t_index = keys(f["timeseries/t"])
-     CO₂_oc = Float32[] #FieldTimeSeries(fld_file, "CO₂"; backend=OnDisk())
-     CO₃_oc = Float32[] #FieldTimeSeries(fld_file, "CO₃"; backend=OnDisk())
-     HCO₃_oc = Float32[] #FieldTimeSeries(fld_file, "HCO₃"; backend=OnDisk())
-     OH_oc = Float32[] #FieldTimeSeries(fld_file, "OH"; backend=OnDisk())
-     BOH₃_oc = Float32[] #FieldTimeSeries(fld_file, "BOH₃"; backend=OnDisk())
-     BOH₄_oc = Float32[] #FieldTimeSeries(fld_file, "BOH₄"; backend=OnDisk())
-     t = Float32[] #
+     CO₂_oc = Float64[] #FieldTimeSeries(fld_file, "CO₂"; backend=OnDisk())
+     CO₃_oc = Float64[] #FieldTimeSeries(fld_file, "CO₃"; backend=OnDisk())
+     HCO₃_oc = Float64[] #FieldTimeSeries(fld_file, "HCO₃"; backend=OnDisk())
+     OH_oc = Float64[] #FieldTimeSeries(fld_file, "OH"; backend=OnDisk())
+     BOH₃_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₃"; backend=OnDisk())
+     BOH₄_oc = Float64[] #FieldTimeSeries(fld_file, "BOH₄"; backend=OnDisk())
+     t = Float64[] #
      for i in t_index
           #@show i
           push!(t, f["timeseries/t"][i])
@@ -61,26 +61,26 @@ N = length(t)
 fortran_file = "outputs/cc.hst"
 f = open(fortran_file)
 
-t_f = Float32[]
-CO₂_f = Float32[]
-CO₃_f = Float32[]
-HCO₃_f = Float32[]
-OH_f = Float32[]
-BOH₃_f = Float32[]
-BOH₄_f = Float32[]
+t_f = Float64[]
+CO₂_f = Float64[]
+CO₃_f = Float64[]
+HCO₃_f = Float64[]
+OH_f = Float64[]
+BOH₃_f = Float64[]
+BOH₄_f = Float64[]
 
-CO₂_d = Float32[]
-CO₃_d = Float32[]
-HCO₃_d = Float32[]
-OH_d = Float32[]
-BOH₃_d = Float32[]
-BOH₄_d = Float32[]
+CO₂_d = Float64[]
+CO₃_d = Float64[]
+HCO₃_d = Float64[]
+OH_d = Float64[]
+BOH₃_d = Float64[]
+BOH₄_d = Float64[]
 
 line_count = 0              
 
 for lines in readlines(f)
      if N > line_count
-          values = parse.(Float32, split(lines))
+          values = parse.(Float64, split(lines))
           global line_count += 1 
           # Store in respective arrays (assuming correct ordering in file)
           push!(t_f, values[1])
