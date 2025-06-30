@@ -10,7 +10,7 @@ using Oceananigans, OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using OceanBioME: Biogeochemistry, CarbonateChemistry
-#using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
@@ -35,19 +35,19 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(8, 8, 8, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
 
 # Automatically distribute among available processors
-#arch = Distributed(GPU())
-#rank = arch.local_rank
-#Nranks = MPI.Comm_size(arch.communicator)
-#println("Hello from process $rank out of $Nranks")
+arch = Distributed(GPU())
+rank = arch.local_rank
+Nranks = MPI.Comm_size(arch.communicator)
+println("Hello from process $rank out of $Nranks")
 
-grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
-#grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+#grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -85,12 +85,13 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 # random seed
 r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
-#Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
+perturb = 1e3
+set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4 * 1e6, BOH₄ = 1.19e-4 * 1e6, CO₂ = 7.57e-6 * 1e6 * perturb, CO₃ = 3.15e-4 * 1e6, HCO₃ = 1.67e-3 * 1e6, OH = 9.6e-6 * 1e6, T=Tᵢ, S = 35)
 
-simulation = Simulation(model, Δt=0.05, stop_time = 60seconds) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -111,7 +112,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=0.05seconds)
+conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
 
 #output files
 function save_IC!(file, model)
