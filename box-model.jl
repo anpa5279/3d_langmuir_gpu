@@ -1,7 +1,7 @@
 using OceanBioME, Oceananigans
 using Oceananigans.Units
-using MPI
-using CUDA
+#using MPI
+#using CUDA
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 include("cc.jl")
@@ -47,6 +47,5 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10000))
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3000000), prefix="model_checkpoint")
 @info "Running the model..."
 run!(simulation)

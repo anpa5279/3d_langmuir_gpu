@@ -7,24 +7,29 @@ using Measures
 model = 0 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case
 # opening oceananigans output file
 if model == 0
-     fld_file="outputs/box_model-pos.jld2"
+     fld_file="outputs/box_model.jld2"
      image = "outputs/box_model.png"
      pd_image = "outputs/percent_difference_box.png"
-     CO₂_oc = FieldTimeSeries(fld_file, "CO₂")
-     CO₃_oc = FieldTimeSeries(fld_file, "CO₃")
-     HCO₃_oc = FieldTimeSeries(fld_file, "HCO₃")
-     OH_oc = FieldTimeSeries(fld_file, "OH")
-     BOH₃_oc = FieldTimeSeries(fld_file, "BOH₃")
-     BOH₄_oc = FieldTimeSeries(fld_file, "BOH₄")
-     t = CO₂_oc.times[1:11]
-     dt = Float64[t.step][1]
-
-     CO₂_oc = vec(CO₂_oc.data[1:11])
-     CO₃_oc = vec(CO₃_oc.data[1:11])
-     HCO₃_oc = vec(HCO₃_oc.data[1:11])
-     OH_oc = vec(OH_oc.data[1:11])
-     BOH₃_oc = vec(BOH₃_oc.data[1:11])
-     BOH₄_oc = vec(BOH₄_oc.data[1:11])
+     f = jldopen(fld_file)
+     # reading the fields
+     t_index = keys(f["timeseries/t"])
+     CO₂_oc = Float32[] #FieldTimeSeries(fld_file, "CO₂"; backend=OnDisk())
+     CO₃_oc = Float32[] #FieldTimeSeries(fld_file, "CO₃"; backend=OnDisk())
+     HCO₃_oc = Float32[] #FieldTimeSeries(fld_file, "HCO₃"; backend=OnDisk())
+     OH_oc = Float32[] #FieldTimeSeries(fld_file, "OH"; backend=OnDisk())
+     BOH₃_oc = Float32[] #FieldTimeSeries(fld_file, "BOH₃"; backend=OnDisk())
+     BOH₄_oc = Float32[] #FieldTimeSeries(fld_file, "BOH₄"; backend=OnDisk())
+     t = Float32[] #
+     for i in t_index
+          #@show i
+          push!(t, f["timeseries/t"][i])
+          push!(CO₂_oc,   f["timeseries/CO₂"][i][1, 1, 1])
+          push!(HCO₃_oc,  f["timeseries/HCO₃"][i][1, 1, 1])
+          push!(CO₃_oc,   f["timeseries/CO₃"][i][1, 1, 1])
+          push!(BOH₃_oc,  f["timeseries/BOH₃"][i][1, 1, 1])
+          push!(BOH₄_oc,  f["timeseries/BOH₄"][i][1, 1, 1])
+          push!(OH_oc,    f["timeseries/OH"][i][1, 1, 1])
+     end
 elseif model == 1
      @load "outputs/carbonate-diffeq-test.jld2" t u 
      image = "outputs/carbonate-diffeq-test.png"
@@ -56,26 +61,26 @@ N = length(t)
 fortran_file = "outputs/cc.hst"
 f = open(fortran_file)
 
-t_f = Float64[]
-CO₂_f = Float64[]
-CO₃_f = Float64[]
-HCO₃_f = Float64[]
-OH_f = Float64[]
-BOH₃_f = Float64[]
-BOH₄_f = Float64[]
+t_f = Float32[]
+CO₂_f = Float32[]
+CO₃_f = Float32[]
+HCO₃_f = Float32[]
+OH_f = Float32[]
+BOH₃_f = Float32[]
+BOH₄_f = Float32[]
 
-CO₂_d = Float64[]
-CO₃_d = Float64[]
-HCO₃_d = Float64[]
-OH_d = Float64[]
-BOH₃_d = Float64[]
-BOH₄_d = Float64[]
+CO₂_d = Float32[]
+CO₃_d = Float32[]
+HCO₃_d = Float32[]
+OH_d = Float32[]
+BOH₃_d = Float32[]
+BOH₄_d = Float32[]
 
 line_count = 0              
 
 for lines in readlines(f)
      if N > line_count
-          values = parse.(Float64, split(lines))
+          values = parse.(Float32, split(lines))
           global line_count += 1 
           # Store in respective arrays (assuming correct ordering in file)
           push!(t_f, values[1])
