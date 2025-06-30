@@ -2,12 +2,25 @@ module SRK3
 
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
+using Oceananigans: AbstractModel, initialize!, prognostic_fields
+using Oceananigans.TimeSteppers: AbstractTimeStepper
+using KernelAbstractions: @kernel, @index
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
+include("cc.jl")
+import .CC: CarbonateChemistry #local module
+
+export StrangRungeKutta3TimeStepper
+
+TimeStepper(::Val{:StrangRungeKutta3}, args...; kwargs...) =
+    StrangRungeKutta3TimeStepper(args...; kwargs...)
 
 """
     StrangRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [LeMoin1991](@citet).
+time-stepping scheme described by [LeMoin1991](@citet) wtih DiffEq package for chemistry.
 """
 struct StrangRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
@@ -64,7 +77,8 @@ function time_step!(model::AbstractModel{<:StrangRungeKutta3TimeStepper}, Δt; c
     tⁿ⁺¹ = next_time(model.clock, Δt)
 
     #input carboante chemistry calculation here
-
+    model.clock.stage = 0
+    split_cc!(model, Δt, γⁿ, ζⁿ)
     #
     # First stage
     #
@@ -119,7 +133,62 @@ function time_step!(model::AbstractModel{<:StrangRungeKutta3TimeStepper}, Δt; c
     step_lagrangian_particles!(model, third_stage_Δt)
 
     #input carboante chemistry calculation here
+    model.clock.stage = 0
+    split_cc!(model, Δt, γⁿ, ζⁿ)
 
+    return nothing
+end
+
+#####
+##### Carbonate chemistry split
+#####
+function boxmodel_ode!(du, u, p, t)
+    CO₂ = u[1]
+    HCO₃ = u[2]
+    CO₃ = u[3]
+    OH = u[4]
+    BOH₃ = u[5]
+    BOH₄ = u[6]
+    T = u[7]
+    S = u[8]
+    du[1] = bgc(Val(:CO₂),  x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+    du[2] = bgc(Val(:HCO₃), x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+    du[3] = bgc(Val(:CO₃),  x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+    du[4] = bgc(Val(:OH),   x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+    du[5] = bgc(Val(:BOH₃), x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+    du[6] = bgc(Val(:BOH₄), x, y, z, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
+end
+@kernel function update_cc!(grid, tracers)
+    i, j, k = @index(Global, NTuple)
+    c_0 = (tracers.CO₂[i, j, k],
+             tracers.HCO₃[i, j, k],
+             tracers.CO₃[i, j, k],
+             tracers.OH[i, j, k],
+             tracers.BOH₃[i, j, k],
+             tracers.BOH₄[i, j, k],
+             tracers.T[i, j, k],
+             tracers.S[i, j, k])
+    tspan = (0.0, Δt)
+    prob = ODEProblem(boxmodel_ode!, c_0, tspan)
+    sol = solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = Δt) 
+    
+    @inbounds tracers.CO₂[i, j, k] = sol.u[1]
+    @inbounds tracers.HCO₃[i, j, k] = sol.u[2]
+    @inbounds tracers.CO₃[i, j, k] = sol.u[3]
+    @inbounds tracers.OH[i, j, k] = sol.u[4]
+    @inbounds tracers.BOH₃[i, j, k] = sol.u[5]
+    @inbounds tracers.BOH₄[i, j, k] = sol.u[6]
+end
+
+function split_cc!!(model, Δt, γⁿ, ζⁿ)
+
+    grid = model.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, update_cc!, grid, model.tracers)
+    chem_tracers = NamedTuple{keys(model.tracers)[1:6]}(values(model.tracers)[1:end-2]) #excluding temperature and salinity
+    for (i, field) in enumerate(chem_tracers)
+        fill_halo_regions!(field)
+    end
     return nothing
 end
 
@@ -149,7 +218,7 @@ function strang_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       stage_Δt(Δt, γⁿ, ζⁿ))
+                       stage_Δt(Δt, γⁿ, ζⁿ)) #this is dependent on the turbulent closure, usually does nothing to the tracers. 
     end
 
     return nothing
@@ -169,6 +238,12 @@ end
     @inbounds begin
         U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
+end
+
+#how do I override using Oceananigans.Biogeochemistry: biogeochemical_transition in nonhydrostatic_tendency_kernel_functions.jl so it calls this function?
+@inline function biogeochemical_transition(i, j, k, grid, bgc::CarbonateChemistry, 
+                                           val_tracer_name, clock, fields)
+    return zero(grid) 
 end
 
 end #module

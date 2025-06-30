@@ -127,7 +127,7 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 #QSS approximation
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
+function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
     K1 = K_1(T, S)
     K2 = K_2(T, S)
     Kw = K_w(T, S)
@@ -142,7 +142,6 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     b5 = beta5(a5, Kw)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
-    #println("a1 = ", a1, " b1 = ", b1, " a2 = ", a2, " b2 = ", b2)
     if isnan(CO₂) error("CO₂ concentration is NaN") end
     dcdt = - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
     return dcdt # converting to micromol/kg rate

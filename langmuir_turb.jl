@@ -4,13 +4,15 @@ using Pkg
 using Statistics
 using Printf
 using Random
-using Oceananigans
-#using Oceananigans.DistributedComputations
+Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+using Oceananigans, OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using OceanBioME: Biogeochemistry
-include("cc.jl")
-using .CC #: CarbonateChemistry #local module
+using OceanBioME: Biogeochemistry, CarbonateChemistry
+#using Oceananigans.DistributedComputations
+#include("cc.jl")
+#using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
 #using .SRK3
 mutable struct Params
@@ -39,13 +41,13 @@ p = Params(32, 32, 32, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.
 include("stokes.jl")
 
 # Automatically distribute among available processors
-arch = Distributed(GPU())
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
+#arch = Distributed(GPU())
+#rank = arch.local_rank
+#Nranks = MPI.Comm_size(arch.communicator)
 #println("Hello from process $rank out of $Nranks")
 
-#grid = RectilinearGrid(CPU(); size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+#grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -74,8 +76,8 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             biogeochemistry, 
-                            timestepper = :StrangRungeKutta3,
-                            closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(),
+                            timestepper = :RungeKutta3, #:StrangRungeKutta3,
+                            closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
 @show model
@@ -86,7 +88,7 @@ r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp
 Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, H = 6.31e-9, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
+set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4, BOH₄ = 1.19e-4, CO₂ = 7.57e-6, CO₃ = 3.15e-4, HCO₃ = 1.67e-3, OH = 9.6e-6, T=25, S = 35)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 0.5hours) #stop_time = 96hours,
 @show simulation
