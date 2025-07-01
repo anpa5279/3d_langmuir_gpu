@@ -1,6 +1,6 @@
 #!/bin/bash
 
-jobn=box
+jobn=box-local
 rm -rf $jobn
 mkdir $jobn
 

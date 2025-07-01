@@ -1,14 +1,14 @@
 using Pkg
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+#Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+#Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using OceanBioME, Oceananigans
 using Oceananigans.Units
 using MPI
 using CUDA
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
-#include("cc.jl")
-#using .CC #: CarbonateChemistry #local module
+include("cc.jl")
+using .CC #: CarbonateChemistry #local module
 #rank = MPI.Comm_rank(MPI.COMM_WORLD)
 grid = BoxModelGrid()
 clock = Clock(time = zero(grid))
