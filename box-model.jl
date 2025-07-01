@@ -2,8 +2,8 @@ Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will 
 Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using OceanBioME, Oceananigans
 using Oceananigans.Units
-#using MPI
-#using CUDA
+using MPI
+using CUDA
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Printf
 #include("cc.jl")
