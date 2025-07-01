@@ -4,8 +4,8 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/personal-oceananigans/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/glade/work/apauls/.julia/dev/personal-oceananigans/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using Oceananigans, OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
