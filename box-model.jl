@@ -1,3 +1,4 @@
+using Pkg
 Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
 Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using OceanBioME, Oceananigans
