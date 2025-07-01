@@ -8,7 +8,6 @@ cp box-model.jl $jobn/
 cp cc.jl $jobn/
 
 cd $jobn/
-touch Project.toml
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
@@ -47,6 +46,7 @@ echo "Global Rank ${GLOBAL_RANK} / Local Rank ${LOCAL_RANK} / CUDA_VISIBLE_DEVIC
 
 exec \$*
 EoF_s
+touch Project.toml
 
 
 chmod +x launch.sh
