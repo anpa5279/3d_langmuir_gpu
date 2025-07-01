@@ -44,7 +44,7 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 @show biogeochemistry
 #DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> p.T0, salinity = (args...) -> 35))
 
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
+model = NonhydrostaticModel(; grid,
                             advection = UpwindBiased(order=1),
                             biogeochemistry, 
                             timestepper = :SplitCCRungeKutta3,
@@ -53,10 +53,10 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 
 perturb = 1e3
 set!(model, BOH₃ = 2.97e-4 * 1e6, BOH₄ = 1.19e-4 * 1e6, CO₂ = 7.57e-6 * 1e6 * perturb, CO₃ = 3.15e-4 * 1e6, HCO₃ = 1.67e-3 * 1e6, OH = 9.6e-6 * 1e6, T=25, S = 35)
-simulation = Simulation(model, Δt=0.05, stop_time = 60seconds) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 180seconds) #stop_time = 96hours,
 @show simulation
 
-output_interval = 0.05seconds
+output_interval = 30.0seconds
 
 BOH₃ = model.tracers.BOH₃
 BOH₄ = model.tracers.BOH₄

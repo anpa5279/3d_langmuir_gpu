@@ -4,7 +4,7 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-model = 3 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case, 3 for testing SplitCCRungeKutta3 in oceananigans, 4 for 3D space testing 
+model = 4 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case, 3 for testing nonhydrostatic SplitCCRungeKutta3 in oceananigans, 4 for 3D nonhydrostatic space testing 
 # opening oceananigans output file
 if model == 0
      fld_file="outputs/box_model.jld2"
@@ -98,9 +98,9 @@ elseif model == 3
      end
      close(f)
 elseif model == 4
-     fld_file="outputs/langmuir_turbulence_fields.jld2"
-     image = "outputs/split-testing.png"
-     pd_image = "outputs/percent_difference_split.png"
+     fld_file="langmuir_turbulence_fields.jld2"
+     image = "outputs/3d.png"
+     pd_image = "outputs/percent_difference_3d.png"
      f = jldopen(fld_file)
      # reading the fields
      t_index = keys(f["timeseries/t"])
@@ -113,25 +113,25 @@ elseif model == 4
      t = Float64[] #
      for i in t_index
           #@show i
-          push!(t, f["timeseries/t"][i])
-          CO₂_avg = mean(f["timeseries/CO₂"][i])
+          push!(t, f["timeseries/t"][i]) # average over the whole domain
+          CO₂_avg = mean(f["timeseries/CO₂"][i][3:end-3, 3:end-3, 3:end-3])
           push!(CO₂_oc,   CO₂_avg)
-          HCO₃_avg = mean(f["timeseries/HCO₃"][i])
+          HCO₃_avg = mean(f["timeseries/HCO₃"][i][3:end-3, 3:end-3, 3:end-3])
           push!(HCO₃_oc,  HCO₃_avg)
-          CO₃_avg = mean(f["timeseries/CO₃"][i])
+          CO₃_avg = mean(f["timeseries/CO₃"][i][3:end-3, 3:end-3, 3:end-3])
           push!(CO₃_oc,   CO₃_avg)
-          BOH₃_avg = mean(f["timeseries/BOH₃"][i])
+          BOH₃_avg = mean(f["timeseries/BOH₃"][i][3:end-3, 3:end-3, 3:end-3])
           push!(BOH₃_oc,  BOH₃_avg)
-          BOH₄_avg = mean(f["timeseries/BOH₄"][i]) # average over the whole domain
+          BOH₄_avg = mean(f["timeseries/BOH₄"][i][3:end-3, 3:end-3, 3:end-3]) # average over the whole domain
           push!(BOH₄_oc,  BOH₄_avg)
-          OH_avg = mean(f["timeseries/OH"][i])
+          OH_avg = mean(f["timeseries/OH"][i][3:end-3, 3:end-3, 3:end-3])
           push!(OH_oc,    OH_avg)
      end
      close(f)
 end 
 N = length(t)
 # opening fortran output file
-fortran_file = "outputs/cc.hst"
+fortran_file = "outputs/cc180.hst"
 f = open(fortran_file)
 
 t_f = Float64[]

@@ -1,17 +1,17 @@
 using Pkg
-using MPI
-using CUDA
+#using MPI
+#using CUDA
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using Oceananigans
 using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using OceanBioME: Biogeochemistry, CarbonateChemistry
-using Oceananigans.DistributedComputations
+#using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
@@ -35,8 +35,8 @@ mutable struct Params
     La_t::Float64   # Langmuir turbulence number
 end
 
-#defaults, these can be changed directly below 128, 128, 160, 320.0, 320.0, 96.0
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+#defaults, these can be changed directly below 128, 128, 128, 320.0, 320.0, 96.0
+p = Params(128, 128, 128, 320.0, 320.0, 24.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -90,21 +90,28 @@ Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 perturb = 1e3
-set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e-4 * 1e6, BOH₄ = 1.19e-4 * 1e6, CO₂ = 7.57e-6 * 1e6 * perturb, CO₃ = 3.15e-4 * 1e6, HCO₃ = 1.67e-3 * 1e6, OH = 9.6e-6 * 1e6, T=Tᵢ, S = 35)
+set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = 35)
 
-simulation = Simulation(model, Δt=30, stop_time = 24hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 180) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
+    co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                   prettytime(simulation.run_wall_time))
+                   prettytime(simulation.run_wall_time), 
+                   mean(simulation.model.tracers.CO₂),
+                   mean(simulation.model.tracers.CO₃),
+                   mean(simulation.model.tracers.HCO₃),
+                   mean(simulation.model.tracers.OH),
+                   mean(simulation.model.tracers.BOH₃),
+                   mean(simulation.model.tracers.BOH₄))
 
     @info msg
 
@@ -125,7 +132,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 30minutes
+output_interval = 30seconds
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
