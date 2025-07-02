@@ -4,7 +4,8 @@ using Printf
 using JLD2
 using Oceananigans
 using Measures
-model = 4 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case, 3 for testing nonhydrostatic SplitCCRungeKutta3 in oceananigans, 4 for 3D nonhydrostatic space testing 
+using Statistics
+model = 0 # 0 for box model, 1 for carbonate diffeq test, 2 for 0d case, 3 for testing nonhydrostatic SplitCCRungeKutta3 in oceananigans, 4 for 3D nonhydrostatic space testing 
 # opening oceananigans output file
 if model == 0
      fld_file="outputs/box_model.jld2"
@@ -33,7 +34,7 @@ if model == 0
      t1_end = t[end]
      close(f)
      #opening second output file
-     fld_file="outputs/box_model2.jld2"
+     fld_file="outputs/box_model1.jld2"
      f = jldopen(fld_file)
      # reading the fields
      t_index = keys(f["timeseries/t"])
@@ -131,7 +132,7 @@ elseif model == 4
 end 
 N = length(t)
 # opening fortran output file
-fortran_file = "outputs/cc180.hst"
+fortran_file = "outputs/cc-smalltimestep.hst"
 f = open(fortran_file)
 
 t_f = Float64[]

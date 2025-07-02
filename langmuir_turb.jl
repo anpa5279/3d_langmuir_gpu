@@ -4,8 +4,8 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+Pkg.develop(path="`/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using Oceananigans
 using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
@@ -36,7 +36,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 128, 320.0, 320.0, 96.0
-p = Params(128, 128, 128, 320.0, 320.0, 24.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+p = Params(128, 128, 128, 320.0, 320.0, 24.0, 5.3e-9, 30.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
