@@ -18,7 +18,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=01:00:00
+#PBS -l walltime=00:30:00
 #PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4:mem=84GB 
 #PBS -l gpu_type=a100
 
@@ -59,7 +59,7 @@ chmod +x launch.sh
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("OceanBioME"); Pkg.add("Statistics"); Pkg.add("Random")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("OceanBioME"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations"); Pkg.add("Sundials")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
