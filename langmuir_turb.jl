@@ -4,8 +4,8 @@ using CUDA
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+#Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+#Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using Oceananigans
 using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
@@ -70,7 +70,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
 coriolis = FPlane(f=1e-4) # s⁻¹
-biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
+biogeochemistry = NPZD(; grid) #CarbonateChemistry(; grid, scale_negatives = true)
 @show biogeochemistry
 #DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> p.T0, salinity = (args...) -> 35))
 
@@ -92,7 +92,7 @@ wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
 perturb = 1e3
 set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = 35)
 
-simulation = Simulation(model, Δt=30, stop_time = 180) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -132,22 +132,26 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 30seconds
+output_interval = 6hours
 
 u, v, w = model.velocities
-BOH₃ = model.tracers.BOH₃
-BOH₄ = model.tracers.BOH₄
-CO₂ = model.tracers.CO₂
-CO₃ = model.tracers.CO₃
-HCO₃ = model.tracers.HCO₃
-OH = model.tracers.OH
+N = model.tracers.N
+P = model.tracers.P
+Z = model.tracers.Z
+D = model.tracers.D
+#BOH₃ = model.tracers.BOH₃
+#BOH₄ = model.tracers.BOH₄
+#CO₂ = model.tracers.CO₂
+#CO₃ = model.tracers.CO₃
+#HCO₃ = model.tracers.HCO₃
+#OH = model.tracers.OH
 T = model.tracers.T
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, N, P, Z, D), #BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
