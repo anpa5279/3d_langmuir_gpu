@@ -1,6 +1,6 @@
 #!/bin/bash
 
-jobn=split-3d-test
+jobn=npzd-distr-gpu
 rm -rf $jobn
 mkdir $jobn
 
