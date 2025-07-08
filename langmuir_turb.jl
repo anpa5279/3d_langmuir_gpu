@@ -42,7 +42,7 @@ p = Params(128, 128, 128, 320.0, 320.0, 24.0, 5.3e-9, 30.0, 0.0, 4200.0, 1000.0,
 include("stokes.jl")
 
 # Automatically distribute among available processors
-arch = Distributed(CPU())
+arch = Distributed(GPU())
 rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
