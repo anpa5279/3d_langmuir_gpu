@@ -16,3 +16,4 @@ data/
 *.png
 .DS_Store
 *.txt
+*/*
