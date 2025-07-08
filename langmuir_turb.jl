@@ -10,7 +10,7 @@ using Oceananigans
 using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using OceanBioME: Biogeochemistry, CarbonateChemistry
+using OceanBioME: Biogeochemistry, NPZD #, CarbonateChemistry
 #using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
