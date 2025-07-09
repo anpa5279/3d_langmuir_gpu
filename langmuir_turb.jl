@@ -36,7 +36,7 @@ mutable struct Params
 end
 
 #defaults, these can be changed directly below 128, 128, 128, 320.0, 320.0, 96.0
-p = Params(128, 128, 128, 320.0, 320.0, 24.0, 5.3e-9, 30.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+p = Params(128, 128, 128, 320.0, 320.0, 96.0, 5.3e-9, 30.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -53,13 +53,11 @@ grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 #stokes drift
 z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 
-us = stokes_velocity(z_d, p.u₁₀)
-new_us = Field{Nothing, Nothing, Center}(grid)
-set!(new_us, reshape(us, 1, 1, :))
-dudz = dstokes_dz(z_d, p.u₁₀)
-new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
-set!(new_dUSDdz, reshape(dudz, 1, 1, :))
-@show new_dUSDdz
+us = Field{Nothing, Nothing, Center}(grid)
+set!(us, z -> stokes_velocity(z, p.u₁₀))
+dusdz = Field{Nothing, Nothing, Center}(grid)
+set!(dusdz, z -> dstokes_dz(z, p.u₁₀))
+@show dusdz
 
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
@@ -79,7 +77,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             biogeochemistry, 
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
 @show model
 
