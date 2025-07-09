@@ -51,8 +51,6 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 
 #stokes drift
-z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-
 us = Field{Nothing, Nothing, Center}(grid)
 set!(us, z -> stokes_velocity(z, p.u₁₀))
 dusdz = Field{Nothing, Nothing, Center}(grid)
