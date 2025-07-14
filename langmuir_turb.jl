@@ -16,27 +16,22 @@ using OceanBioME: Biogeochemistry, NPZD #, CarbonateChemistry
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
 #using .SRK3
-mutable struct Params
-    Nx::Int         # number of points in each of x direction
-    Ny::Int         # number of points in each of y direction
-    Nz::Int         # number of points in the vertical direction
-    Lx::Float64     # (m) domain horizontal extents
-    Ly::Float64     # (m) domain horizontal extents
-    Lz::Float64     # (m) domain depth 
-    N²::Float64     # s⁻², initial and bottom buoyancy gradient
-    initial_mixed_layer_depth::Float64 # m 
-    Q::Float64      # W m⁻², surface heat flux. cooling is positive
-    cᴾ::Float64     # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-    ρₒ::Float64     # kg m⁻³, average density at the surface of the world ocean
-    dTdz::Float64   # K m⁻¹, temperature gradient
-    T0::Float64     # C, temperature at the surface   
-    β::Float64      # 1/K, thermal expansion coefficient
-    u₁₀::Float64    # (m s⁻¹) wind speed at 10 meters above the ocean
-    La_t::Float64   # Langmuir turbulence number
-end
-
-#defaults, these can be changed directly below 128, 128, 128, 320.0, 320.0, 96.0
-p = Params(128, 128, 128, 320.0, 320.0, 96.0, 5.3e-9, 30.0, 0.0, 4200.0, 1000.0, 0.01, 25.0, 2.0e-4, 5.75, 0.3)
+const Nx = 128        # number of points in each of x direction
+const Ny = 128        # number of points in each of y direction
+const Nz = 128        # number of points in the vertical direction
+const Lx = 320    # (m) domain horizontal extents
+const Ly = 320    # (m) domain horizontal extents
+const Lz = 96    # (m) domain depth 
+const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
+const initial_mixed_layer_depth = 30.0 # m 
+const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
+const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+const ρₒ = 1000.0    # kg m⁻³, average density at the surface of the world ocean
+const dTdz = 0.01  # K m⁻¹, temperature gradient
+const T0 = 25.0    # C, temperature at the surface   
+const β = 2.0e-4     # 1/K, thermal expansion coefficient
+const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+const La_t = 0.3  # Langmuir turbulence number
 
 #referring to files with desiraed functions
 include("stokes.jl")
@@ -47,28 +42,28 @@ rank = arch.local_rank
 Nranks = MPI.Comm_size(arch.communicator)
 println("Hello from process $rank out of $Nranks")
 
-#grid = RectilinearGrid(; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
-grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
+#grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 #stokes drift
 us = Field{Nothing, Nothing, Center}(grid)
-set!(us, z -> stokes_velocity(z, p.u₁₀))
+set!(us, z -> stokes_velocity(z, u₁₀))
 dusdz = Field{Nothing, Nothing, Center}(grid)
-set!(dusdz, z -> dstokes_dz(z, p.u₁₀))
+set!(dusdz, z -> dstokes_dz(z, u₁₀))
 @show dusdz
 
-u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
+u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
-                                bottom = GradientBoundaryCondition(p.dTdz))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+                                bottom = GradientBoundaryCondition(dTdz))
 coriolis = FPlane(f=1e-4) # s⁻¹
 biogeochemistry = NPZD(; grid) #CarbonateChemistry(; grid, scale_negatives = true)
 @show biogeochemistry
-#DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> p.T0, salinity = (args...) -> 35))
+#DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> T0, salinity = (args...) -> 35))
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -77,14 +72,15 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
+#model = NonhydrostaticModel(; grid, advection = WENO(), timestepper = :RungeKutta3, stokes_drift = UniformStokesDrift(grid; ∂z_uˢ=dusdz))
 @show model
 
 # random seed
-r_xy(a) = randn(Xoshiro(1234), 3 * p.Nx)[Int(1 + round((p.Nx) * a/(p.Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), p.Nz +1)[Int(1 + round((p.Nz) * z/(-p.Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - p.initial_mixed_layer_depth ? p.T0 : p.T0 + p.dTdz * (z + p.initial_mixed_layer_depth)+ p.dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
-wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + p.Lx)
+r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
+r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 perturb = 1e3
 set!(model, u=uᵢ, w=wᵢ, N=1, P=1, Z=1, D=1, T=Tᵢ, S = 35)
 #set!(model, u=uᵢ, w=wᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = 35)
@@ -96,19 +92,19 @@ function progress(simulation)
     u, v, w = simulation.model.velocities
 
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
-    co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+    #co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                   prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO₂),
-                   mean(simulation.model.tracers.CO₃),
-                   mean(simulation.model.tracers.HCO₃),
-                   mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH₃),
-                   mean(simulation.model.tracers.BOH₄))
+                   prettytime(simulation.run_wall_time))#, 
+                   #mean(simulation.model.tracers.CO₂),
+                   #mean(simulation.model.tracers.CO₃),
+                   #mean(simulation.model.tracers.HCO₃),
+                   #mean(simulation.model.tracers.OH),
+                   #mean(simulation.model.tracers.BOH₃),
+                   #mean(simulation.model.tracers.BOH₄))
 
     @info msg
 
@@ -123,8 +119,8 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
 function save_IC!(file, model)
     #if rank == 0
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1]
-    file["IC/wind_speed"] = p.u₁₀
+    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+    file["IC/wind_speed"] = u₁₀
     #end
     return nothing
 end
