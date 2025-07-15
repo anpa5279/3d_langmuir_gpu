@@ -7,7 +7,7 @@ mkdir outputs/$jobn
 cp langmuir_turb.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
 
-cd $jobn/
+cd outputs/$jobn/
 touch Project.toml
 
 cat > EXEC_STEP << EXEC
