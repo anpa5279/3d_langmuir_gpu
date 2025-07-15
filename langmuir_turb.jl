@@ -71,7 +71,7 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             biogeochemistry, 
-                            timestepper = :RungeKutta3,
+                            timestepper = :CCRungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
