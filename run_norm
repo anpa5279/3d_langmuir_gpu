@@ -1,6 +1,10 @@
 #!/bin/bash
-
+nodes=1
+cpus=64
+gpus=1
+ntasks=$((nodes*gpus))
 jobn=cc-1gpu
+
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
@@ -13,18 +17,18 @@ touch Project.toml
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
+
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q main 
+#PBS -q main
 #PBS -j oe
-#PBS -l job_priority=economy
-#PBS -l walltime=06:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=1:ngpus=1:mem=160GB
+#PBS -l job_priority=regular
+#PBS -l walltime=0:10:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:mem=50GB
 #PBS -l gpu_type=a100
-
 # Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
@@ -45,6 +49,11 @@ cat > launch.sh << 'EoF_s'
 
 export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
+export LOCAL_RANK=${PMI_LOCAL_RANK}
+export GLOBAL_RANK=${PMI_RANK}
+export CUDA_VISIBLE_DEVICES=$(expr ${LOCAL_RANK} % 4)
+
+echo "Global Rank ${GLOBAL_RANK} / Local Rank ${LOCAL_RANK} / CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} / $(hostname)"
 
 exec \$*
 EoF_s
@@ -61,7 +70,7 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
 
-mpiexec -n 1 ./launch.sh julia --check-bounds=yes --project -g2 langmuir_turb.jl
+mpiexec -n $ntasks -ppn $gpus ./launch.sh julia --check-bounds=yes --project -g2 langmuir_turb.jl
 EXEC
 
 qsub < EXEC_STEP
