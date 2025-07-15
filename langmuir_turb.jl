@@ -88,8 +88,8 @@ perturb = 1e3
 #set!(model, u=uᵢ, w=wᵢ, N=1, P=1, Z=1, D=1, T=Tᵢ, S = 35)
 set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = S0) #u=uᵢ, w=wᵢ, 
 
-
-simulation = Simulation(model, Δt=30, stop_time = 7 * 24 hours) #stop_time = 96hours,
+day = 24hours
+simulation = Simulation(model, Δt=30, stop_time = 7*day) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
