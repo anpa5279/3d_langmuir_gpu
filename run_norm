@@ -61,7 +61,7 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
 
-mpiexec -n 1 ./launch.sh julia --project langmuir_turb.jl
+mpiexec -n 1 ./launch.sh julia --check-bounds=yes --project -g2 langmuir_turb.jl
 EXEC
 
 qsub < EXEC_STEP
