@@ -4,8 +4,8 @@ jobn=cc-1gpu
 rm -rf $jobn
 mkdir $jobn
 
-cp langmuir_turb.jl $jobn/
-cp stokes.jl $jobn/
+cp langmuir_turb.jl outputs/$jobn/
+cp stokes.jl outputs/$jobn/
 
 cd $jobn/
 touch Project.toml
