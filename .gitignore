@@ -1,7 +1,8 @@
 core
 daf
 outputs_temp/
-outputs/
+localoutputs/
+outputs/*
 data/
 ncarles_results/
 *.tar.gz
