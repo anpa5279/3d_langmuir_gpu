@@ -1,7 +1,7 @@
 #!/bin/bash
 
 jobn=cc-1gpu
-rm -rf $jobn
+rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
 cp langmuir_turb.jl outputs/$jobn/
