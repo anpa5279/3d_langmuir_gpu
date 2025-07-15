@@ -132,10 +132,10 @@ end
 output_interval = 6hours
 
 u, v, w = model.velocities
-N = model.tracers.N
-P = model.tracers.P
-Z = model.tracers.Z
-D = model.tracers.D
+#N = model.tracers.N
+#P = model.tracers.P
+#Z = model.tracers.Z
+#D = model.tracers.D
 BOH₃ = model.tracers.BOH₃
 BOH₄ = model.tracers.BOH₄
 CO₂ = model.tracers.CO₂
