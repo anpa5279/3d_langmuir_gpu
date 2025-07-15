@@ -3,6 +3,7 @@ daf
 outputs_temp/
 localoutputs/
 outputs/*
+!outputs/
 data/
 ncarles_results/
 *.tar.gz
