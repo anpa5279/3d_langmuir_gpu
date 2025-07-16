@@ -44,6 +44,7 @@ export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
+julia --project -e 'using Pkg; Pkg.resolve()'
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main")'
 # 2. Update packages to the environment that we need to use. not always necessary
