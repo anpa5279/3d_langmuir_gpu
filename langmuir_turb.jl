@@ -11,7 +11,7 @@ using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using OceanBioME: Biogeochemistry, CarbonateChemistry
-#using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
@@ -49,10 +49,13 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 #stokes drift
-us = Field{Nothing, Nothing, Center}(grid)
-set!(us, z -> stokes_velocity(z, u₁₀))
+z1d = grid.z.cᵃᵃᶜ
 dusdz = Field{Nothing, Nothing, Center}(grid)
-set!(dusdz, z -> dstokes_dz(z, u₁₀))
+dusdz_local = cat(dstokes_dz.(z1d[1:Nz], u₁₀), dims=3)
+set!(dusdz, dusdz_local)
+us = Field{Nothing, Nothing, Center}(grid)
+us_local = cat(stokes_velocity.(z1d[1:Nz], u₁₀), dims=3)
+set!(us, us_local)
 @show dusdz
 
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
