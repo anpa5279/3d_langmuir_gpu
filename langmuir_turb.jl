@@ -38,10 +38,12 @@ const La_t = 0.3  # Langmuir turbulence number
 include("stokes.jl")
 
 # Automatically distribute among available processors
-arch = GPU()#Distributed(GPU())
-#rank = arch.local_rank
-#Nranks = MPI.Comm_size(arch.communicator)
-#println("Hello from process $rank out of $Nranks")
+Nranks = MPI.Comm_size(MPI.COMM_WORLD)
+arch = Nranks > 1 ? Distributed(GPU()) : GPU()
+
+# Determine rank safely depending on architecture
+rank = arch isa Distributed ? arch.local_rank : 0
+Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 #grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
