@@ -4,13 +4,13 @@ using CUDA
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") 
+#Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") 
 using Oceananigans
-using OceanBioME
+#using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using OceanBioME: Biogeochemistry, CarbonateChemistry
+#using OceanBioME: Biogeochemistry, CarbonateChemistry
 using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
@@ -49,13 +49,14 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 #stokes drift
-z1d = grid.z.cᵃᵃᶜ
 dusdz = Field{Nothing, Nothing, Center}(grid)
-dusdz_local = cat(dstokes_dz.(z1d[1:Nz], u₁₀), dims=3)
-set!(dusdz, dusdz_local)
+Nx_local, Ny_local, Nz_local = size(dusdz)
+z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
+dusdz_1d = dstokes_dz.(z1d, u₁₀)
+set!(dusdz, dusdz_1d)
 us = Field{Nothing, Nothing, Center}(grid)
-us_local = cat(stokes_velocity.(z1d[1:Nz], u₁₀), dims=3)
-set!(us, us_local)
+us_1d = stokes_velocity.(z1d, u₁₀)
+set!(us, us_1d)
 @show dusdz
 
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
@@ -69,13 +70,12 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(0.0))
 coriolis = FPlane(f=1e-4) # s⁻¹
-biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
-@show biogeochemistry
+#biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 #DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> T0, salinity = (args...) -> 35))
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            biogeochemistry, 
+                            tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T, :S),
                             timestepper = :CCRungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
