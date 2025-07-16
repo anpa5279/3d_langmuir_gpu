@@ -4,15 +4,15 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
-Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
+#Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #this will call for my version of Oceananigans locally 
+#Pkg.develop(path="/Users/annapauls/.julia/dev/OceanBioME.jl-main") #this will call for my version of OceanBioME locally
 using Oceananigans, OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using OceanBioME: Biogeochemistry, CarbonateChemistry
+using OceanBioME: Biogeochemistry #, CarbonateChemistry
 #using Oceananigans.DistributedComputations
-#include("cc.jl")
-#using .CC #: CarbonateChemistry #local module
+include("cc.jl")
+using .CC: CarbonateChemistry #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
 #using .SRK3
 mutable struct Params
@@ -47,7 +47,7 @@ biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 model = NonhydrostaticModel(; grid,
                             advection = UpwindBiased(order=1),
                             biogeochemistry, 
-                            timestepper = :SplitCCRungeKutta3,
+                            timestepper = :RungeKutta3,
                             closure = nothing)#, CO₂ = DIC_bcs)) 
 @show model
 
