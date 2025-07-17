@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=regular
-#PBS -l walltime=0:10:00
+#PBS -l walltime=0:20:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:mem=50GB
 #PBS -l gpu_type=a100
 # Use moar processes for precompilation to speed things up
@@ -43,12 +43,12 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
+julia --project -e ' import Pkg; Pkg.rm("Oceananigans")'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project -e 'using Pkg; Pkg.resolve()'
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
-julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main")'
 # 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("OceanBioME"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations"); Pkg.add("Sundials")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations"); Pkg.add("Sundials")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
