@@ -17,7 +17,6 @@ touch Project.toml
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
-
 #PBS -A UCUB0166 
 #PBS -N $jobn
 #PBS -q main
@@ -30,20 +29,17 @@ cat > EXEC_STEP << EXEC
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
-# Load critical modules
 module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
 
 module list
 
-# Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-julia --project -e ' import Pkg; Pkg.rm("Oceananigans")'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project -e 'using Pkg; Pkg.resolve()'
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
