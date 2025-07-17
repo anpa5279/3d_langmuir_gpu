@@ -4,13 +4,10 @@ using CUDA
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main") 
-#Pkg.develop(path="/glade/work/apauls/.julia/dev/OceanBioME.jl-main") 
+Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")
 using Oceananigans
-#using OceanBioME
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-#using OceanBioME: Biogeochemistry, CarbonateChemistry
 using Oceananigans.DistributedComputations
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
@@ -38,6 +35,7 @@ const La_t = 0.3  # Langmuir turbulence number
 include("stokes.jl")
 
 # Automatically distribute among available processors
+MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
@@ -76,7 +74,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T, :S),
-                            timestepper = :CCRungeKutta3,
+                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
