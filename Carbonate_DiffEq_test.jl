@@ -1,4 +1,6 @@
 using DifferentialEquations  # import the SciML ODE solver package
+using JLD2
+using ModelingToolkit
 
 #----------------------------------------------------------------------------------
 # Defining the carbonate chemistry system of ODEs
@@ -45,20 +47,20 @@ const b6 =  a6* Kw/ Kb # 1/s
 const a7 = A8 * exp(-E8 / (R * (T + 273.15))) # kg/mol/s
 const b7 = a7* K2/ Kb # kg/mol/s
 
-@show a1
-@show b1
-@show a2
-@show b2
-@show a3
-@show b3
-@show a4
-@show b4
-@show a5
-@show b5
-@show a6
-@show b6
-@show a7
-@show b7
+#@show a1
+#@show b1
+#@show a2
+#@show b2
+#@show a3
+#@show b3
+#@show a4
+#@show b4
+#@show a5
+#@show b5
+#@show a6
+#@show b6
+#@show a7
+#@show b7
 
 # individual reaction rates
 @inline function dCO₂dt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
@@ -103,6 +105,10 @@ function carbonate_rhs!(dc, c, p, t)
 end
 
 #----------------------------------------------------------------------------------
+# Set up the ODE problem
+f = ODEFunction(carbonate_rhs!)
+
+#----------------------------------------------------------------------------------
 # Run script
 #----------------------------------------------------------------------------------
 CO₂ = 7.57e-1
@@ -117,11 +123,11 @@ min = 60.0 # seconds per minute
 hr = 60.0 * min # minutes per hour
 day = 24hr # hours per day
 
-t_final = 60# 1hr # final time, in seconds
-dt_out = 0.05#2min # output rate, not solver timestep size, in seconds
+t_final = 10# 1hr # final time, in seconds
+dt_out = 0.1#2min # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
-prob = ODEProblem(carbonate_rhs!, c_0, tspan)
-sol = solve(prob, alg_hints = [:stiff], reltol = 1e-8, abstol = 1e-8, saveat = dt_out)
+prob = ODEProblem(f, c_0, tspan)
+sol = solve(prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = dt_out)
 
 @save "outputs/carbonate-diffeq-test.jld2" t=sol.t u=sol.u

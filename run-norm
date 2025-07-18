@@ -23,9 +23,9 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 #PBS -l job_priority=regular
 #PBS -l walltime=0:20:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:mem=50GB
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus
 #PBS -l gpu_type=a100
-# Use moar processes for precompilation to speed things up
+
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
@@ -40,6 +40,7 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
+julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project -e 'using Pkg; Pkg.resolve()'
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
