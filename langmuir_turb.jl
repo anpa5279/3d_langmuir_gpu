@@ -46,9 +46,9 @@ Nx_local, Ny_local, Nz_local = size(dusdz)
 z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
 dusdz_1d = dstokes_dz.(z1d, u₁₀) .* ones(Nx_local, Ny_local, Nz_local)
 set!(dusdz, dusdz_1d)
-us = Field{Nothing, Nothing, Center}(grid)
-us_1d = stokes_velocity.(z1d, u₁₀)
-set!(us, us_1d)
+#us = Field{Nothing, Nothing, Center}(grid)
+#us_1d = stokes_velocity.(z1d, u₁₀)
+#set!(us, us_1d)
 @show dusdz
 
 #BCs
