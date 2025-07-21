@@ -1,7 +1,9 @@
 core
 daf
 outputs_temp/
-outputs/
+localoutputs/
+outputs/*
+!outputs/
 data/
 ncarles_results/
 *.tar.gz
@@ -14,3 +16,6 @@ langmuir_turbulence_temp_buoy.mp4
 test.o*
 data/
 *.png
+.DS_Store
+*.txt
+*/*
