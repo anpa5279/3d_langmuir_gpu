@@ -1,23 +1,21 @@
-using DifferentialEquations  # import the SciML ODE solver package
-using JLD2
+using DifferentialEquations
 using ModelingToolkit
+using JLD2
 
-#----------------------------------------------------------------------------------
-# Defining the carbonate chemistry system of ODEs
-#----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+# Constants and parameters (as before)
+# ----------------------------------------------------------------------------------
 const T = 25.0
 const S = 35.0
-const R = 8.31446261815324 # kg⋅m²⋅s⁻²⋅K⁻1⋅mol⁻1
+const R = 8.31446261815324
 
-#Zeebe and Wolf Gladrow 2001
-const A1 = 4.70e7 # kg/mol/s
-const E1 = 1000 * 23.2 # J/mol
-const A7 = 4.58e10 # kg/mol/s
-const E7 = 1000 * 20.8 # J/mol
-const A8 = 3.05e10 # kg/mol/s
-const E8 = 1000 * 20.8 # J/mol
+const A1 = 4.70e7
+const E1 = 1000 * 23.2
+const A7 = 4.58e10
+const E7 = 1000 * 20.8
+const A8 = 3.05e10
+const E8 = 1000 * 20.8
 
-#Dickson and Goyet 1994 (references Roy et al. 1993,  Dickson 1990, and Millero 1994)
 const K1 = exp(-2307.1266 / (T + 273.15) + 2.83655 - 1.5529413 * log(T + 273.15) +
             (-4.0484 / (T + 273.15) - 0.20760841) * sqrt(S) + 0.08468345 * S -
             0.00654208 * S^1.5 + log(1 - 0.001005 * S))
@@ -31,103 +29,64 @@ const Kb = exp((-8966.90 - 2890.53 * sqrt(S) - 77.942 * S + 1.728 * S^1.5 -
             1.62142 * S) + (-24.4344 - 25.085 * sqrt(S) -0.2474 * S) * log((T + 273.15))
             + 0.053105 * sqrt(S) * (T + 273.15))
 
-#Zeebe and Wolf Gladrow 2001
-const a1 = exp(1246.98 - 6.19e4 / (T + 273.15) - 183.0 * log(T + 273.15)) # kg/mol/s
-const b1 = a1/ K1 # 1/s
-const a2 = A1 * exp(-E1 / (R * (T + 273.15))) # kg/mol/s
-const b2 = a2 * Kw/ K1# 1/s
-const a3 = 5e10 # kg/mol/s
-const b3 = a3 * K2 # 1/s
-const a4 = 6.0e9 # kg/mol/s
-const b4 = a4 * Kw/ K2 # 1/s
-const a5 = 1.40e-3 # kg/mol/s
-const b5 = a5 / Kw # kg/mol/s
-const a6 = A7 * exp(-E8 / (R * (T + 273.15))) # kg/mol/s
-const b6 =  a6* Kw/ Kb # 1/s
-const a7 = A8 * exp(-E8 / (R * (T + 273.15))) # kg/mol/s
-const b7 = a7* K2/ Kb # kg/mol/s
+alpha1 = exp(1246.98 - 6.19e4 / (T + 273.15) - 183.0 * log(T + 273.15))
+beta1 = alpha1/ K1
+alpha2 = A1 * exp(-E1 / (R * (T + 273.15)))
+beta2 = alpha2 * Kw/ K1
+alpha3 = 5e10
+beta3 = alpha3 * K2
+alpha4 = 6.0e9
+beta4 = alpha4 * Kw/ K2
+alpha5 = 1.40e-3
+beta5 = alpha5 / Kw
+alpha6 = A7 * exp(-E8 / (R * (T + 273.15)))
+beta6 =  alpha6* Kw/ Kb
+alpha7 = A8 * exp(-E8 / (R * (T + 273.15)))
+beta7 = alpha7* K2/ Kb
+# ----------------------------------------------------------------------------------
+# Simulation Setup
+# ----------------------------------------------------------------------------------
+CO₂₀ = 7.57e-1
+HCO₃₀ = 1.67e-3
+CO₃₀ = 3.15e-4
+H₀ = 6.31e-9
+OH₀ = 9.6e-6
+BOH₃₀ = 2.97e-4
+BOH₄₀ = 1.19e-4
 
-#@show a1
-#@show b1
-#@show a2
-#@show b2
-#@show a3
-#@show b3
-#@show a4
-#@show b4
-#@show a5
-#@show b5
-#@show a6
-#@show b6
-#@show a7
-#@show b7
+c₀ = [CO₂₀, HCO₃₀, CO₃₀, H₀, OH₀, BOH₃₀, BOH₄₀]
+# ----------------------------------------------------------------------------------
+# Define the symbolic variables and system using ModelingToolkit
+# ----------------------------------------------------------------------------------
+@parameters t a1 b1 a2 b2 a3 b3 a4 b4 a5 b5 a6 b6 a7 b7
+@variables CO2(t) HCO3(t) CO3(t) H(t) OH(t) BOH3(t) BOH4(t)
+@derivatives D'~t
 
-# individual reaction rates
-@inline function dCO₂dt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
-    return dcdt
-end
+eqs = [
+    D(CO2) ~ - (a1 + a2 * OH) * CO2 + (b1 * H + b2) * HCO3,
+    D(HCO3) ~ (a1 + a2 * OH) * CO2 - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH4) * HCO3 + (a3 * H + b4 + a7 * BOH3) * CO3,
+    D(CO3) ~ (b3 + a4 * OH + b7 * BOH4) * HCO3 - (a3 * H + b4 + a7 * BOH3) * CO3,
+    D(H) ~ a1 * CO2 - (b1 * H - b3) * HCO3 - a3 * H * CO3 + (a5 - b5 * H * OH),
+    D(OH) ~ - a2 * OH * CO2 + (b2 - a4 * OH) * HCO3 + b4 * CO3 + (a5 - b5 * H * OH) - (a6 * OH * BOH3 - b6 * BOH4),
+    D(BOH3) ~ b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4),
+    D(BOH4) ~ - (b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4))
+]
 
-@inline function dHCO₃dt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
-    return dcdt
-end
+@named sys = ODESystem(eqs, t)
+sys_simplified = structural_simplify(sys)
 
-@inline function dCO₃dt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
-    return dcdt
-end
+# Generate ODEFunction and Jacobian
+f = ODEFunction(sys_simplified; jac=true)
+J_func = f.jac
+p = [alpha1, beta1, alpha2, beta2, alpha3, beta3, alpha4, beta4, alpha5, beta5, alpha6, beta6, alpha7, beta7]
+J = f.jac(0.0, c₀, p)
+println("Jacobian matrix at t=0:")
+println(J)
 
-@inline function dHdt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = a1 * CO₂ - (b1 * H - b3) * HCO₃ - a3 * H * CO₃ + (a5 - b5 * H * OH)
-    return dcdt
-end
+tspan = (0.0, 10.0)
 
-@inline function dOHdt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
-    return dcdt
-end
-
-@inline function dBOH₃dt(CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄)
-    dcdt = b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)
-    return dcdt
-end
-
-# complete RHS function. The `p` and `t` are unused arguments needed to match the DiffEq interface
-function carbonate_rhs!(dc, c, p, t)
-    dc[1] = dCO₂dt(c...)    # dCO₂
-    dc[2] = dHCO₃dt(c...)   # dHCO₃
-    dc[3] = dCO₃dt(c...)    # dCO₃
-    dc[4] = dHdt(c...)      # dH
-    dc[5] = dOHdt(c...)     # dOH
-    dc[6] = dBOH₃dt(c...)   # dBOH₃
-    dc[7] = - dc[6]         # dBOH₄
-end
-
-#----------------------------------------------------------------------------------
-# Set up the ODE problem
-f = ODEFunction(carbonate_rhs!)
-
-#----------------------------------------------------------------------------------
-# Run script
-#----------------------------------------------------------------------------------
-CO₂ = 7.57e-1
-HCO₃ = 1.67e-3
-CO₃ = 3.15e-4
-BOH₃ = 2.97e-4
-BOH₄ = 1.19e-4
-OH = 9.6e-6
-H = 6.31e-9
-
-min = 60.0 # seconds per minute
-hr = 60.0 * min # minutes per hour
-day = 24hr # hours per day
-
-t_final = 10# 1hr # final time, in seconds
-dt_out = 0.1#2min # output rate, not solver timestep size, in seconds
-c_0 = [CO₂, HCO₃, CO₃, H, OH, BOH₃, BOH₄]
-tspan = (0.0, t_final)
-prob = ODEProblem(f, c_0, tspan)
-sol = solve(prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = dt_out)
+prob = ODEProblem(f, c₀, tspan)
+dt_out = 0.1
+sol = solve(prob, Rodas5(), reltol=1e-8, abstol=1e-8, saveat=dt_out)
 
 @save "outputs/carbonate-diffeq-test.jld2" t=sol.t u=sol.u
