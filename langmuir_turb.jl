@@ -42,8 +42,8 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
 dusdz = Field{Nothing, Nothing, Center}(grid)
-z1d = grid.z.cᵃᵃᶜ
-dusdz_1d = dstokes_dz.(z1d, u₁₀)
+z_d = collect(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 #us = Field{Nothing, Nothing, Center}(grid)
 #us_1d = stokes_velocity.(z1d, u₁₀)
