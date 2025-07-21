@@ -53,9 +53,9 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 #BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0)) 
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
+#v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0)) 
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -69,7 +69,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
+                            boundary_conditions = (u=u_bcs, w=w_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
 @show model
 
 # ICs
