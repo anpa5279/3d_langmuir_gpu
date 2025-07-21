@@ -42,9 +42,9 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
 dusdz = Field{Nothing, Nothing, Center}(grid)
-set!(dusdz) do i, j, k
-    dstokes_dz(grid.z.cᵃᵃᶜ[k], u₁₀)
-end
+z1d = grid.z.cᵃᵃᶜ
+dusdz_1d = dstokes_dz.(z1d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 #us = Field{Nothing, Nothing, Center}(grid)
 #us_1d = stokes_velocity.(z1d, u₁₀)
 #set!(us, us_1d)
