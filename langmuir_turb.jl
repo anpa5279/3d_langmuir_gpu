@@ -4,8 +4,8 @@ using CUDA
 using Random
 using Statistics
 using Printf
+using Random
 using Oceananigans
-using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -39,23 +39,33 @@ const La_t = 0.3  # Langmuir turbulence number
 include("stokes.jl")
 include("smagorinsky_forcing.jl")
 # Automatically distribute among available processors
-arch = Distributed(GPU())
+MPI.Init() # Initialize MPI
+Nranks = MPI.Comm_size(MPI.COMM_WORLD)
+arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
-println("Hello from process $rank out of $Nranks")
-#arch = GPU()#arch = Distributed(GPU())
+# Determine rank safely depending on architecture
+rank = arch isa Distributed ? arch.local_rank : 0
+Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-#stokes drift
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dudz = dstokes_dz(z_d, u₁₀)
-new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
-set!(new_dUSDdz, reshape(dudz, 1, 1, :))
 
+#stokes drift
+dusdz = Field{Nothing, Nothing, Center}(grid)
+Nx_local, Ny_local, Nz_local = size(dusdz)
+z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
+dusdz_1d = dstokes_dz.(z1d, u₁₀)
+set!(dusdz, dusdz_1d)
+us = Field{Nothing, Nothing, Center}(grid)
+us_1d = stokes_velocity.(z1d, u₁₀)
+set!(us, us_1d)
+@show dusdz
+
+#BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
+v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0)) 
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
@@ -70,8 +80,13 @@ T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 #setting up viscosity
 νₑ = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
 
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
+T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+                                bottom = GradientBoundaryCondition(0.0))
+coriolis = FPlane(f=1e-4) # s⁻¹
+
+model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
+                            tracers = (:T,),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
                             closure = nothing, #closure = Smagorinsky(coefficient=0.1)
@@ -115,9 +130,9 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
 
 #output files
 function save_IC!(file, model)
@@ -135,13 +150,13 @@ T = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, w, νₑ),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
+                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "outputs/langmuir_turbulence_averages.jld2",
+                                                    filename = "langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
