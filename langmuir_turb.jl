@@ -105,11 +105,11 @@ conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
 
 #output files
 function save_IC!(file, model)
-    #if rank == 0
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
-    file["IC/wind_speed"] = u₁₀
-    #end
+    if rank == 0
+        file["IC/friction_velocity"] = u_f
+        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+        file["IC/wind_speed"] = u₁₀
+    end
     return nothing
 end
 
@@ -124,13 +124,13 @@ T_avg = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
+                                                      filename = "langmuir_turbulence_fields$rank.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "langmuir_turbulence_averages.jld2",
+                                                    filename = "langmuir_turbulence_averages$rank.jld2",
                                                     overwrite_existing = true)
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
 
