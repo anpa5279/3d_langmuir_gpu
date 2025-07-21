@@ -122,13 +122,13 @@ U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T_avg = Average(T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, w),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
+simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T_avg),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
