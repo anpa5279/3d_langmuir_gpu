@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=2
 ntasks=$((nodes*gpus))
-jobn=smag-default
+jobn=smaglilly
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
