@@ -44,7 +44,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 #defining dense plume
 include("dense_scalar.jl")
-buoyancy = MyBuoyancyTracer(equation_of_state = LinearEquationOfState(thermal_expansion=β), density = ρₒ, c_sat = alk0, constant_salinity = S₀)
+buoyancy = MyBuoyancyTracer(ρₒ, alk0, β)
 @show buoyancy
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
