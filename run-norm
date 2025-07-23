@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=2
 ntasks=$((nodes*gpus))
-jobn=amd
+jobn=NBP
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -48,7 +48,7 @@ julia --project -e 'using Pkg; Pkg.add("Oceananigans", version="0.96.35")' #####
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb.jl
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project NBP.jl
 EXEC
 
 qsub < EXEC_STEP
