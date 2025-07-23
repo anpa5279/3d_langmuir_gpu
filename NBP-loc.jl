@@ -43,16 +43,18 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 #defining dense plume
-include("dense_scalar.jl")
-buoyancy = MyBuoyancyTracer(ρₒ, alk0, β)
-@show buoyancy
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+nbp(x, y, z, t, T, Alk) = g_Earth * (β * T) * (Alk - alk0)/ρₒ
+NBP_w = Forcing(nbp, field_dependencies=(:T, :Alk))
+#defining model
+model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(),
                             tracers = (:T, :Alk, ),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs), 
+                            forcing = (w=NBP_w,))
+
 @show model
 
 # ICs
