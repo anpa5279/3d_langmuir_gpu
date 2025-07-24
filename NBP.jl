@@ -150,7 +150,7 @@ V = Average(v, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, calcite),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "NBP_fields_$(rank).jld2", #$(rank)
+                                                    filename = "NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 
@@ -161,8 +161,8 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "NBP_averages_$(rank).jld2",
+                                                    filename = "NBP_averages.jld2",
                                                     overwrite_existing = true)
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint.jld2")
 
 run!(simulation)#; pickup = true)

@@ -43,8 +43,6 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
-w_plume = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
-sinking = AdvectiveForcing(w=w_plume)
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -52,15 +50,14 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs), 
-                            forcing = (calcite=sinking,))
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 
 @show model
 
 # ICs
 r_z(x, y, z) = randn(Xoshiro()) * exp(z/4)
 σ = 1.0 # m
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2))) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(x, y, z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
