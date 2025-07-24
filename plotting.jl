@@ -48,6 +48,8 @@ end
 function video()
     Nranks = 4
     fld_file="outputs/langmuir_turbulence_fields_0.jld2"
+    fld_file="localoutputs/NBP_fields.jld2"
+    fld_file="localoutputs/NBP_averages.jld2"
     f = jldopen(fld_file)
 
     #time and IC data 
