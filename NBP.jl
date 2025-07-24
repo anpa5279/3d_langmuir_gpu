@@ -1,5 +1,6 @@
 using Pkg
 using MPI
+MPI.Init() # Initialize MPI
 using CUDA
 using Statistics
 using Printf
@@ -36,12 +37,7 @@ const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 const calcite0 = 10.0e6 # kg
 const r_plume = 1e-4 # [m] "Fine sand"
-
-#referring to files with desiraed functions
-include("stokes.jl")
-
 # Automatically distribute among available processors
-MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
