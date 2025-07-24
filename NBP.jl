@@ -27,12 +27,15 @@ const initial_mixed_layer_depth = 30.0 # m
 const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
 const dTdz = 0.01  # K m⁻¹, temperature gradient
-const T0 = 25.0    # C, temperature at the surface  
+const T0 = 17.0    # C, temperature at the surface  
 const S₀ = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
+const calcite0 = 10.0e6 # kg
+const r_plume = 1e-4 # [m] "Fine sand"
 
 #referring to files with desiraed functions
 include("stokes.jl")
