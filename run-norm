@@ -10,7 +10,7 @@ mkdir outputs/$jobn
 
 cp NBP.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
-cp Project.toml outputs/$jobn/
+##cp Project.toml outputs/$jobn/
 
 cd outputs/$jobn/
 
@@ -42,7 +42,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random");  Pkg.add("KernelAbstractions")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
