@@ -8,7 +8,7 @@ jobn=NBP
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
-cp langmuir_turb.jl outputs/$jobn/
+cp NBP.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
 cp Project.toml outputs/$jobn/
 
