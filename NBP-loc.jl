@@ -35,10 +35,10 @@ const calcite0 = 10.0e6 # kg
 const r_plume = 1e-4 # [m] "Fine sand"
 
 #referring to files with desiraed functions
-include("stokes.jl")
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
+include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 dusdz_1d = dstokes_dz.(z_d, u₁₀)
