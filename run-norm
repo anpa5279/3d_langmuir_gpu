@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=2
+gpus=4
 ntasks=$((nodes*gpus))
 jobn=run-NBP
 
