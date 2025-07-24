@@ -60,8 +60,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 # ICs
 r_z(x, y, z) = randn(Xoshiro()) * exp(z/4)
 σ = 10.0 # m
-Tᵢ(x, y, z) = -3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2))
-#Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(x, y, z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
@@ -118,10 +117,10 @@ U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
-                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/NBP_averages.jld2",
-                                                    overwrite_existing = true)
+#simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
+#                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
+#                                                    filename = "localoutputs/NBP_averages.jld2",
+#                                                    overwrite_existing = true)
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
