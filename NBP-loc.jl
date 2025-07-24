@@ -40,7 +40,6 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)), bottom = GradientBoundaryCondition(0.0))
-calcite_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
@@ -49,25 +48,26 @@ sinking = AdvectiveForcing(w=w_plume)
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:T, :calcite, ),
+                            tracers = (:T,),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, calcite=calcite_bcs), 
+                            boundary_conditions = (u=u_bcs, T=T_bcs), 
                             forcing = (calcite=sinking,))
 
 @show model
 
 # ICs
-r_z(z) = randn(Xoshiro()) * exp(z/4)
+r_z(x, y, z) = randn(Xoshiro()) * exp(z/4)
 σ = 10.0 # m
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, calcite=calciteᵢ)
+Tᵢ(x, y, z) = -3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2))
+#Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(x, y, z) 
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(x, y, z) 
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 2*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=15, stop_time = 0.5*day) #stop_time = 96hours,
 @show simulation
 
 # outputs and running
@@ -87,7 +87,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
 
