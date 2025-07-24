@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=2
 ntasks=$((nodes*gpus))
-jobn=NBP
+jobn=run-NBP
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -40,7 +40,7 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-####julia --project -e 'import Pkg'
+julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
 julia --project -e 'using Pkg; Pkg.add("Oceananigans", version="0.96.35"); Pkg.add("KernelAbstractions")' ######; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
