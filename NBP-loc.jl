@@ -56,20 +56,24 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 
 # ICs
 r_z(x, y, z) = randn(Xoshiro()) * exp(z/4)
-σ = 1.0 # m
-function Tᵢ(x, y, z) 
-    if z > -initial_mixed_layer_depth 
-        return (T0 - 3*T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2))) 
-    else 
-        return T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(x, y, z) 
+function Tᵢ(x, y, z)
+    σ = 10.0
+    blob = T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2σ^2)) * exp(-((x - Lx/2)^2 + (y - Ly/2)^2) / (2σ^2))
+
+    T = T0 - blob
+
+    if z < -initial_mixed_layer_depth
+        T = T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
     end
+
+    return T
 end
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(x, y, z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=15, stop_time = 0.125*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 0.125*day) #stop_time = 96hours,
 @show simulation
 
 # outputs and running
@@ -91,7 +95,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
