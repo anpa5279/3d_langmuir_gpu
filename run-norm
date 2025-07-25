@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=4
 ntasks=$((nodes*gpus))
-jobn=run-NBP
+jobn=run-NBP-temp
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn

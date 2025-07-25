@@ -13,7 +13,7 @@ const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
-const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
+const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
@@ -39,7 +39,8 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)), bottom = GradientBoundaryCondition(0.0))
+@inline surface_heat_flux(x, y, t, p) = p.Q / ( p.cᴾ *  p.ρ *  p.Lx *  p.Ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.Lx/2)^2 + (y -  p.Ly/2)^2) / (2 * (p.σ)^2))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (Q = Q, cᴾ = cᴾ, ρ = ρₒ, Lx = Lx, Ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
@@ -56,24 +57,13 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 
 # ICs
 r_z(x, y, z) = randn(Xoshiro()) * exp(z/4)
-function Tᵢ(x, y, z)
-    σ = 10.0
-    blob = T0/sqrt(2*pi* σ^2) * exp(-z^2 / (2σ^2)) * exp(-((x - Lx/2)^2 + (y - Ly/2)^2) / (2σ^2))
-
-    T = T0 - blob
-
-    if z < -initial_mixed_layer_depth
-        T = T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
-    end
-
-    return T
-end
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(x, y, z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 0.125*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 0.25*day) #stop_time = 96hours,
 @show simulation
 
 # outputs and running
@@ -105,7 +95,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 0.5hours
+output_interval = 0.25hours
 
 u, v, w = model.velocities
 T = model.tracers.T
