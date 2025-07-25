@@ -54,7 +54,8 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
 #BCs
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
+us = stokes_velocity(z_d[end], u₁₀)
+u_f = La_t^2 * us
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 @inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
@@ -62,8 +63,6 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, p
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
-w_plume = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
-sinking = AdvectiveForcing(w=w_plume)
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -83,7 +82,7 @@ vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 2*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
 @show simulation
 
 # outputs and running
