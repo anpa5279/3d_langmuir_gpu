@@ -99,9 +99,6 @@ output_interval = 0.25hours
 
 u, v, w = model.velocities
 T = model.tracers.T
-W = Average(w, dims=(1, 2))
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     schedule = TimeInterval(output_interval),

@@ -95,7 +95,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
-conjure_time_step_wizard!(simulation, schedule=IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
@@ -105,13 +105,10 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 4hours
+output_interval = 2hours
 
 u, v, w = model.velocities
 T = model.tracers.T
-W = Average(w, dims=(1, 2))
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     schedule = TimeInterval(output_interval),
