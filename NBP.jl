@@ -9,14 +9,6 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.DistributedComputations
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Utils: launch!
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.TimeSteppers: update_state!
-using Oceananigans: UpdateStateCallsite
-using KernelAbstractions: @kernel, @index
-using Oceananigans.Operators
-using Oceananigans.Operators: volume
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
