@@ -129,7 +129,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
+conjure_time_step_wizard!(simulation, schedule=IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
