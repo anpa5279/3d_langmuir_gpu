@@ -17,9 +17,9 @@ using Oceananigans: UpdateStateCallsite
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Operators
 using Oceananigans.Operators: volume
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 64        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -29,12 +29,11 @@ const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
-const T0 = 17.0    # C, temperature at the surface  
+const T0 = 25.0    # C, temperature at the surface  
 const S₀ = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
-const r_plume = 1e-4 # [m] "Fine sand"
 # Automatically distribute among available processors
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
