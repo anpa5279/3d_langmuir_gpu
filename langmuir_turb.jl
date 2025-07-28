@@ -26,9 +26,6 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 
-#referring to files with desiraed functions
-include("stokes.jl")
-
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
@@ -41,21 +38,18 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
+include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-#us = Field{Nothing, Nothing, Center}(grid)
-#us_1d = stokes_velocity.(z1d, u₁₀)
-#set!(us, us_1d)
 @show dusdz
 
 #BCs
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
+us = stokes_velocity(z_d[end], u₁₀)
+u_f = La_t^2 * us
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-#v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
-#w_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0)) 
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -99,21 +93,21 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
-conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=30.0seconds)
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
 #output files
 function save_IC!(file, model)
     if rank == 0
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+        file["IC/stokes_velocity"] = us
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
 
-output_interval = 6hours
+output_interval = 2hours
 
 u, v, w = model.velocities
 T = model.tracers.T
@@ -132,6 +126,6 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
