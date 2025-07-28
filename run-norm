@@ -21,7 +21,7 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=regular
+#PBS -l job_priority=economy
 #PBS -l walltime=0:20:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus
 #PBS -l gpu_type=a100
