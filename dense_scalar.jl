@@ -8,7 +8,7 @@ struct MyBuoyancyTracer{FT} <: AbstractBuoyancyFormulation{FT}
     thermal_expansion :: FT
 end
 
-required_tracers(b::MyBuoyancyTracer) = (:T, :Alk)
+required_tracers(b::MyBuoyancyTracer) = (:T, :Alk, :DIC) #temperature, alkalinity, dissolved inorganic carbon, salinity
 
 @inline grav(c_sat, density, Alk) = g_Earth * (Alk - c_sat) / density
 
