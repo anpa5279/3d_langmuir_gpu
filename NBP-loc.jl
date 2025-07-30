@@ -5,6 +5,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+#include("dense_scalar.jl")
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -17,6 +18,7 @@ const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
+const molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
 const dTdz = 0.01  # K m⁻¹, temperature gradient
 const T0 = 25.0    # C, temperature at the surface  
 const S₀ = 35.0    # ppt, salinity 
@@ -36,14 +38,13 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-#@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = TracerConcentrationBuoyancy(densities = (ρ_calcite, ), molar_masses=(molar_calcite,), thermal_expansion = β, constant_salinity = S₀)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:T,),
+                            tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
@@ -55,7 +56,9 @@ r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1  * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1  * r_z(z) * r_xy(y) * r_xy(x + Lx)
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
+σ = 10.0 # m
+CaCO3ᵢ(x, y, z) = ρ_calcite/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
 @show simulation

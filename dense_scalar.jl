@@ -2,12 +2,14 @@ using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition, getbc
 using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 import Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ,  ∂x_b,  ∂y_b,  ∂z_b, top_buoyancy_flux, bottom_buoyancy_flux, 
-                                        with_float_type, AbstractBuoyancyFormulation, required_tracers
+                                        AbstractBuoyancyFormulation, required_tracers
 using Oceananigans.Utils: tupleit
-import SeawaterPolynomials: thermal_expansion, haline_contraction, with_float_type
-struct TracerConcentrationBuoyancy{FT} <: AbstractBuoyancyFormulation{FT} 
-    densities :: P
-    molar_masses :: P
+
+export buoyancy_perturbationᶜᶜᶜ, ∂x_b, ∂y_b, ∂z_b, top_buoyancy_flux, bottom_buoyancy_flux, 
+       TracerConcentrationBuoyancy
+struct TracerConcentrationBuoyancy{FT, C, M, T, S} <: AbstractBuoyancyFormulation{FT} 
+    densities :: C
+    molar_masses :: M
     reference_density :: FT
     thermal_expansion :: FT
     haline_contraction :: FT
@@ -15,12 +17,16 @@ struct TracerConcentrationBuoyancy{FT} <: AbstractBuoyancyFormulation{FT}
     constant_salinity :: S
 end
 
+required_tracers(::TracerConcentrationBuoyancy) = (:T, :S)
+required_tracers(::TracerConcentrationBuoyancy{FT, Tuple{Float64}, Tuple{Float64}, <:Nothing, <:Number}) where {FT} = (:T,) # active temperature only
+required_tracers(::TracerConcentrationBuoyancy{FT, Tuple{Float64}, Tuple{Float64}, <:Number, <:Nothing}) where {FT} = (:S,) # active salinity only
+
 function  TracerConcentrationBuoyancy(FT = Oceananigans.defaults.FloatType;
                           densities = (), 
                           molar_masses = (),
                           reference_density = 1026.0, # kg m⁻³, average density at the surface of the world ocean
-                          thermal_expansion = 2.0e-4, # 1/K, thermal
-                          haline_contraction = 7.6e-4, # 1/ppt, haline contraction coefficient
+                          thermal_expansion = 1.67e-4, # 1/K, thermal
+                          haline_contraction = 7.80e-4, # 1/ppt, haline contraction coefficient
                           constant_temperature = nothing,
                           constant_salinity = nothing)
 
@@ -32,13 +38,9 @@ function  TracerConcentrationBuoyancy(FT = Oceananigans.defaults.FloatType;
     constant_temperature = isnothing(constant_temperature) ? nothing : convert(FT, constant_temperature)
     constant_salinity = isnothing(constant_salinity) ? nothing : convert(FT, constant_salinity)
 
-    return  TracerConcentrationBuoyancy{FT, typeof(densities), typeof(molar_masses), typeof(reference_density), typeof(thermal_expansion), typeof(haline_contraction), typeof(constant_temperature), typeof(constant_salinity)}(
+    return  TracerConcentrationBuoyancy{FT, Tuple{Float64}, Tuple{Float64}, typeof(constant_temperature), typeof(constant_salinity)}(
                             densities, molar_masses, reference_density, thermal_expansion, haline_contraction, constant_temperature, constant_salinity)
 end
-
-required_tracers(::TracerConcentrationBuoyancy) = (:T, :S)
-required_tracers(::TracerConcentrationBuoyancy{FT, <:Nothing, <:Number}) where {FT} = (:T,) # active temperature only
-required_tracers(::TracerConcentrationBuoyancy{FT, <:Number, <:Nothing}) where {FT} = (:S,) # active salinity only
 
 #####
 ##### Convinient aliases to dispatch on
@@ -54,8 +56,10 @@ const SalinityConcentrationBuoyancy = TracerConcentrationBuoyancy{FT, <:Number, 
 
 @inline function ρ_total(C, M, ρ_c, ρ_water)#must ignore salinity and temperature 
     ρ = ρ_water
-    for c in C 
-        ρ += (-ρ_water * C[c][i, j, k]/(M[c] * ρ_c[c]) + C[c]/M[c])
+    m = 1
+    for c in C
+        ρ += (-ρ_water * c[i, j, k]/(M[m] * ρ_c[m]) + c[i, j, k]/M[m])
+        m += 1
     end
     return @inbounds ρ
 end 
