@@ -1,14 +1,13 @@
 using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
-import Oceananigans.BuoyancyFormulations: required_tracers, buoyancy_perturbationᶜᶜᶜ,  ∂x_b,  ∂y_b,  ∂z_b, top_buoyancy_flux, bottom_buoyancy_flux, 
+import Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ,  ∂x_b,  ∂y_b,  ∂z_b, top_buoyancy_flux, bottom_buoyancy_flux, 
                                         with_float_type, AbstractBuoyancyFormulation
 
 struct MyBuoyancyTracer{FT} <: AbstractBuoyancyFormulation{FT} 
-    density :: FT
-    c_sat :: FT
+    densities :: FT
+    concentrations :: FT
     thermal_expansion :: FT
+    haline_contraction :: FT
 end
-
-required_tracers(b::MyBuoyancyTracer) = (:T, :Alk, :DIC) #temperature, alkalinity, dissolved inorganic carbon, salinity
 
 @inline grav(c_sat, density, Alk) = g_Earth * (Alk - c_sat) / density
 

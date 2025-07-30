@@ -16,3 +16,5 @@ data/
 *.png
 localoutputs/
 localoutputs/*
+.DS_Store
+
