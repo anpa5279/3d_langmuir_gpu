@@ -49,15 +49,15 @@ us = stokes_velocity(z_d[end], u₁₀)
 u_f = La_t^2 * us
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-#@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
-#T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
+@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = BuoyancyTracer()#SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:b,),
+                            tracers = (:T, ),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
@@ -67,13 +67,13 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g_Earth * β *  T0 : g_Earth * β *  T0 + g_Earth * β *  dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
-set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 1*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
 @show simulation
 
 # outputs and running
@@ -100,7 +100,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+    file["IC/stokes_velocity"] = us
     file["IC/wind_speed"] = u₁₀
     return nothing
 end
