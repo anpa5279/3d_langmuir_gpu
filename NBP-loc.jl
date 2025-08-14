@@ -2,6 +2,7 @@ using Pkg
 using Statistics
 using Printf
 using Random
+Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
