@@ -48,7 +48,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 #BCs
 us = stokes_velocity(z_d[end], u₁₀)
 u_f = La_t^2 * us
-τx = -(u_f^2)
+τx = (u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T,),
                             timestepper = :RungeKutta3,
-                            closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 2.0, background_κz = 1e-3),
+                            closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
 @show model
@@ -74,7 +74,7 @@ vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 2*day) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
