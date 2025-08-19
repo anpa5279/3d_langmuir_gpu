@@ -5,7 +5,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+using Oceananigans.BoundaryConditions
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
@@ -43,18 +43,12 @@ w_bcs = FieldBoundaryConditions()
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 #CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
-CaCO3_bcs = FieldBoundaryConditions()#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
+CaCO3_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 
 # defining forcing functions
-no_penetration = ImpenetrableBoundaryCondition()
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
-                                   top=no_penetration, bottom=no_penetration)
-
-w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(w=w_slip)
 include("NBP_forcing.jl")
 w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
 
@@ -66,7 +60,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP, CaCO3=sinking))
+                            forcing = (w = w_NBP, ))
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
