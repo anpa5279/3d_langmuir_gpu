@@ -2,11 +2,9 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #include("dense_scalar.jl")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth, TracerConcentrationBuoyancy
-#include("dense_scalar.jl")
+using Oceananigans.BuoyancyFormulations: g_Earth
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -40,14 +38,14 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = TracerConcentrationBuoyancy(; densities = (ρ_calcite, ), molar_masses=(molar_calcite,), thermal_expansion = β, constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(), 
+                            closure = SmagorinskyLilly(C=0.1, Pr=(T = 1.0, CaCO3 = 1/10), Cb = 1/10000000), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model

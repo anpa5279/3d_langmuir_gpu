@@ -2,11 +2,9 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #include("dense_scalar.jl")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth, TracerConcentrationBuoyancy
-#include("dense_scalar.jl")
+using Oceananigans.BuoyancyFormulations: g_Earth
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -40,8 +38,13 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = TracerConcentrationBuoyancy(; densities = (ρ_calcite, ), molar_masses=(molar_calcite,), thermal_expansion = β, constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
+# defining forcing functions
+include("NBP_forcing.jl")
+w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
+#CaCO3_NBP = Forcing(∇_dot_qᶜ, discrete_form=true)
+
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
@@ -49,10 +52,11 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs),
+                            forcing = (w = w_NBP, ))#, #CaCO3 = CaCO3_NBP
+                            #auxiliary_fields = (NBP = NBP,))
 @show model
 # ICs
-#r_xy(a) = randn(Xoshiro())[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
 uᵢ(x, y, z) = u_f * 1e-1  * r_z(z)
