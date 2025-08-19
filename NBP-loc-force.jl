@@ -74,12 +74,6 @@ set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
 # forcing callback functions
-function compute_slip_velocity!(sim)
-    w_slip .= w
-    fill_halo_regions!(w_slip)
-    return nothing
-end
-simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
 
 # progress function
 function progress(simulation)
