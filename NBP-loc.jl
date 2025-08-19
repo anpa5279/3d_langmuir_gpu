@@ -2,10 +2,10 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main")
+Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #include("dense_scalar.jl")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth, TracerConcentrationBuoyancy
 #include("dense_scalar.jl")
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
@@ -40,10 +40,10 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = TracerConcentrationBuoyancy(densities = (ρ_calcite, ), molar_masses=(molar_calcite,), thermal_expansion = β, constant_salinity = S₀)
+buoyancy = TracerConcentrationBuoyancy(; densities = (ρ_calcite, ), molar_masses=(molar_calcite,), thermal_expansion = β, constant_salinity = S₀)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
 #defining model
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
@@ -52,13 +52,14 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 # ICs
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-uᵢ(x, y, z) = u_f * 1e-1  * r_z(z) * r_xy(y) * r_xy(x + Lx)
-vᵢ(x, y, z) = -u_f * 1e-1  * r_z(z) * r_xy(y) * r_xy(x + Lx)
+#r_xy(a) = randn(Xoshiro())[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
+r_z(z) = randn(Xoshiro()) * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z) * randn(Xoshiro())
+uᵢ(x, y, z) = u_f * 1e-1  * r_z(z) * randn(Xoshiro())
+vᵢ(x, y, z) = -u_f * 1e-1  * r_z(z) * randn(Xoshiro())
 σ = 10.0 # m
-CaCO3ᵢ(x, y, z) = ρ_calcite/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+c0 = ρ_calcite # mol/m3
+CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
@@ -88,7 +89,8 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
+CaCO3 = model.tracers.CaCO3
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
