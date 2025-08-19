@@ -41,8 +41,8 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 w_bcs = FieldBoundaryConditions()
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
-#CaCO3_flux(x, y, t, w) = 
-CaCO3_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
+CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
+CaCO3_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
@@ -86,7 +86,7 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
