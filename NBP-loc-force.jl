@@ -6,7 +6,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -39,7 +39,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-w_bcs = FieldBoundaryConditions()
+w_bcs = FieldBoundaryConditions(bottom=OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 #CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
