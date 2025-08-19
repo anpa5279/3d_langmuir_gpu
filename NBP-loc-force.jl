@@ -46,14 +46,14 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
 CaCO3_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
-#buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 
 # defining forcing functions
 include("NBP_forcing.jl")
 w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
 
 #defining model
-model = NonhydrostaticModel(; grid, coriolis, #buoyancy, 
+model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
