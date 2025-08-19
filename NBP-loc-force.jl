@@ -5,7 +5,8 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -41,13 +42,19 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 w_bcs = FieldBoundaryConditions()
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
-CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
+#CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
 CaCO3_bcs = FieldBoundaryConditions()#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 
 # defining forcing functions
+no_penetration = ImpenetrableBoundaryCondition()
+slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+                                   top=no_penetration, bottom=no_penetration)
+
+w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
+sinking = AdvectiveForcing(w=w_slip)
 include("NBP_forcing.jl")
 w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
 
@@ -59,7 +66,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP, ))
+                            forcing = (w = w_NBP, CaCO3=sinking))
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
@@ -72,8 +79,15 @@ CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
-@show simulation
-# outputs and running
+# forcing callback functions
+function compute_slip_velocity!(sim)
+    w_slip .= w
+    fill_halo_regions!(w_slip)
+    return nothing
+end
+simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
+
+# progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
     # Print a progress message
@@ -88,6 +102,7 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
@@ -113,4 +128,5 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "localoutputs/T-NBP_averages.jld2",
                                                     overwrite_existing = true)
+# running the simulation
 run!(simulation)#; pickup = true)
