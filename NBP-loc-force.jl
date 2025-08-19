@@ -41,7 +41,7 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 w_bcs = FieldBoundaryConditions()
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
-                                bottom = GradientBoundaryCondition(0.0))
+                                bottom = GradientBoundaryCondition(dTdz))
 #CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
 CaCO3_bcs = FieldBoundaryConditions()#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
