@@ -42,7 +42,7 @@ w_bcs = FieldBoundaryConditions()
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
-CaCO3_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
+CaCO3_bcs = FieldBoundaryConditions()#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
