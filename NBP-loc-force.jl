@@ -9,10 +9,10 @@ using Oceananigans.BoundaryConditions
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
-const Nz = 64        # number of points in the vertical direction
+const Nz = 128        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
-const Lz = 96    # (m) domain depth 
+const Lz = 192    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
 const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
