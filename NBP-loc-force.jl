@@ -43,6 +43,15 @@ w_bcs = FieldBoundaryConditions(bottom=OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 #CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
+σ = 10.0 # m
+c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
+@inline function CaCO3_t(x, y, z, t) 
+    if (t <= 6hours)
+        return c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+    else
+        return 0.0
+    end
+end
 CaCO3_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
