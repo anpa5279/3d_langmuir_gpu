@@ -30,5 +30,5 @@ end
     reference_density = parameters.reference_density
     thermal_expansion  = parameters.thermal_expansion
     C = Base.structdiff(model_fields, (u = nothing, v = nothing, w = nothing,))
-    return @inbounds -ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, C, molar_masses, densities, reference_density, thermal_expansion)
+    return @inbounds -ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, C, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
 end 

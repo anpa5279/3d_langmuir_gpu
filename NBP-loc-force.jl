@@ -3,16 +3,20 @@ using Statistics
 using Printf
 using Random
 using Oceananigans
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions
-import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
+using Oceananigans.Operators: ℑzᵃᵃᶠ
+using KernelAbstractions: @kernel, @index
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const Nz = 64        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
-const Lz = 192    # (m) domain depth 
+const Lz = 96    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
 const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
@@ -39,9 +43,9 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-w_bcs = FieldBoundaryConditions(bottom=OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
+#w_bcs = FieldBoundaryConditions(top = ImpenetrableBoundaryCondition(), bottom = ImpenetrableBoundaryCondition())
 #CaCO3_flux(x, y, t, w, CaCO3) = w * CaCO3
 @inline function CaCO3_t(x, y, t) 
     if (t <= 6hours)
@@ -52,37 +56,59 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
         return 0.0
     end
 end
-CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = OpenBoundaryCondition(nothing))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
+CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t))#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+buoyancy = BuoyancyTracer() #SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 # defining forcing functions
-include("NBP_forcing.jl")
-w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
+#include("NBP_forcing.jl")
+#w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β,))
+#slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+#                                   top=ImpenetrableBoundaryCondition(), bottom=ImpenetrableBoundaryCondition())
 
+#w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
+#w_NBP = AdvectiveForcing(w=w_slip)
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
-                            tracers = (:T, :CaCO3),
+                            tracers = (:T, :CaCO3, :b),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP, ))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, CaCO3=CaCO3_bcs))#forcing = (CaCO3 = w_NBP,))
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u_f * 1e-1  * r_z(z)
-vᵢ(x, y, z) = -u_f * 1e-1  * r_z(z)
+bᵢ(x, y, z) = Tᵢ(x, y, z) * β * g_Earth
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 σ = 10.0 # m
 c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ, b = bᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
 # forcing callback functions
+@kernel function densescalar!(grid, b, tracers, parameters)
+    i, j, k = @index(Global, NTuple)
+    molar_masses = parameters.molar_masses
+    densities = parameters.densities
+    reference_density = parameters.reference_density
+    thermal_expansion  = parameters.thermal_expansion
+    @inbounds b[i, j, k] = ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, tracers, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
+end 
+function NBP_update!(model)
+    b = model.tracers.b
+    tracers = Base.structdiff(model.tracers, (b = nothing,))
+    arch = model.architecture
+    parameters = (; molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β)
+    launch!(arch, grid, :xyz, densescalar!, grid, b, tracers, parameters)
+    fill_halo_regions!(b)
+    return nothing
+end
+simulation.callbacks[:NBP] = Callback(NBP_update!, IterationInterval(1), callsite=UpdateStateCallsite())
 
 # progress function
 function progress(simulation)
