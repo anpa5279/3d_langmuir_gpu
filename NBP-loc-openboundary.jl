@@ -41,16 +41,17 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
-sides = OpenBoundaryCondition(nothing)
+sides_faces = OpenBoundaryCondition(nothing)
+sides_centers = FluxBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                east = sides, west = sides, south = sides, north = sides)
-v_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
-w_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
+                                east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
+v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
+w_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz),#)#, 
-                                east = sides, west = sides, south = sides, north = sides)
+                                east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
 @inline function CaCO3_t(x, y, t) 
     if (t <= 6hours)
         σ = 10.0 # m
@@ -61,8 +62,8 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
     end
 end
 CaCO3_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), 
-                                top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition(),#)#, 
-                                east = sides, west = sides, south = sides, north = sides)
+                                top = ValueBoundaryCondition(CaCO3_t), bottom = sides_centers,#)#, 
+                                east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
