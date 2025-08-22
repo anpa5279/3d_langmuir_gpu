@@ -8,7 +8,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 using KernelAbstractions: @kernel, @index
@@ -41,16 +41,16 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
-#sides = GradientBoundaryCondition(0.0)
+sides = OpenBoundaryCondition(nothing)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))#, 
-                                #east = sides, west = sides, south = sides, north = sides)
-#v_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
-#w_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                east = sides, west = sides, south = sides, north = sides)
+v_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
+w_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
-                                bottom = GradientBoundaryCondition(dTdz))#, 
-                                #east = sides, west = sides, south = sides, north = sides)
+                                bottom = GradientBoundaryCondition(dTdz),#)#, 
+                                east = sides, west = sides, south = sides, north = sides)
 @inline function CaCO3_t(x, y, t) 
     if (t <= 6hours)
         σ = 10.0 # m
@@ -61,8 +61,8 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
     end
 end
 CaCO3_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), 
-                                top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition())#, 
-                                #east = sides, west = sides, south = sides, north = sides)
+                                top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition(),#)#, 
+                                east = sides, west = sides, south = sides, north = sides)
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
@@ -76,7 +76,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
                             forcing = (w = w_NBP,))
 @show model
 # ICs
