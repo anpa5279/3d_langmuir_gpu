@@ -48,7 +48,7 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
 v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
-w_bcs = FieldBoundaryConditions(east = sides_faces, west = sides_faces, south = sides_faces, north = sides_faces)
+w_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz),#)#, 
                                 east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
