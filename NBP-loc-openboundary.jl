@@ -41,7 +41,7 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
-sides = GradientBoundaryCondition(0.0)
+#sides = GradientBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))#, 
