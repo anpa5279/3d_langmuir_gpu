@@ -1,3 +1,4 @@
+
 using Pkg
 using Statistics
 using Printf
@@ -56,18 +57,13 @@ w_bcs = FieldBoundaryConditions(top = ImpenetrableBoundaryCondition(), bottom = 
         return 0.0
     end
 end
-CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition())#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
+CaCO3_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition())#bottom = FluxBoundaryCondition(CaCO3_flux, field_dependencies=(:w, :CaCO3)))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
-
 # defining forcing functions
 include("NBP_forcing.jl")
 w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
-                                   top=ImpenetrableBoundaryCondition(), bottom=ImpenetrableBoundaryCondition())
-w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-c_NBP = AdvectiveForcing(w=w_slip)
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
@@ -76,7 +72,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP, CaCO3 = c_NBP))
+                            forcing = (w = w_NBP,))
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
@@ -89,13 +85,6 @@ CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
-# forcing callback functions
-function NBP_update!(model)
-    w = model.velocities.w
-    w_slip .= w
-    fill_halo_regions!(w_slip)
-    return nothing
-end
 # progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -111,7 +100,6 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
-
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f

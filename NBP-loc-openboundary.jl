@@ -1,10 +1,17 @@
+
 using Pkg
 using Statistics
 using Printf
 using Random
 using Oceananigans
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
+using Oceananigans.Operators: ℑzᵃᵃᶠ
+using KernelAbstractions: @kernel, @index
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 64        # number of points in the vertical direction
@@ -25,7 +32,7 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
-grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
@@ -34,35 +41,56 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
+sides = GradientBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))#, 
+                                #east = sides, west = sides, south = sides, north = sides)
+#v_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
+#w_bcs = FieldBoundaryConditions(east = sides, west = sides, south = sides, north = sides)
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
+                                bottom = GradientBoundaryCondition(dTdz))#, 
+                                #east = sides, west = sides, south = sides, north = sides)
+@inline function CaCO3_t(x, y, t) 
+    if (t <= 6hours)
+        σ = 10.0 # m
+        c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
+        return c0/sqrt(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+    else
+        return 0.0
+    end
+end
+CaCO3_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), 
+                                top = ValueBoundaryCondition(CaCO3_t), bottom = ImpenetrableBoundaryCondition())#, 
+                                #east = sides, west = sides, south = sides, north = sides)
+# defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀) #N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+# defining forcing functions
+include("NBP_forcing.jl")
+w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
-                            closure = SmagorinskyLilly(C=0.1, Pr=(T = 1.0, CaCO3 = 1/10), Cb = 1/10000000), 
+                            closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
+                            forcing = (w = w_NBP,))
 @show model
 # ICs
-#r_xy(a) = randn(Xoshiro())[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u_f * 1e-1  * r_z(z)
-vᵢ(x, y, z) = -u_f * 1e-1  * r_z(z)
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 σ = 10.0 # m
 c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
-@show simulation
-# outputs and running
+# progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
     # Print a progress message
@@ -75,7 +103,7 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
@@ -102,4 +130,5 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "localoutputs/T-NBP_averages.jld2",
                                                     overwrite_existing = true)
+# running the simulation
 run!(simulation)#; pickup = true)
