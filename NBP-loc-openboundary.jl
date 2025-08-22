@@ -42,7 +42,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
 sides_faces = OpenBoundaryCondition(nothing)
-sides_centers = FluxBoundaryCondition(0.0)
+sides_centers = GradientBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
@@ -61,8 +61,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
         return 0.0
     end
 end
-CaCO3_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), 
-                                top = ValueBoundaryCondition(CaCO3_t), bottom = sides_centers,#)#, 
+CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = sides_centers,#)#, 
                                 east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
