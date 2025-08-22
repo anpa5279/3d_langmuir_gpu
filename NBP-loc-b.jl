@@ -1,3 +1,4 @@
+
 using Pkg
 using Statistics
 using Printf
@@ -7,7 +8,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
-const Nz = 64        # number of points in the vertical direction
+const Nz = 128        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -36,10 +37,11 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-#@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
+@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
 coriolis = FPlane(f=1e-4) # s⁻¹
+
 buoyancy = BuoyancyTracer()
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -52,7 +54,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 # ICs
 r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g_Earth * β * T0 : g_Earth * β * T0 + g_Earth * β * dTdz * (z + initial_mixed_layer_depth)+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : g_Earth * β * dTdz * (z + initial_mixed_layer_depth)+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -72,7 +74,7 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
