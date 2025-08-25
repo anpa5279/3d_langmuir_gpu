@@ -88,7 +88,7 @@ u, v, w = model.velocities
 b = model.tracers.b
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/b-NBP_fields.jld2", #$(rank)
+                                                    filename = "localoutputs/b-NBP_fields.jld2", 
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
