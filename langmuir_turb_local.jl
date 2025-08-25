@@ -1,6 +1,4 @@
 using Pkg
-using MPI
-using CUDA
 using Random
 using Statistics
 using Printf
@@ -32,15 +30,13 @@ const T0 = 25.0    # C, temperature at the surface
 const S₀ = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+const La_t = 0.3  # Langmuir turbulence number= Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
 
 #referring to files with desiraed functions
 include("stokes.jl")
 include("smagorinsky_forcing.jl")
-# Automatically distribute among available processors
-arch = GPU()#arch = Distributed(GPU())
 
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 #stokes drift
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 dudz = dstokes_dz(z_d, u₁₀)
@@ -119,13 +115,13 @@ U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, νₑ),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "outputs/langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, W, T),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "outputs/langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true)
