@@ -18,3 +18,5 @@ data/
 *.png
 local.jl
 classic_smag.jl
+localoutputs?*
+.DS_Store
