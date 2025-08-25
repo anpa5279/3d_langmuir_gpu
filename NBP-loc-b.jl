@@ -47,19 +47,19 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:b,),
                             timestepper = :RungeKutta3,
-                            #closure = Smagorinsky(), 
+                            closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, b=b_bcs))
 @show model
 # ICs
 r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : g_Earth * β * dTdz * (z + initial_mixed_layer_depth)+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : g_Earth * β * dTdz * (z + initial_mixed_layer_depth)#+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 6hours) #stop_time = 96hours,
 @show simulation
 # outputs and running
 function progress(simulation)
