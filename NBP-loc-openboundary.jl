@@ -69,6 +69,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # defining forcing functions
 include("NBP_forcing.jl")
 w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
@@ -104,7 +105,8 @@ function progress(simulation)
     return nothing
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+#updating cfl every time step
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
@@ -116,7 +118,9 @@ output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
 CaCO3 = model.tracers.CaCO3
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3),
+P_static = model.pressures.pHY′
+P_dynamic = model.pressures.pNHS
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
