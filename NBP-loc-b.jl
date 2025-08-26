@@ -38,26 +38,28 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 @inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
-coriolis = FPlane(f=1e-4) # s⁻¹
+b_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0))
 
+#additional parameters
+coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = BuoyancyTracer()
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:b,),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(), 
+                            #closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, b=b_bcs))
 @show model
 # ICs
 r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : g_Earth * β * dTdz * (z + initial_mixed_layer_depth)#+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)
+bᵢ(x, y, z) = (Tᵢ(x, y, z)-T0)*g_Earth * β #+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
+set!(model, u=uᵢ, v=vᵢ, b=bᵢ) #u=uᵢ, v=vᵢ, 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 6hours) #stop_time = 96hours,
 @show simulation
