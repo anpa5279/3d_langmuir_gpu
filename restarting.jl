@@ -9,27 +9,24 @@ using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Fields: interior, set!
-mutable struct Params
-    Nx::Int         # number of points in each of x direction
-    Ny::Int         # number of points in each of y direction
-    Nz::Int         # number of points in the vertical direction
-    Lx::Float64     # (m) domain horizontal extents
-    Ly::Float64     # (m) domain horizontal extents
-    Lz::Float64     # (m) domain depth 
-    N²::Float64     # s⁻², initial and bottom buoyancy gradient
-    initial_mixed_layer_depth::Float64 # m 
-    Q::Float64      # W m⁻², surface heat flux. cooling is positive
-    cᴾ::Float64     # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-    ρₒ::Float64     # kg m⁻³, average density at the surface of the world ocean
-    dTdz::Float64   # K m⁻¹, temperature gradient
-    T0::Float64     # C, temperature at the surface   
-    β::Float64      # 1/K, thermal expansion coefficient
-    u₁₀::Float64    # (m s⁻¹) wind speed at 10 meters above the ocean
-    La_t::Float64   # Langmuir turbulence number
-end
-
-p = Params(128, 128, 160, 320.0, 320.0, 96.0, 5.3e-9, 33.0, 0.0, 4200.0, 1000.0, 0.01, 17.0, 2.0e-4, 5.75, 0.3)
-
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 128        # number of points in the vertical direction
+const Lx = 320    # (m) domain horizontal extents
+const Ly = 320    # (m) domain horizontal extents
+const Lz = 96    # (m) domain depth 
+const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
+const initial_mixed_layer_depth = 30.0 # m 
+const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
+const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
+const dTdz = 0.01  # K m⁻¹, temperature gradient
+const T0 = 25.0    # C, temperature at the surface  
+const S₀ = 35.0    # ppt, salinity 
+const β = 2.0e-4     # 1/K, thermal expansion coefficient
+const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
 arch = Distributed(GPU())
 @show arch
@@ -40,60 +37,21 @@ println("Hello from process $rank out of $Nranks")
 grid = RectilinearGrid(arch; size=(p.Nx, p.Ny, p.Nz), extent=(p.Lx, p.Ly, p.Lz))
 @show grid
 
-function stokes_velocity(z, u₁₀)
-    u = Array{Float64}(undef, length(z))
-    α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
-    a = 0.1
-    b = 5000.0
-    nf = 3^9
-    df = (b -  a) / nf
-    for i in 1:length(z)
-        σ = a + 0.5 * df
-        u_temp = 0.0
-        for k in 1:nf
-            u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
-            σ = σ + df
-        end
-        u[i] = df * u_temp
-    end
-    return u
-end
-function dstokes_dz(z, u₁₀)
-    dudz = Array{Float64}(undef, length(z))
-    α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
-    a = 0.1
-    b = 5000.0
-    nf = 3^9
-    df = (b -  a) / nf
-    for i in 1:length(z)
-        σ = a + 0.5 * df
-        du_temp = 0.0
-        for k in 1:nf
-            du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z[i] / g_Earth - (fₚ / σ)^4))
-            σ = σ + df
-        end
-        dudz[i] = df * du_temp
-    end
-    return dudz
-end
-
-const z_d = collect(reverse(-p.Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2))
-const dudz = dstokes_dz(z_d, p.u₁₀)
-new_dUSDdz = Field{Nothing, Nothing, Center}(grid)
-set!(new_dUSDdz, reshape(dudz, 1, 1, :))
+#stokes drift
+include("stokes.jl")
+dusdz = Field{Nothing, Nothing, Center}(grid)
+z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+@show dusdz
 
 u_f = p.La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, p.u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-@show u_bcs
-
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
-@show buoyancy
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #FluxBoundaryCondition(p.Q / (p.cᴾ * p.ρₒ * p.Lx * p.Ly)),
                                 bottom = GradientBoundaryCondition(p.dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),

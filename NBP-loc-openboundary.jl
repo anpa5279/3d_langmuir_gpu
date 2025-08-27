@@ -9,28 +9,25 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Utils: launch!
-using Oceananigans.Operators: ℑzᵃᵃᶠ
-using KernelAbstractions: @kernel, @index
-const Nx = 32        # number of points in each of x direction
-const Ny = 32        # number of points in each of y direction
-const Nz = 64        # number of points in the vertical direction
-const Lx = 320    # (m) domain horizontal extents
-const Ly = 320    # (m) domain horizontal extents
-const Lz = 96    # (m) domain depth 
-const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
-const initial_mixed_layer_depth = 30.0 # m 
-const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
-const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
-const molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
-const dTdz = 0.01  # K m⁻¹, temperature gradient
-const T0 = 25.0    # C, temperature at the surface  
-const S₀ = 35.0    # ppt, salinity 
-const β = 2.0e-4     # 1/K, thermal expansion coefficient
-const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+Nx = 32        # number of points in each of x direction
+Ny = 32        # number of points in each of y direction
+Nz = 64        # number of points in the vertical direction
+Lx = 640    # (m) domain horizontal extents
+Ly = 640    # (m) domain horizontal extents
+Lz = 320    # (m) domain depth 
+N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
+initial_mixed_layer_depth = 30.0 # m 
+Q = 1e11     # W m⁻², surface heat flux. cooling is positive
+cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
+molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
+dTdz = 0.01  # K m⁻¹, temperature gradient
+T0 = 25.0    # C, temperature at the surface  
+S₀ = 35.0    # ppt, salinity 
+β = 2.0e-4     # 1/K, thermal expansion coefficient
+u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
@@ -41,7 +38,7 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
-sides_faces = OpenBoundaryCondition(nothing)
+sides_faces = ImpenetrableBoundaryCondition()#OpenBoundaryCondition(nothing)
 sides_centers = GradientBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
@@ -88,7 +85,7 @@ vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 σ = 10.0 # m
 c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
 # progress function

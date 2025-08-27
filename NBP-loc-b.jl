@@ -6,6 +6,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+#using Debugger
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -56,7 +57,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)
-bᵢ(x, y, z) = (Tᵢ(x, y, z)-T0)*g_Earth * β #+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+bᵢ(x, y, z) = (Tᵢ(x, y, z)-T0)*g_Earth * β #+g_Earth * β * dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ) #u=uᵢ, v=vᵢ, 
@@ -102,4 +103,5 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, b),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "localoutputs/b-NBP_averages.jld2",
                                                     overwrite_existing = true)
-run!(simulation)#; pickup = true)
+run!(simulation)
+#; pickup = true)#Debugger.@enter 
