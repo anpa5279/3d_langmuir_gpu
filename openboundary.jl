@@ -45,7 +45,7 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
 v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
-w_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = FluxBoundaryCondition(0.0), north = FluxBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz),#)#, 
                                 east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
@@ -55,7 +55,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
-                            advection = WENO(),
+                            advection = nothing,
                             tracers = (:T, ),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
@@ -89,7 +89,7 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 #updating cfl every time step
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.1, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
