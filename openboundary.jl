@@ -7,10 +7,8 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
-import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Utils: launch!
-using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition, fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.Solvers: FFTBasedPoissonSolver
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 64        # number of points in the vertical direction
@@ -62,26 +60,18 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            pressure_solver = FFTBasedPoissonSolver(grid),
                             boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs),)#w = w_NBP,
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * r_z(z)
+uᵢ(x, y, z) = u_f * r_z(z)
+vᵢ(x, y, z) = -u_f * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
 #forcing functions
-function compute_slip_velocity!(sim)
-    arch = sim.model.architecture
-    tracers = sim.model.tracers
-    #w_slip = model.forcing.CaCO3
-    parameters = (molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β, dt = sim.Δt)
-    launch!(arch, grid, :xyz, densescalar!, w_slip, tracers, parameters)
-    fill_halo_regions!(w_slip)
-    return nothing
-end
 
 simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
 # progress function
