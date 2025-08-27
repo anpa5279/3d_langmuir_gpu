@@ -9,6 +9,8 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.Utils: launch!
+using Oceananigans.Operators: ℑzᵃᵃᶠ
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 64        # number of points in the vertical direction
@@ -65,8 +67,13 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 # defining forcing functions
 include("NBP_forcing.jl")
-w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+#w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+no_penetration = ImpenetrableBoundaryCondition()
+slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+                                   top=no_penetration, bottom=no_penetration)
 
+w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
+sinking = AdvectiveForcing(w=w_slip)
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
@@ -75,7 +82,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP,))
+                            forcing = (CaCO3 = sinking,))#w = w_NBP,
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
@@ -88,6 +95,18 @@ CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
+#forcing functions
+function compute_slip_velocity!(sim)
+    arch = sim.model.architecture
+    tracers = sim.model.tracers
+    #w_slip = model.forcing.CaCO3
+    parameters = (molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β, dt = sim.Δt)
+    launch!(arch, grid, :xyz, densescalar!, w_slip, tracers, parameters)
+    fill_halo_regions!(w_slip)
+    return nothing
+end
+
+simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
 # progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
