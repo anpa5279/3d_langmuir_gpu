@@ -44,7 +44,7 @@ sides_centers = GradientBoundaryCondition(0.0)
 sides_centersz = ValueBoundaryCondition(0.0)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+u_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(nothing),#FluxBoundaryCondition(τx), 
                                 east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
 v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
 w_bcs = FieldBoundaryConditions(east = sides_centersz, west = sides_centersz, south = sides_centersz, north = sides_centersz)
