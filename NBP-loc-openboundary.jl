@@ -23,8 +23,6 @@ initial_mixed_layer_depth = 30.0 # m
 Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
-molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
@@ -42,7 +40,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 #defining model
-model = NonhydrostaticModel(; grid, coriolis, #buoyancy, 
+model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T),
                             timestepper = :RungeKutta3,
