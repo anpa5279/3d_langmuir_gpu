@@ -18,7 +18,6 @@ Nz = 64        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
-N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 initial_mixed_layer_depth = 30.0 # m 
 Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
@@ -36,11 +35,11 @@ grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 # defining coriolis and buoyancy
-coriolis = FPlane(f=1e-4) # s⁻¹
+#coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 #defining model
-model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
+model = NonhydrostaticModel(; grid, buoyancy, 
                             advection = WENO(),
                             tracers = (:T),
                             timestepper = :RungeKutta3,
