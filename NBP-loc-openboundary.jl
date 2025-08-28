@@ -14,7 +14,7 @@ using Oceananigans.Operators: ℑzᵃᵃᶠ
 
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
-Nz = 32        # number of points in the vertical direction
+Nz = 64        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
@@ -54,8 +54,8 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
+uᵢ(x, y, z) = u₁₀ * 1e-3 * r_z(z)
+vᵢ(x, y, z) = -u₁₀ * 1e-3 * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
@@ -90,7 +90,7 @@ P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
+                                                    filename = "localoutputs/open_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -100,7 +100,7 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/T-NBP_averages.jld2",
+                                                    filename = "localoutputs/open_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)
