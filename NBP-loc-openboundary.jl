@@ -35,15 +35,15 @@ grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 # defining coriolis and buoyancy
-#coriolis = FPlane(f=1e-4) # s⁻¹
+coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 #defining model
-model = NonhydrostaticModel(; grid, buoyancy, 
+model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T),
                             timestepper = :RungeKutta3,
-                            #closure = Smagorinsky(), 
+                            closure = Smagorinsky(), 
                             #stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (T=T_bcs,),)#w = w_NBP,
 @show model
