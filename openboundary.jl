@@ -69,15 +69,12 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 end
 #damping = Relaxation(rate = 1/1000)
 #defining model
-model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
+model = NonhydrostaticModel(; grid, buoyancy, 
                             advection = WENO(),
                             tracers = (:T, ),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            #pressure_solver = ConjugateGradientSolver(),
                             boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs),)
-                            #forcing = (u = damping, v = damping, w = damping, T = damping, ))#w = w_NBP,
 @show model
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)

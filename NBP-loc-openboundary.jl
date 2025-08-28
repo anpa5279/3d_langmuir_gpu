@@ -1,4 +1,3 @@
-
 using Pkg
 using Statistics
 using Printf
@@ -11,9 +10,11 @@ using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
+##
+
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
-Nz = 64        # number of points in the vertical direction
+Nz = 32        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
@@ -33,80 +34,34 @@ La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
-include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
 #BCs
-sides_faces = ImpenetrableBoundaryCondition()#OpenBoundaryCondition(nothing)
-sides_centers = GradientBoundaryCondition(0.0)
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
-v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
-w_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = FluxBoundaryCondition(0.0), north = FluxBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
-                                bottom = GradientBoundaryCondition(dTdz),#)#, 
-                                east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
-@inline function CaCO3_t(x, y, t) 
-    if (t <= 6hours)
-        σ = 10.0 # m
-        c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
-        return c0/sqrt(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-    else
-        return 0.0
-    end
-end
-CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = sides_centers,#)#, 
-                                east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
+                                bottom = GradientBoundaryCondition(dTdz))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
-# defining forcing functions
-include("NBP_forcing.jl")
-#w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
-no_penetration = ImpenetrableBoundaryCondition()
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
-                                   top=no_penetration, bottom=no_penetration)
 
-w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(w=w_slip)
 #defining model
-model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
+model = NonhydrostaticModel(; grid, coriolis, #buoyancy, 
                             advection = WENO(),
-                            tracers = (:T, :CaCO3),
+                            tracers = (:T),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(), 
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (CaCO3 = sinking,))#w = w_NBP,
+                            #closure = Smagorinsky(), 
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            boundary_conditions = (T=T_bcs,),)#w = w_NBP,
 @show model
+
+###
+
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
-σ = 10.0 # m
-c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
-CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)#u=uᵢ, v=vᵢ, 
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
 #forcing functions
-function compute_slip_velocity!(sim)
-    arch = sim.model.architecture
-    tracers = sim.model.tracers
-    #w_slip = model.forcing.CaCO3
-    parameters = (molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β, dt = sim.Δt)
-    launch!(arch, grid, :xyz, densescalar!, w_slip, tracers, parameters)
-    fill_halo_regions!(w_slip)
-    return nothing
-end
-
-simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
 # progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -133,10 +88,9 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-CaCO3 = model.tracers.CaCO3
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
