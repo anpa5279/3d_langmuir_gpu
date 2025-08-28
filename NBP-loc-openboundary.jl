@@ -31,6 +31,12 @@ La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
+include("stokes.jl")
+dusdz = Field{Nothing, Nothing, Center}(grid)
+z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+@show dusdz
 #BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
@@ -44,7 +50,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             tracers = (:T),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (T=T_bcs,),)#w = w_NBP,
 @show model
 

@@ -56,7 +56,6 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 # ICs
 r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : dTdz * (z + initial_mixed_layer_depth) *g_Earth * β #(Tᵢ(x, y, z)-T0)*g_Earth * β 
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
