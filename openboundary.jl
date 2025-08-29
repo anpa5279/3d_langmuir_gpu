@@ -1,4 +1,3 @@
-
 using Pkg
 using Statistics
 using Printf
@@ -7,22 +6,22 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition, fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, ConjugateGradientSolver
-using Oceananigans.Forcings: Relaxation
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.Utils: launch!
+using Oceananigans.Operators: ℑzᵃᵃᶠ
+##
+
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 64        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
-N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 initial_mixed_layer_depth = 30.0 # m 
 Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
-molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
@@ -39,53 +38,33 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
-sides_faces = OpenBoundaryCondition(nothing)
-sides_centers = GradientBoundaryCondition(0.0)
-sides_centersz = ValueBoundaryCondition(0.0)
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(nothing),#FluxBoundaryCondition(τx), 
-                                east = sides_faces, west = sides_faces, south = sides_centers, north = sides_centers)
-v_bcs = FieldBoundaryConditions(east = sides_centers, west = sides_centers, south = sides_faces, north = sides_faces)
-w_bcs = FieldBoundaryConditions(east = sides_centersz, west = sides_centersz, south = sides_centersz, north = sides_centersz)
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
-                                bottom = GradientBoundaryCondition(dTdz),#)#, 
-                                east = sides_centers, west = sides_centers, south = sides_centers, north = sides_centers)
+                                bottom = GradientBoundaryCondition(dTdz))
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
-# defining forcing
-@inline function relaxation(x, y, z)
-    A = 1
-    δ = 0.04
-    f = 0.25
-    Lx = edge_mask.Lx
-    Ly = edge_mask.Ly
 
-    sin_x = sin(4π * f * x / Lx - π/2) / δ
-    sin_y = sin(4π * f * y / Ly - π/2) / δ
-
-    return 2A/π * (atan(sin_x) + atan(sin_y))
-end
-#damping = Relaxation(rate = 1/1000)
 #defining model
-model = NonhydrostaticModel(; grid, buoyancy, 
+model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
-                            tracers = (:T, ),
+                            tracers = (:T),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
-                            boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs),)
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            boundary_conditions = (T=T_bcs,),)#w = w_NBP,
 @show model
+
+###
+
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * r_z(z)
-uᵢ(x, y, z) = u_f * r_z(z)
-vᵢ(x, y, z) = -u_f * r_z(z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
+uᵢ(x, y, z) = u₁₀ * 1e-3 * r_z(z)
+vᵢ(x, y, z) = -u₁₀ * 1e-3 * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
 #forcing functions
-
 # progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -101,7 +80,7 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 #updating cfl every time step
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.1, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f

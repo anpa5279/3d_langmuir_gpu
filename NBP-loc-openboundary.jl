@@ -1,3 +1,4 @@
+
 using Pkg
 using Statistics
 using Printf
@@ -8,20 +9,19 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Utils: launch!
-using Oceananigans.Operators: ℑzᵃᵃᶠ
-##
-
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 64        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
+N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 initial_mixed_layer_depth = 30.0 # m 
 Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
+molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
@@ -38,33 +38,60 @@ dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
+u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
+τx = -(u_f^2)
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
+@inline function CaCO3_t(x, y, t) 
+    if (t <= 6hours)
+        σ = 10.0 # m
+        c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
+        return c0/sqrt(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+    else
+        return 0.0
+    end
+end
+CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t))
+#c\ =\ \sin\left(\pi\cdot x-\frac{\pi}{2}\right)
 # defining coriolis and buoyancy
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+# defining plume forcing functions
+include("NBP_forcing.jl")
+w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+# defining spong layer 
+@inline function bottom(x, y, z)
+    A = 1
+    f = 0.25
+    δ=0.04
 
+    sin_x = sin(4π * f * x / Lx - π/2) / δ
+    sin_y = sin(4π * f * y / Ly - π/2) / δ
+
+    return 2A/π * (atan(sin_x) + atan(sin_y))
+end
 #defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
-                            tracers = (:T),
+                            tracers = (:T, :CaCO3),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (T=T_bcs,),)#w = w_NBP,
+                            boundary_conditions = (u=u_bcs, v=v_bcs, w=w_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
+                            forcing = (w = w_NBP,))
 @show model
-
-###
-
 # ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u₁₀ * 1e-3 * r_z(z)
-vᵢ(x, y, z) = -u₁₀ * 1e-3 * r_z(z)
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
+σ = 10.0 # m
+c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
+CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
-#forcing functions
+simulation = Simulation(model, Δt=30, stop_time = 0.5*day) #stop_time = 96hours,
 # progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -91,11 +118,12 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
+CaCO3 = model.tracers.CaCO3
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/open_fields.jld2", #$(rank)
+                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -105,7 +133,7 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/open_averages.jld2",
+                                                    filename = "localoutputs/T-NBP_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)

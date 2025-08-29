@@ -13,10 +13,9 @@ Nz = 128        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
-N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 initial_mixed_layer_depth = 30.0 # m 
-Q = 1e11     # W m⁻², surface heat flux. cooling is positive
-cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+Q = 1e11     # W m⁻², surface heat flux. cooling is positive, kg/s⁻³
+cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater, m²/s²/K
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
 dTdz = 0.01  # K m⁻¹, temperature gradient
@@ -39,8 +38,7 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
 @inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
-b_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0))
-
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = BuoyancyTracer()
@@ -54,14 +52,14 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, b=b_bcs))
 @show model
 # ICs
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : dTdz * (z + initial_mixed_layer_depth) *g_Earth * β #(Tᵢ(x, y, z)-T0)*g_Earth * β 
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-set!(model, u=uᵢ, v=vᵢ, b=bᵢ) #u=uᵢ, v=vᵢ, 
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
+set!(model, u=uᵢ, v=vᵢ, b = 0.0) #initializing with surface buoyancy
+#bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : dTdz * (z + initial_mixed_layer_depth) *g_Earth * β
+#set!(model, b=bᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 6hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 6hours) 
 @show simulation
 # outputs and running
 function progress(simulation)

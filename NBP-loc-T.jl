@@ -11,7 +11,6 @@ Nz = 128        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
-N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 initial_mixed_layer_depth = 30.0 # m 
 Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
@@ -36,7 +35,8 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))#FluxBoundaryCondition(surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0))
+@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
@@ -50,14 +50,13 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 # ICs
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth) #+dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ) #u=uᵢ, v=vᵢ, 
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
+vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
+set!(model, u=uᵢ, v=vᵢ, T=T0)
+#Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 6hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 6hours)
 @show simulation
 # outputs and running
 function progress(simulation)
