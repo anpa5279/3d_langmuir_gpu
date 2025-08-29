@@ -37,8 +37,10 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-@inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = g_Earth * β * Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
+@inline surface_heat_flux(i, j, grid, clock, model_fields, p) = @inbounds p.q / ( p.c *  p.ρ *  grid.Lx *  grid.Ly)/sqrt(2*pi* ((grid.Nx/grid.Lx)^-2)) * exp(-((i -  grid.Nx/2)^2 / (2 * ((grid.Nx/grid.Lx)*grid.Lx)^2)+ (j -  grid.Ny/2)^2 / (2 * ((grid.Nx/grid.Lx)*grid.Ly)^2)) )
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, discrete_form = true, 
+                                parameters = (q = Q * g_Earth * β, c = cᴾ, ρ = ρₒ)), 
+                                bottom = GradientBoundaryCondition(0.0))
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = BuoyancyTracer()
@@ -47,7 +49,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:b,),
                             timestepper = :RungeKutta3,
-                            #closure = Smagorinsky(), 
+                            closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, b=b_bcs))
 @show model
@@ -55,11 +57,10 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
-set!(model, u=uᵢ, v=vᵢ, b = 0.0) #initializing with surface buoyancy
-#bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : dTdz * (z + initial_mixed_layer_depth) *g_Earth * β
-#set!(model, b=bᵢ)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : dTdz * (grid.z.cᵃᵃᶠ[Int(1 + round((Nz) * z/(-Lz)))] + initial_mixed_layer_depth)  *g_Earth * β
+set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 6hours) 
+simulation = Simulation(model, Δt=30, stop_time = 3hours) 
 @show simulation
 # outputs and running
 function progress(simulation)

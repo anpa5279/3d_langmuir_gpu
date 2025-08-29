@@ -10,8 +10,7 @@ using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
-##
-
+## simulation parameters
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 64        # number of points in the vertical direction
@@ -28,23 +27,24 @@ S₀ = 35.0    # ppt, salinity
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
-#referring to files with desiraed functions
+## referring to files with desiraed functions
 grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
-#stokes drift
+## stokes drift
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
 dusdz_1d = dstokes_dz.(z_d, u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
-#BCs
+## BCs
+u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-# defining coriolis and buoyancy
+## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
-#defining model
+## defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T),
@@ -53,19 +53,16 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (T=T_bcs,),)#w = w_NBP,
 @show model
-
-###
-
-# ICs
+## ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u₁₀ * 1e-3 * r_z(z)
-vᵢ(x, y, z) = -u₁₀ * 1e-3 * r_z(z)
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)#u=uᵢ, v=vᵢ, 
+uᵢ(x, y, z) = u_f * r_z(z)
+vᵢ(x, y, z) = -u_f * r_z(z)
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 3hours) #stop_time = 96hours,
-#forcing functions
-# progress function
+simulation = Simulation(model, Δt=30, stop_time = 3hours) 
+## forcing functions
+## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
     # Print a progress message
@@ -79,9 +76,9 @@ function progress(simulation)
     return nothing
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-#updating cfl every time step
+## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds) #ensrues cfl is updated ever iteration
-#output files
+## output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
     file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
