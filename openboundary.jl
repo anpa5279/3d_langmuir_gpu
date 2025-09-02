@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u = u_bcs, w = w_bcs, T=T_bcs,),)#w = w_NBP,
+                            boundary_conditions = (u = u_bcs, v = v_bcs, w = w_bcs, T=T_bcs,),)#w = w_NBP,
 @show model
 ## ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
