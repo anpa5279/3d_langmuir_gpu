@@ -6,7 +6,8 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-import Oceananigans.BoundaryConditions: fill_halo_regions!, PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 ## simulation parameters
@@ -27,7 +28,7 @@ S₀ = 35.0    # ppt, salinity
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 ## referring to files with desiraed functions
-grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
@@ -38,16 +39,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 ## BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
-inflow_timescale = outflow_timescale = 1/4
-#@inline u∞(y, t, p) = @inbounds p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
-#@inline v∞(x, t, p) = @inbounds p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-        west   = PerturbationAdvectionOpenBoundaryCondition(u_f; inflow_timescale, outflow_timescale),
-        east   = PerturbationAdvectionOpenBoundaryCondition(u_f; inflow_timescale, outflow_timescale))
-#v_bcs = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
-#                                            north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
-#w_bcs = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
-#                                            top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 ## defining forcing (coriolis, buoyancy, etc.)
@@ -102,7 +94,7 @@ P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/open_fields.jld2", #$(rank)
+                                                    filename = "localoutputs/periodic_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -112,7 +104,7 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/open_averages.jld2",
+                                                    filename = "localoutputs/periodic_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)
