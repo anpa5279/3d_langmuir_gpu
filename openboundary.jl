@@ -39,11 +39,11 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 inflow_timescale = outflow_timescale = 1/4
-#@inline u∞(y, t, p) = @inbounds p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
-#@inline v∞(x, t, p) = @inbounds p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
+@inline u∞(y, z, t, p) = @inbounds p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
+@inline v∞(x, z, t, p) = @inbounds p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-        west   = PerturbationAdvectionOpenBoundaryCondition(u_f; inflow_timescale, outflow_timescale),
-        east   = PerturbationAdvectionOpenBoundaryCondition(u_f; inflow_timescale, outflow_timescale))
+        west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u_f, T = 50),  inflow_timescale, outflow_timescale),
+        east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u_f, T = 50),  inflow_timescale, outflow_timescale))
 #v_bcs = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
 #                                            north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
 #w_bcs = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
