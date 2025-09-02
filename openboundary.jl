@@ -18,7 +18,7 @@ Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
-Q = 1e11     # W m⁻², surface heat flux. cooling is positive
+Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 dTdz = 0.01  # K m⁻¹, temperature gradient
@@ -38,7 +38,9 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 ## BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
+τx = -(u_f^2)
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 ## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
