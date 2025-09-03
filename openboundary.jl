@@ -41,13 +41,13 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 inflow_timescale = outflow_timescale = 1/4
 @inline u∞(y, z, t, p) = @inbounds p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
 @inline v∞(x, z, t, p) = @inbounds p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
-                                east = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1),
-                                west = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1))
-v_bcs = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1), 
-                                west = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1))
-w_bcs = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1), 
-                                west = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = u_f, T = 50), relaxation_timescale = 1))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u_f, T = 50),  inflow_timescale, outflow_timescale),
+                                east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u_f, T = 50),  inflow_timescale, outflow_timescale))
+v_bcs = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale),
+                                north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale))
+#w_bcs = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale),
+                                #top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
                                 
@@ -62,7 +62,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u = u_bcs, v = v_bcs, w = w_bcs, T=T_bcs,),)#w = w_NBP,
+                            boundary_conditions = (u = u_bcs, v = v_bcs, T=T_bcs,),)#w = w_NBP,
 @show model
 ## ICs
 r_z(z) = randn(Xoshiro()) * exp(z/4)
