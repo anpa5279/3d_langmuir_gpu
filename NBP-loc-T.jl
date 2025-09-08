@@ -12,10 +12,9 @@ Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
-Q = 1e11     # W m⁻², surface heat flux. cooling is positive
+Q = 1e5     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
@@ -35,9 +34,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
-@inline surface_heat_flux(i, j, grid, clock, model_fields, p) = @inbounds p.q / ( p.c *  p.ρ *  grid.Lx *  grid.Ly)/sqrt(2*pi* ((grid.Nx/grid.Lx)^-2)) * exp(-((i -  grid.Nx/2)^2 / (2 * ((grid.Nx/grid.Lx)*grid.Lx)^2)+ (j -  grid.Ny/2)^2 / (2 * ((grid.Nx/grid.Lx)*grid.Ly)^2)) )
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, discrete_form = true, 
-                                parameters = (q = Q, c = cᴾ, ρ = ρₒ)), 
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -52,13 +49,13 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 # ICs
-r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (grid.z.cᵃᵃᶠ[Int(1 + round((Nz) * z/(-Lz)))] + initial_mixed_layer_depth) * g_Earth * β
+r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
+Tᵢ(x, y, z) = (-T0)/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2)) + T0 + 1e-1 * r(x, y, z) * dTdz 
+uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z) 
+vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 3hours)
+simulation = Simulation(model, Δt=3.0, stop_time = 3hours)
 @show simulation
 # outputs and running
 function progress(simulation)
@@ -85,7 +82,8 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
+b = model.tracers.T * g_Earth * β
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
@@ -94,8 +92,9 @@ W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
+B = T * g_Earth * β
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, B),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "localoutputs/T-NBP_averages.jld2",
                                                     overwrite_existing = true)

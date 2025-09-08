@@ -66,10 +66,10 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 @show model
 
 # ICs
-r_z(z) = randn(Xoshiro()) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) 
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z) 
+r(x, y, z) = randn(Xoshiro()) * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r(x, y, z) 
+uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z) 
+vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours

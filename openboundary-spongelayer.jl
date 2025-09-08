@@ -42,21 +42,41 @@ set!(us, us_1d)
 u_f = La_t^2 * (us_1d[Nz])
 τx = -(u_f^2)
 inflow_timescale = outflow_timescale = 1/4
-@inline u∞(y, z, t, p) = @inbounds stokes_velocity(z, p.U) #* cos(t * 2π / p.T) * (1 + 0.01 * randn())
+@inline u∞(y, z, t, p) = @inbounds p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
 @inline v∞(x, z, t, p) = @inbounds p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u₁₀, T = 50),  inflow_timescale, outflow_timescale),
-                                east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = u₁₀, T = 50),  inflow_timescale, outflow_timescale))
-v_bcs = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale),
-                                north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale))
-#w_bcs = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale),
-                                #top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = u_f, T = 50), inflow_timescale, outflow_timescale))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),) 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
                                 
 ## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+## defining user input forcing functions
+struct EdgeMask{D, T}
+     A :: T
+     f :: T
+     delta :: T
+
+    function EdgeMask{D}(; A, f, delta) where D
+        T = promote_type(typeof(A), typeof(f), typeof(delta))
+        return new{D, T}(A, f, delta)
+    end
+end  
+@inline function (edge_mask::EdgeMask{:xy})(x, y, z)
+    A = edge_mask.A
+    δ = edge_mask.delta
+    f = edge_mask.f
+    Lx = edge_mask.Lx
+    Ly = edge_mask.Ly
+
+    sin_x = sin(4π * f * x / Lx - π/2) / δ
+    sin_y = sin(4π * f * y / Ly - π/2) / δ
+
+    return 2A/π * (atan(sin_x) + atan(sin_y))
+end
+damping_rate = 1/100
+uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
+T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
 ## defining model
 model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
@@ -65,7 +85,8 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u = u_bcs, v = v_bcs, T=T_bcs,),)#w = w_NBP,
+                            boundary_conditions = (u = u_bcs, T=T_bcs,),
+                            forcing  = (u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge))
 @show model
 ## ICs
 r(x, y, z) = randn(Xoshiro()) * exp(z/4)
@@ -106,7 +127,7 @@ P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/open_fields.jld2", #$(rank)
+                                                    filename = "localoutputs/sponge-open_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -116,7 +137,7 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/open_averages.jld2",
+                                                    filename = "localoutputs/sponge-open_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)

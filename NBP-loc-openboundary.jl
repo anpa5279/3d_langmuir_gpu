@@ -82,10 +82,10 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             forcing = (w = w_NBP,))
 @show model
 # ICs
-r_z(z) = randn(Xoshiro()) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r_z(z)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
-vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
+r(x, y, z) = randn(Xoshiro()) * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
+uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z)
+vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z)
 σ = 10.0 # m
 c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
