@@ -5,11 +5,6 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth 
-import Oceananigans.BuoyancyFormulations: z_dot_g_bᶜᶜᶠ
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Utils: launch!
-using Oceananigans.TimeSteppers: update_state!
-using KernelAbstractions: @kernel, @index
 
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
@@ -45,7 +40,6 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
-buoy = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -53,8 +47,8 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs), 
-                            auxiliary_fields = (b = buoy,))
+                            boundary_conditions = (u=u_bcs, T=T_bcs))#, 
+                            #auxiliary_fields = (b = buoy,))
 @show model
 # ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
@@ -66,21 +60,6 @@ day = 24hours
 simulation = Simulation(model, Δt=3.0, stop_time = 3hours)
 @show simulation
 # updating forcing functions
-function update_b(simulation)
-    model = simulation.model
-    arch  = model.architecture
-    grid  = model.grid
-    tracers     = model.tracers
-    bf    = model.buoyancy
-    b     = model.auxiliary_fields.b
-    launch!(arch, grid, :xyz, calc_b!, grid, bf, tracers, b)
-    return nothing
-end
-@kernel function calc_b!(grid, buoyancy, tracers, b)
-    i, j, k = @index(Global, NTuple)
-    b[i, j, k] = z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)  # calls the buoyancy formulation
-end
-simulation.callbacks[:buoyancy] = Callback(update_b, IterationInterval(1))
 # outputs and running
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -106,7 +85,7 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-b = model.auxiliary_fields.b
+b = T * g_Earth * β
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
