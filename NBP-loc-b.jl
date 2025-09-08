@@ -51,7 +51,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 @show model
 # ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
-bᵢ(x, y, z) = (-T0)*g_Earth*β/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g_Earth*β
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 * g_Earth * β : T0 * g_Earth * β + dTdz * g_Earth * β * (z + initial_mixed_layer_depth) #bᵢ(x, y, z) = (-T0)*g_Earth*β/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g_Earth*β
 uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z)
 vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -92,8 +92,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, T),
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
-b = Average(b, dims=(1, 2))
-T = B / (g_Earth * β)
+B = Average(b, dims=(1, 2))
+T = Average(b / (g_Earth * β), dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, B, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),

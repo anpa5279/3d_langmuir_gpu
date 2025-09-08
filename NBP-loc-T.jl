@@ -4,7 +4,13 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth 
+import Oceananigans.BuoyancyFormulations: z_dot_g_bᶜᶜᶠ
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Utils: launch!
+using Oceananigans.TimeSteppers: update_state!
+using KernelAbstractions: @kernel, @index
+
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 128        # number of points in the vertical direction
@@ -39,24 +45,42 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoy = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
 #defining model
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:T,),
+                            tracers = (:T),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs), 
+                            auxiliary_fields = (b = buoy,))
 @show model
 # ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
-Tᵢ(x, y, z) = (-T0)/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2)) + T0 + 1e-1 * r(x, y, z) * dTdz 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)#Tᵢ(x, y, z) = (-T0)/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2)) + T0 + 1e-1 * r(x, y, z) * dTdz 
 uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z) 
 vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z) 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 day = 24hours
 simulation = Simulation(model, Δt=3.0, stop_time = 3hours)
 @show simulation
+# updating forcing functions
+function update_b(simulation)
+    model = simulation.model
+    arch  = model.architecture
+    grid  = model.grid
+    tracers     = model.tracers
+    bf    = model.buoyancy
+    b     = model.auxiliary_fields.b
+    launch!(arch, grid, :xyz, calc_b!, grid, bf, tracers, b)
+    return nothing
+end
+@kernel function calc_b!(grid, buoyancy, tracers, b)
+    i, j, k = @index(Global, NTuple)
+    b[i, j, k] = z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)  # calls the buoyancy formulation
+end
+simulation.callbacks[:buoyancy] = Callback(update_b, IterationInterval(1))
 # outputs and running
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -82,7 +106,7 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-b = model.tracers.T * g_Earth * β
+b = model.auxiliary_fields.b
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
@@ -91,8 +115,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
+B = Average(b, dims=(1, 2))
 T = Average(T, dims=(1, 2))
-B = T * g_Earth * β
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, B),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
