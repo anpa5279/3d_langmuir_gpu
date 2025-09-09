@@ -6,6 +6,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 import Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.Grids: topology
 using CairoMakie
 ## simulation parameters
 Nx = 32        # number of points in each of x direction
@@ -62,7 +63,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## output files
     function save_IC!(file, model)
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = u_top
+        file["IC/stokes_velocity"] = us_top
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
@@ -105,7 +106,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         w_plot = @lift w_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "w")
-        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.05, 0.05), colormap = :balance)
+        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.0005, 0.0005), colormap = :balance)
         Colorbar(fig[1, 2], wpl; label = "m s⁻¹")
 
         u_plot = @lift u_post[:, 1, :, $n].parent
@@ -115,7 +116,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         T_plot = @lift T_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "T")
-        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (23.5, 25), colormap = :curl)
+        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (24, 25), colormap = :curl)
         Colorbar(fig[2, 2], Tpl; label = "C")
 
         static_plot = @lift static_post[:, 1, :, $n].parent
@@ -172,7 +173,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## output files
     function save_IC!(file, model)
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = u_top
+        file["IC/stokes_velocity"] = us_top
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
@@ -217,12 +218,12 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         w_plot = @lift w_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "w")
-        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.04, 0.04), colormap = :balance)
+        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.0005, 0.0005), colormap = :balance)
         Colorbar(fig[1, 2], wpl; label = "m s⁻¹")
 
         v_plot = @lift v_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 3], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "v")
-        vpl = heatmap!(ax, collect(x), collect(z), v_plot, colorrange = (-0.1, 0.1), colormap = :balance)
+        vpl = heatmap!(ax, collect(x), collect(z), v_plot, colorrange = (-0.01, 0.01), colormap = :balance)
         Colorbar(fig[1, 4], vpl; label = "m s⁻¹")
 
         
@@ -233,7 +234,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         T_plot = @lift T_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "T")
-        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (23.5, 25), colormap = :curl)
+        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (24, 25), colormap = :curl)
         Colorbar(fig[2, 2], Tpl; label = "C")
 
         static_plot = @lift static_post[:, 1, :, $n].parent
@@ -255,6 +256,7 @@ end
 ## grids 
 grid2d = RectilinearGrid(; topology =(Bounded, Flat, Bounded), size=(Nx, Nz), extent=(Lx, Lz)) #arch
 grid3d = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid3d_periodic = RectilinearGrid(; topology =(Periodic, Periodic, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 ## stokes drift
 include("stokes.jl")
@@ -274,31 +276,46 @@ us_top = us_1d[Nz]
 u_f = La_t^2 * us_top
 τx = -(u_f^2)
 @inline u∞(y, t, p) = p.U * cos(t * 2π / p.TT) * (1 + 0.01 * randn())
-@inline u∞(x, y, z, t, p) = p.U * cos(t * 2π / p.TT) * (1 + 0.01 * randn())
+@inline u∞(y, z, t, p) = p.U * cos(t * 2π / p.TT) * (1 + 0.01 * randn())
 @inline v∞(x, t, p) = p.U * sin(t * 2π / p.TT) * (1 + 0.01 * randn())
-@inline v∞(x, y, z, t, p) = p.U * sin(t * 2π / p.TT) * (1 + 0.01 * randn())
+@inline v∞(x, z, t, p) = p.U * sin(t * 2π / p.TT) * (1 + 0.01 * randn())
 inflow_timescale = outflow_timescale = 1/4
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
-                                bottom = GradientBoundaryCondition(dTdz))
+                                bottom = GradientBoundaryCondition(0.0))
 u_val = ValueBoundaryCondition(us_1d[Nz])
 u_flux = FluxBoundaryCondition(τx)
+no_slip_bc = ValueBoundaryCondition(0.0)
 TT = 50
 u_fe = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
 v_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
 w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
 w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
+u_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+v_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
 
 u_boundaries_fe_val = FieldBoundaryConditions(top = u_val, west = u_fe, east = u_fe)
 u_boundaries_fe_flux = FieldBoundaryConditions(top = u_flux, west = u_fe, east = u_fe)
+u_boundaries_fe_val_couette = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc, west = u_fe, east = u_fe)
+u_boundaries_fe_flux_couette = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc, west = u_fe, east = u_fe)
 v_boundaries_fe = FieldBoundaryConditions(south = v_fe, north = v_fe)
 w_boundaries_fe = FieldBoundaryConditions(bottom = w_fe, top = w_fe)
 feobcs_val = (u = u_boundaries_fe_val, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
 feobcs_flux = (u = u_boundaries_fe_flux, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
+feobcs_couette_val = (u = u_boundaries_fe_val_couette, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
+feobcs_couette_flux = (u = u_boundaries_fe_val_couette, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
 
 u_boundaries_pa_val = FieldBoundaryConditions(top = u_val, 
                                             west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
                                             east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale))
 u_boundaries_pa_flux = FieldBoundaryConditions(top = u_flux, 
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale))
+u_boundaries_pa_val_couette = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc,
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale))
+u_boundaries_pa_flux_couette = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc,
                                             west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
                                             east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale))
 v_boundaries_pa = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
@@ -307,34 +324,94 @@ w_boundaries_pa = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoun
                                             top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale))
 paobcs_val = (u = u_boundaries_pa_val, v = v_boundaries_pa, w = w_boundaries_pa, T = T_bcs)
 paobcs_flux = (u = u_boundaries_pa_flux, v = v_boundaries_pa, w = w_boundaries_pa, T = T_bcs)
+paobcs_couette_val = (u = u_boundaries_pa_val_couette, v = v_boundaries_pa, w = w_boundaries_pa, T = T_bcs)
+paobcs_couette_flux = (u = u_boundaries_pa_flux_couette, v = v_boundaries_pa, w = w_boundaries_pa, T = T_bcs)
 
+u_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+v_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
+
+u_boundaries_fe_val_lid = FieldBoundaryConditions(top = u_val, west = u_fe_lid, east = u_fe_lid)
+u_boundaries_fe_flux_lid = FieldBoundaryConditions(top = u_flux, west = u_fe_lid, east = u_fe_lid)
+u_boundaries_fe_val_couette_lid = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc, west = u_fe_lid, east = u_fe_lid)
+u_boundaries_fe_flux_couette_lid = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc, west = u_fe_lid, east = u_fe_lid)
+v_boundaries_fe_lid = FieldBoundaryConditions(south = v_fe_lid, north = v_fe_lid)
+w_boundaries_fe_lid = FieldBoundaryConditions(bottom = w_fe_lid, top = w_fe_lid)
+feobcs_val_lid = (u = u_boundaries_fe_val_lid, v = v_boundaries_fe_lid, w = w_boundaries_fe_lid, T = T_bcs)
+feobcs_flux_lid = (u = u_boundaries_fe_flux_lid, v = v_boundaries_fe_lid, w = w_boundaries_fe_lid, T = T_bcs)
+
+u_boundaries_pa_val_lid = FieldBoundaryConditions(top = u_val, 
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+u_boundaries_pa_flux_lid = FieldBoundaryConditions(top = u_flux, 
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+u_boundaries_pa_val_couette_lid = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc,
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+u_boundaries_pa_flux_couette_lid = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc,
+                                            west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+v_boundaries_pa_lid = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            north  = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+w_boundaries_pa_lid = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            top    = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+paobcs_val_lid = (u = u_boundaries_pa_val_lid, v = v_boundaries_pa_lid, w = w_boundaries_pa_lid, T = T_bcs)
+paobcs_flux_lid = (u = u_boundaries_pa_flux_lid, v = v_boundaries_pa_lid, w = w_boundaries_pa_lid, T = T_bcs)
+
+u_val_lid = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc, north = no_slip_bc, south = no_slip_bc)
+u_flux_lid = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc, north = no_slip_bc, south = no_slip_bc)
+v_lid = FieldBoundaryConditions(no_slip_bc)
+w_lid = FieldBoundaryConditions(no_slip_bc)
+val_lid = (u = u_val_lid, v = v_lid, w = w_lid, T = T_bcs)
+flux_lid = (u = u_flux_lid, v = v_lid, w = w_lid, T = T_bcs)
+
+bc_options = (feobcs_val, feobcs_couette_val, paobcs_val, paobcs_couette_val, 
+            feobcs_flux, feobcs_couette_flux, paobcs_flux, paobcs_couette_flux, 
+            feobcs_val_lid, paobcs_val_lid, val_lid,
+            feobcs_flux_lid, paobcs_flux_lid, flux_lid)
 ## naming function
 matching_scheme_name(obc) = string(nameof(typeof(obc.classification)))
 matching_scheme_sides(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
 
-##2d grid
-for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
-    for stokes in (nothing, stokes2d)
-        boundary_conditions = (u = bcs.u, w = bcs.w, T = bcs.T)
-        if stokes isa Nothing
-            run_name = "2d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        else
-            run_name = "2d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
-        end
-        @info "Running $run_name"
-        run_model2D(grid2d, boundary_conditions, stokes; name=run_name)
+## running all combinations of cases
+for grid in (grid2d, grid3d, grid3d_periodic)
+    if topology(grid)[2] == Flat
+        dim = "2d"
+    else
+        dim = "3d"
     end
-end
-## 3d grid
-for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
-    for stokes in (nothing, stokes3d)
-        boundary_conditions = bcs
-        if stokes isa Nothing
-            run_name = "3d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        else
-            run_name = "3d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
+    d = 1
+    for bcs in bc_options
+        if topology(grid)[1] == Periodic #3d periodic case
+            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), w = bcs.w, T = bcs.T)
+            run_name = dim * "_periodic_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        elseif topology(grid)[2] == Flat && typeof(bcs.u.east) !== BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} #2d testing bcs
+            boundary_conditions = (u = bcs.u, w = bcs.w, T = bcs.T)
+            run_name = dim * "_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        elseif topology(grid)[2] == Flat && typeof(bcs.u.east) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} #2d value bcs
+            boundary_conditions = (u = bcs.u, w = bcs.w, T = bcs.T)
+            run_name = dim * "_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        else #3d open case
+            boundary_conditions = bcs
         end
-        @info "Running $run_name"
-        run_model3D(grid3d, boundary_conditions, stokes; name=run_name)
+        if typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}
+            run_name = run_name * "_couette"
+        end 
+        if d > 8
+            run_name = run_name * "_lid"
+        end
+        for stokes in (nothing, stokes3d)
+            if stokes !== nothing 
+                run_name = run_name * "_stokes"
+            end
+            @info "Running $run_name"
+            if topology(grid)[2] == Flat
+                run_model2D(grid, boundary_conditions, stokes; name=run_name)
+            else
+                run_model3D(grid, boundary_conditions, stokes; name=run_name) 
+            end
+        end
+        d += 1
     end
-end
+end 
