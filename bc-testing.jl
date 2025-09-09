@@ -35,7 +35,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                 timestepper = :RungeKutta3,
                                 stokes_drift = stokes,
                                 boundary_conditions = bcs,)
-    @show model
+    
     ## ICs
     r(x, z) = randn(Xoshiro(1234), (grid.Nx + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx-grid.Nz*z/grid.Lz))] * exp(z / 4)
     Tᵢ(x, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, z)
@@ -144,7 +144,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                 timestepper = :RungeKutta3,
                                 stokes_drift = stokes,
                                 boundary_conditions = bcs,)
-                                @show model
+                                
     ## ICs
     r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
     Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
@@ -310,6 +310,7 @@ paobcs_flux = (u = u_boundaries_pa_flux, v = v_boundaries_pa, w = w_boundaries_p
 
 ## naming function
 matching_scheme_name(obc) = string(nameof(typeof(obc.classification)))
+matching_scheme_sides(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
 
 ##2d grid
 for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
@@ -318,7 +319,7 @@ for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
         if stokes isa Nothing
             run_name = "2d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
         else
-            run_name = "2d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
+            run_name = "2d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
         end
         @info "Running $run_name"
         run_model2D(grid2d, boundary_conditions, stokes; name=run_name)
@@ -329,9 +330,9 @@ for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
     for stokes in (nothing, stokes3d)
         boundary_conditions = bcs
         if stokes isa Nothing
-            run_name = "3d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+            run_name = "3d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
         else
-            run_name = "3d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
+            run_name = "3d_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top) * "_stokes"
         end
         @info "Running $run_name"
         run_model3D(grid3d, boundary_conditions, stokes; name=run_name)
