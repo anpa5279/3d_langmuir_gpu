@@ -67,7 +67,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         return nothing
     end
     field_file = "localoutputs/$(name)open_fields.jld2"
-    output_interval = 0.25hours
+    output_interval = 0.05hours
     u, w = model.velocities
     T = model.tracers.T
     P_static = model.pressures.pHY′
@@ -105,22 +105,22 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         w_plot = @lift w_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "w")
-        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-2, 2), colormap = :balance)
+        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.05, 0.05), colormap = :balance)
         Colorbar(fig[1, 2], wpl; label = "m s⁻¹")
 
         u_plot = @lift u_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 5], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "u")
-        upl = heatmap!(ax, collect(x), collect(z), u_plot, colorrange = (-2, 2), colormap = :balance)
+        upl = heatmap!(ax, collect(x), collect(z), u_plot, colorrange = (-0.1, 0.1), colormap = :balance)
         Colorbar(fig[1, 6], upl; label = "m s⁻¹")
 
         T_plot = @lift T_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "T")
-        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (-2, 2), colormap = :curl)
+        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (23.5, 25), colormap = :curl)
         Colorbar(fig[2, 2], Tpl; label = "C")
 
         static_plot = @lift static_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 3], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "Hydrostatic Pressure")
-        hPpl = heatmap!(ax, collect(x), collect(z), static_plot, colorrange = (-2, 2), colormap = :balance)
+        hPpl = heatmap!(ax, collect(x), collect(z), static_plot, colorrange = (-4, 4), colormap = :balance)
         Colorbar(fig[2, 4], hPpl, label = "Pa")
 
         dyn_plot = @lift dynamic_post[:, 1, :, $n].parent
@@ -131,7 +131,6 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         resize_to_layout!(fig)
         record(fig, "localoutputs/$name.mp4", 1:length(w_post.times), framerate = 16) do i;
             n[] = i
-            i % 10 == 0 && @info "$(n.val) of $(length(w_post.times))"
         end
     end
 end
@@ -218,27 +217,28 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 
         w_plot = @lift w_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "w")
-        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-2, 2), colormap = :balance)
+        wpl = heatmap!(ax, collect(x), collect(z), w_plot, colorrange = (-0.04, 0.04), colormap = :balance)
         Colorbar(fig[1, 2], wpl; label = "m s⁻¹")
 
         v_plot = @lift v_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 3], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "v")
-        vpl = heatmap!(ax, collect(x), collect(z), v_plot, colorrange = (-2, 2), colormap = :balance)
+        vpl = heatmap!(ax, collect(x), collect(z), v_plot, colorrange = (-0.1, 0.1), colormap = :balance)
         Colorbar(fig[1, 4], vpl; label = "m s⁻¹")
 
+        
         u_plot = @lift u_post[:, 1, :, $n].parent
         ax = Axis(fig[1, 5], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "u")
-        upl = heatmap!(ax, collect(x), collect(z), u_plot, colorrange = (-2, 2), colormap = :balance)
+        upl = heatmap!(ax, collect(x), collect(z), u_plot, colorrange = (-0.1, 0.1), colormap = :balance)
         Colorbar(fig[1, 6], upl; label = "m s⁻¹")
 
         T_plot = @lift T_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "T")
-        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (-2, 2), colormap = :curl)
+        Tpl = heatmap!(ax, collect(x), collect(z), T_plot, colorrange = (23.5, 25), colormap = :curl)
         Colorbar(fig[2, 2], Tpl; label = "C")
 
         static_plot = @lift static_post[:, 1, :, $n].parent
         ax = Axis(fig[2, 3], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = Lx, height = Lz, title = "Hydrostatic Pressure")
-        hPpl = heatmap!(ax, collect(x), collect(z), static_plot, colorrange = (-2, 2), colormap = :balance)
+        hPpl = heatmap!(ax, collect(x), collect(z), static_plot, colorrange = (-4, 4), colormap = :balance)
         Colorbar(fig[2, 4], hPpl, label = "Pa")
 
         dyn_plot = @lift dynamic_post[:, 1, :, $n].parent
@@ -249,7 +249,6 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         resize_to_layout!(fig)
         record(fig, "localoutputs/$name.mp4", 1:length(w_post.times), framerate = 16) do i;
             n[] = i
-            i % 10 == 0 && @info "$(n.val) of $(length(w_post.times))"
         end
     end
 end
@@ -275,7 +274,9 @@ us_top = us_1d[Nz]
 u_f = La_t^2 * us_top
 τx = -(u_f^2)
 @inline u∞(y, t, p) = p.U * cos(t * 2π / p.TT) * (1 + 0.01 * randn())
+@inline u∞(x, y, z, t, p) = p.U * cos(t * 2π / p.TT) * (1 + 0.01 * randn())
 @inline v∞(x, t, p) = p.U * sin(t * 2π / p.TT) * (1 + 0.01 * randn())
+@inline v∞(x, y, z, t, p) = p.U * sin(t * 2π / p.TT) * (1 + 0.01 * randn())
 inflow_timescale = outflow_timescale = 1/4
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
@@ -326,7 +327,7 @@ end
 ## 3d grid
 for bcs in (feobcs_val, paobcs_val, feobcs_flux, paobcs_flux,)
     for stokes in (nothing, stokes3d)
-        boundary_conditions = (u = bcs.u, v = bcs.v, w = bcs.w, T = bcs.T)
+        boundary_conditions = bcs
         if stokes isa Nothing
             run_name = "3d_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
         else
