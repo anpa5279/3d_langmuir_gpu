@@ -390,7 +390,7 @@ for grid in (grid2d, grid3d, grid3d_periodic)
         elseif topology(grid) == (Bounded, Bounded, Bounded) #3d open case
             boundary_conditions = bcs
             boundary_conditions_order = (w = bcs.w, u = bcs[:u], v = bcs[:v], T = bcs.T)
-            run_name = dim * "_open_utop_" * matching_scheme_name(boundary_conditions.u.top)
+            run_name = dim * "_open_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "utop_" * matching_scheme_name(boundary_conditions.u.top)
         elseif topology(grid)[2] == Flat && typeof(bcs.w.east) !== Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #2d bcs
             boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
             boundary_conditions_order = (w = bcs.w, u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), T = bcs.T)
