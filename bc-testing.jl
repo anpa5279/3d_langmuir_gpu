@@ -67,7 +67,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
-    field_file = "localoutputs/$(name)open_fields.jld2"
+    field_file = "localoutputs/$(name)_fields.jld2"
     output_interval = 0.05hours
     u, w = model.velocities
     T = model.tracers.T
@@ -78,7 +78,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                                         filename = field_file, #$(rank)
                                                         overwrite_existing = true,
                                                         init = save_IC!)
-    avg_file = "localoutputs/$(name)open_averages.jld2"
+    avg_file = "localoutputs/$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
     U = Average(u, dims=(1, 2))
     T = Average(T, dims=(1, 2))
@@ -177,7 +177,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
-    field_file = "localoutputs/$(name)open_fields.jld2"
+    field_file = "localoutputs/$(name)_fields.jld2"
     output_interval = 0.25hours
     u, v, w = model.velocities
     T = model.tracers.T
@@ -188,7 +188,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                                         filename = field_file,
                                                         overwrite_existing = true,
                                                         init = save_IC!)
-    avg_file = "localoutputs/$(name)open_averages.jld2"
+    avg_file = "localoutputs/$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
     U = Average(u, dims=(1, 2))
     V = Average(v, dims=(1, 2))
@@ -290,10 +290,6 @@ u_fe = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U = us_top, 
 v_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
 w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
 w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U = us_top, TT = TT), relaxation_timescale = 1)
-u_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
-v_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
-w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
-w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
 
 u_boundaries_fe_val = FieldBoundaryConditions(top = u_val, west = u_fe, east = u_fe)
 u_boundaries_fe_flux = FieldBoundaryConditions(top = u_flux, west = u_fe, east = u_fe)
@@ -331,31 +327,35 @@ u_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
 v_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
 w_fe_lid = FlatExtrapolationOpenBoundaryCondition(0.0; relaxation_timescale = 1)
 
-u_boundaries_fe_val_lid = FieldBoundaryConditions(top = u_val, west = u_fe_lid, east = u_fe_lid)
-u_boundaries_fe_flux_lid = FieldBoundaryConditions(top = u_flux, west = u_fe_lid, east = u_fe_lid)
-u_boundaries_fe_val_couette_lid = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc, west = u_fe_lid, east = u_fe_lid)
-u_boundaries_fe_flux_couette_lid = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc, west = u_fe_lid, east = u_fe_lid)
-v_boundaries_fe_lid = FieldBoundaryConditions(south = v_fe_lid, north = v_fe_lid)
-w_boundaries_fe_lid = FieldBoundaryConditions(bottom = w_fe_lid, top = w_fe_lid)
+u_boundaries_fe_val_lid = FieldBoundaryConditions(top = u_val, west = u_fe_lid, east = u_fe_lid, north = u_fe_lid, south = u_fe_lid)
+u_boundaries_fe_flux_lid = FieldBoundaryConditions(top = u_flux, west = u_fe_lid, east = u_fe_lid, north = u_fe_lid, south = u_fe_lid)
+v_boundaries_fe_lid = FieldBoundaryConditions(v_fe_lid)
+w_boundaries_fe_lid = FieldBoundaryConditions(w_fe_lid)
 feobcs_val_lid = (u = u_boundaries_fe_val_lid, v = v_boundaries_fe_lid, w = w_boundaries_fe_lid, T = T_bcs)
 feobcs_flux_lid = (u = u_boundaries_fe_flux_lid, v = v_boundaries_fe_lid, w = w_boundaries_fe_lid, T = T_bcs)
 
 u_boundaries_pa_val_lid = FieldBoundaryConditions(top = u_val, 
                                             west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            north   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            south   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
 u_boundaries_pa_flux_lid = FieldBoundaryConditions(top = u_flux, 
                                             west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            north   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            south   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
 u_boundaries_pa_val_couette_lid = FieldBoundaryConditions(top = u_val, bottom = no_slip_bc,
                                             west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            north   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            south   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
 u_boundaries_pa_flux_couette_lid = FieldBoundaryConditions(top = u_flux, bottom = no_slip_bc,
                                             west   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
-v_boundaries_pa_lid = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            north  = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
-w_boundaries_pa_lid = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
-                                            top    = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+                                            east   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            north   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale),
+                                            south   = PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+v_boundaries_pa_lid = FieldBoundaryConditions(PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
+w_boundaries_pa_lid = FieldBoundaryConditions(PerturbationAdvectionOpenBoundaryCondition(0.0; inflow_timescale, outflow_timescale))
 paobcs_val_lid = (u = u_boundaries_pa_val_lid, v = v_boundaries_pa_lid, w = w_boundaries_pa_lid, T = T_bcs)
 paobcs_flux_lid = (u = u_boundaries_pa_flux_lid, v = v_boundaries_pa_lid, w = w_boundaries_pa_lid, T = T_bcs)
 
@@ -385,33 +385,41 @@ for grid in (grid2d, grid3d, grid3d_periodic)
     for bcs in bc_options
         if topology(grid)[1] == Periodic #3d periodic case
             boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), w = bcs.w, T = bcs.T)
+            boundary_conditions_order = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), w = bcs.w, T = bcs.T)
             run_name = dim * "_periodic_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        elseif topology(grid)[2] == Flat && typeof(bcs.u.east) !== BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} #2d testing bcs
-            boundary_conditions = (u = bcs.u, w = bcs.w, T = bcs.T)
-            run_name = dim * "_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        elseif topology(grid)[2] == Flat && typeof(bcs.u.east) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} #2d value bcs
-            boundary_conditions = (u = bcs.u, w = bcs.w, T = bcs.T)
-            run_name = dim * "_sides_" * matching_scheme_name(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        else #3d open case
+        elseif topology(grid) == (Bounded, Bounded, Bounded) #3d open case
             boundary_conditions = bcs
+            boundary_conditions_order = (w = bcs.w, u = bcs[:u], v = bcs[:v], T = bcs.T)
+            run_name = dim * "_open_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        elseif topology(grid)[2] == Flat && typeof(bcs.w.east) !== Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #2d bcs
+            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
+            boundary_conditions_order = (w = bcs.w, u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), T = bcs.T)
+            run_name = dim * "_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        else #2d value bcs
+            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
+            boundary_conditions_order = (w = bcs.w, u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), T = bcs.T)
+            run_name = dim * "_sides_Value_utop_" * matching_scheme_name(boundary_conditions.u.top)
         end
         if typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}
             run_name = run_name * "_couette"
-        end 
-        if d > 8
+        elseif d > 8
             run_name = run_name * "_lid"
         end
-        for stokes in (nothing, stokes3d)
-            if stokes !== nothing 
-                run_name = run_name * "_stokes"
+        for bc_order in (boundary_conditions, boundary_conditions_order)
+            for stokes in (nothing, stokes3d)
+                if stokes !== nothing 
+                    run_name = run_name * "_stokes"
+                end
+                @info "Running $run_name"
+                if topology(grid)[2] == Flat
+                    run_model2D(grid, bc_order, stokes; name=run_name)
+                else
+                    run_model3D(grid, bc_order, stokes; name=run_name) 
+                end
             end
-            @info "Running $run_name"
-            if topology(grid)[2] == Flat
-                run_model2D(grid, boundary_conditions, stokes; name=run_name)
-            else
-                run_model3D(grid, boundary_conditions, stokes; name=run_name) 
-            end
+            run_name = run_name * "_bc_order_changed"
         end
+        run_name = ""
         d += 1
     end
 end 
