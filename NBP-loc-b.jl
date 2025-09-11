@@ -6,22 +6,22 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-const Nx = 32        # number of points in each of x direction
-const Ny = 32        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
-const Lx = 320    # (m) domain horizontal extents
-const Ly = 320    # (m) domain horizontal extents
-const Lz = 96    # (m) domain depth 
-const initial_mixed_layer_depth = 30.0 # m 
-const Q = 1e5     # W m⁻², surface heat flux. cooling is positive
-const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-const dTdz = 0.01  # K m⁻¹, temperature gradient
-const T0 = 25.0    # C, temperature at the surface  
-const S₀ = 35.0    # ppt, salinity 
-const β = 2.0e-4     # 1/K, thermal expansion coefficient
-const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+Nx = 32        # number of points in each of x direction
+Ny = 32        # number of points in each of y direction
+Nz = 128        # number of points in the vertical direction
+Lx = 320    # (m) domain horizontal extents
+Ly = 320    # (m) domain horizontal extents
+Lz = 96    # (m) domain depth 
+initial_mixed_layer_depth = 30.0 # m 
+Q = 1e5     # W m⁻², surface heat flux. cooling is positive
+cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+dTdz = 0.01  # K m⁻¹, temperature gradient
+T0 = 25.0    # C, temperature at the surface  
+S₀ = 35.0    # ppt, salinity 
+β = 2.0e-4     # 1/K, thermal expansion coefficient
+u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift

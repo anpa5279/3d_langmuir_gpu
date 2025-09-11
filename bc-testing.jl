@@ -370,41 +370,59 @@ bc_options = (feobcs_val, feobcs_couette_val, paobcs_val, paobcs_couette_val,
             feobcs_flux, feobcs_couette_flux, paobcs_flux, paobcs_couette_flux, 
             feobcs_val_lid, paobcs_val_lid, val_lid,
             feobcs_flux_lid, paobcs_flux_lid, flux_lid)
+loc_lid = length(bc_options) - 6
 ## naming function
 matching_scheme_name(obc) = string(nameof(typeof(obc.classification)))
 matching_scheme_sides(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
 
 ## running all combinations of cases
-for grid in (grid2d, grid3d, grid3d_periodic)
+for grid in (grid2d, grid3d, grid3d_periodic) 
     if topology(grid)[2] == Flat
         dim = "2d"
+        bc_oi = bc_options
+    elseif topology(grid) == (Bounded, Bounded, Bounded)
+        dim = "3d_open"
+        bc_oi = bc_options
     else
-        dim = "3d"
+        dim = "3d_periodic"
+        bc_oi = bc_options[1:(length(bc_options)-loc_lid)] #no lid cases for periodic
     end
     d = 1
-    for bcs in bc_options
+    for bcs in bc_oi
         if topology(grid)[1] == Periodic #3d periodic case
-            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), w = bcs.w, T = bcs.T)
-            boundary_conditions_order = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), w = bcs.w, T = bcs.T)
-            run_name = dim * "_periodic_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        elseif topology(grid) == (Bounded, Bounded, Bounded) #3d open case
+            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom), 
+                                v = FieldBoundaryConditions(top = bcs.v.top, bottom = bcs.v.bottom),  
+                                w = FieldBoundaryConditions(top = bcs.w.top, bottom = bcs.w.bottom), 
+                                T = bcs.T)
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], v = boundary_conditions[:v], T = boundary_conditions[:T])
+            run_name = dim * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        elseif topology(grid) == (Bounded, Bounded, Bounded) && typeof(bcs.w.east) !== Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #3d open case
             boundary_conditions = bcs
-            boundary_conditions_order = (w = bcs.w, u = bcs[:u], v = bcs[:v], T = bcs.T)
-            run_name = dim * "_open_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "utop_" * matching_scheme_name(boundary_conditions.u.top)
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], v = boundary_conditions[:v], T = boundary_conditions[:T])
+            run_name = dim * "_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        elseif topology(grid) == (Bounded, Bounded, Bounded) && typeof(bcs.w.east) == Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #3d open case, lid val bcs
+            boundary_conditions = bcs
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], v = boundary_conditions[:v], T = boundary_conditions[:T])
+            run_name = dim * "_sides_Value_utop_" * matching_scheme_name(boundary_conditions.u.top)
         elseif topology(grid)[2] == Flat && typeof(bcs.w.east) !== Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #2d bcs
             boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
-            boundary_conditions_order = (w = bcs.w, u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), T = bcs.T)
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], T = boundary_conditions[:T])
             run_name = dim * "_sides_" * matching_scheme_sides(boundary_conditions.u.east) * "_utop_" * matching_scheme_name(boundary_conditions.u.top)
-        else #2d value bcs
+        elseif topology(grid)[2] == Flat && typeof(bcs.w.east) == Oceananigans.BoundaryConditions.DefaultBoundaryCondition{BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}} #2d lid val bcs
             boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
-            boundary_conditions_order = (w = bcs.w, u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), T = bcs.T)
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], T = boundary_conditions[:T])
+            run_name = dim * "_sides_Value_utop_" * matching_scheme_name(boundary_conditions.u.top)
+        else
+            boundary_conditions = (u = FieldBoundaryConditions(top = bcs.u.top, bottom = bcs.u.bottom, east = bcs.u.east, west = bcs.u.west), w = bcs.w, T = bcs.T)
+            boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], v = boundary_conditions[:v], T = boundary_conditions[:T])
             run_name = dim * "_sides_Value_utop_" * matching_scheme_name(boundary_conditions.u.top)
         end
-        if typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64}
-            run_name = run_name * "_couette"
-        elseif d > 8
-            run_name = run_name * "_lid"
+        if typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} && (d < loc_lid + 1) && topology(grid)[1] !== Periodic
+            run_name = "couette_" * run_name
+        elseif d > loc_lid && topology(grid)[1] !== Periodic
+            run_name = "lid_" * run_name
         end
+        run_name1 = run_name
         for bc_order in (boundary_conditions, boundary_conditions_order)
             for stokes in (nothing, stokes3d)
                 if stokes !== nothing 
@@ -417,9 +435,10 @@ for grid in (grid2d, grid3d, grid3d_periodic)
                     run_model3D(grid, bc_order, stokes; name=run_name) 
                 end
             end
-            run_name = run_name * "_bc_order_changed"
+            @info "Completed $run_name"
+            run_name = "bc_order_changed_" * run_name1
         end
         run_name = ""
         d += 1
     end
-end 
+end
