@@ -376,16 +376,17 @@ matching_scheme_name(obc) = string(nameof(typeof(obc.classification)))
 matching_scheme_sides(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
 
 ## running all combinations of cases
-for grid in (grid2d, grid3d, grid3d_periodic) 
+for grid in (grid3d_periodic, grid2d, grid3d)
     if topology(grid)[2] == Flat
         dim = "2d"
         bc_oi = bc_options
     elseif topology(grid) == (Bounded, Bounded, Bounded)
         dim = "3d_open"
-        bc_oi = bc_options
+        bc_oi = bc_options 
     else
         dim = "3d_periodic"
-        bc_oi = bc_options[1:(length(bc_options)-loc_lid)] #no lid cases for periodic
+        bc_oi = (bc_options[1], bc_options[2],
+                bc_options[5], bc_options[6])
     end
     d = 1
     for bcs in bc_oi
@@ -420,7 +421,7 @@ for grid in (grid2d, grid3d, grid3d_periodic)
         @show d, run_name
         if d > loc_lid && topology(grid)[1] !== Periodic
             run_name = "lid_" * run_name
-        elseif typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} && (d < loc_lid + 1) && topology(grid)[1] !== Periodic
+        elseif typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} && (d < loc_lid + 1)
             run_name = "couette_" * run_name
         end
         run_name1 = run_name
