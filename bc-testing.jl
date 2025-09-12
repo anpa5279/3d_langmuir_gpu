@@ -300,7 +300,7 @@ w_boundaries_fe = FieldBoundaryConditions(bottom = w_fe, top = w_fe)
 feobcs_val = (u = u_boundaries_fe_val, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
 feobcs_flux = (u = u_boundaries_fe_flux, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
 feobcs_couette_val = (u = u_boundaries_fe_val_couette, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
-feobcs_couette_flux = (u = u_boundaries_fe_val_couette, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
+feobcs_couette_flux = (u = u_boundaries_fe_flux_couette, v = v_boundaries_fe, w = w_boundaries_fe, T = T_bcs)
 
 u_boundaries_pa_val = FieldBoundaryConditions(top = u_val, 
                                             west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U = us_top, TT = TT), inflow_timescale, outflow_timescale),
@@ -417,10 +417,11 @@ for grid in (grid2d, grid3d, grid3d_periodic)
             boundary_conditions_order = (w = boundary_conditions[:w], u = boundary_conditions[:u], v = boundary_conditions[:v], T = boundary_conditions[:T])
             run_name = dim * "_sides_Value_utop_" * matching_scheme_name(boundary_conditions.u.top)
         end
-        if typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} && (d < loc_lid + 1) && topology(grid)[1] !== Periodic
-            run_name = "couette_" * run_name
-        elseif d > loc_lid && topology(grid)[1] !== Periodic
+        @show d, run_name
+        if d > loc_lid && topology(grid)[1] !== Periodic
             run_name = "lid_" * run_name
+        elseif typeof(boundary_conditions.u.bottom) == BoundaryCondition{Oceananigans.BoundaryConditions.Value, Float64} && (d < loc_lid + 1) && topology(grid)[1] !== Periodic
+            run_name = "couette_" * run_name
         end
         run_name1 = run_name
         for bc_order in (boundary_conditions, boundary_conditions_order)
@@ -435,7 +436,6 @@ for grid in (grid2d, grid3d, grid3d_periodic)
                     run_model3D(grid, bc_order, stokes; name=run_name) 
                 end
             end
-            @info "Completed $run_name"
             run_name = "bc_order_changed_" * run_name1
         end
         run_name = ""
