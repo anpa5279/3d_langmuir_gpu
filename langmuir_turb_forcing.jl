@@ -140,7 +140,7 @@ V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
 
 dir = "forcing-function/"
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, νₑ),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields.jld2", #$(rank)
