@@ -74,7 +74,7 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-νₑ = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
+νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
