@@ -1,12 +1,9 @@
 using Pkg
-using MPI
-using CUDA
 using Random
 using Statistics
 using Printf
 using Random
 using Oceananigans
-using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -16,34 +13,25 @@ using Oceananigans.Fields: CenterField, FieldBoundaryConditions
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils: launch!
 
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
-const Lx = 320    # (m) domain horizontal extents
-const Ly = 320    # (m) domain horizontal extents
-const Lz = 96    # (m) domain depth 
-const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
-const initial_mixed_layer_depth = 30.0 # m 
-const Q = 5.0     # W m⁻², surface heat flux. cooling is positive
-const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
-const dTdz = 0.01  # K m⁻¹, temperature gradient
-const T0 = 25.0    # C, temperature at the surface  
-const S₀ = 35.0    # ppt, salinity 
-const β = 2.0e-4     # 1/K, thermal expansion coefficient
-const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+Nx = 32        # number of points in each of x direction
+Ny = 32        # number of points in each of y direction
+Nz = 32        # number of points in the vertical direction
+Lx = 320    # (m) domain horizontal extents
+Ly = 320    # (m) domain horizontal extents
+Lz = 96    # (m) domain depth 
+N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
+initial_mixed_layer_depth = 30.0 # m 
+Q = 5.0     # W m⁻², surface heat flux. cooling is positive
+cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
+dTdz = 0.01  # K m⁻¹, temperature gradient
+T0 = 25.0    # C, temperature at the surface  
+S₀ = 35.0    # ppt, salinity 
+β = 2.0e-4     # 1/K, thermal expansion coefficient
+u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+La_t = 0.3  # Langmuir turbulence number
 
-# Automatically distribute among available processors
-MPI.Init() # Initialize MPI
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(GPU()) : GPU()
-
-# Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
-
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 #stokes drift
 include("stokes.jl")
@@ -59,7 +47,7 @@ us_top = us_1d[Nz]
 u_f = La_t^2 * us_top
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
@@ -73,6 +61,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             stokes_drift = stokes,
                             boundary_conditions = (u=u_bcs, T=T_bcs),)
 @show model
+#ICs
 ## ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)

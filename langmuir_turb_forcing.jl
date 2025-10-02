@@ -6,6 +6,7 @@ using Statistics
 using Printf
 using Random
 using Oceananigans
+using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -23,7 +24,7 @@ const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
-const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
+const Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
@@ -33,8 +34,6 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 
-#referring to files with desiraed functions
-include("stokes.jl")
 include("smagorinsky_forcing.jl")
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
@@ -61,7 +60,7 @@ us_top = us_1d[Nz]
 u_f = La_t^2 * us_top
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
@@ -86,15 +85,12 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
                             auxiliary_fields = (νₑ = νₑ,))
 @show model
-# random seed
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-@show "rand equations made"
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-@show "equations defined"
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+## ICs
+r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
+uᵢ(x, y, z) = u_f * r(x, y, z)
+vᵢ(x, y, z) = -u_f * r(x, y, z)
+set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
