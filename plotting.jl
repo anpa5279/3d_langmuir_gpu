@@ -49,7 +49,7 @@ Nt = length(u.times)
 times = u.times
 
 B = FieldTimeSeries{Nothing, Nothing, Center}(grid, times)
-B .= g_Earth * p.β * (T.data .- p.T0)
+B .= g_Earth * β * (T.data .- T0)
 # function calls
 println("Calculating VKE")
 wprime2 = VKE(w.data, u★)
