@@ -22,6 +22,7 @@ const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
 const Q = 1e11     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
+const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
 const T0 = 25.0    # C, temperature at the surface  
 const S₀ = 35.0    # ppt, salinity 
@@ -37,15 +38,14 @@ grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 #stokes drift
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
-z1d = grid2d.z.cᵃᵃᶜ[1:Nz]
+z1d = grid.z.cᵃᵃᶜ[1:Nz]
 dusdz_1d = dstokes_dz.(z1d, u₁₀)
 set!(dusdz, dusdz_1d)
 us_1d = stokes_velocity.(z1d, u₁₀)
 stokes = UniformStokesDrift(∂z_uˢ=dusdz)
 
-#BCs
-us = stokes_velocity(z_d[end], u₁₀)
-u_f = La_t^2 * us
+us_top = us_1d[Nz]
+u_f = La_t^2 * us_top
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
@@ -67,7 +67,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:T),
-                            closure = nothing, #closure = Smagorinsky(coefficient=0.1)
+                            closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = stokes,
                             boundary_conditions = (u=u_bcs, T=T_bcs),
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
