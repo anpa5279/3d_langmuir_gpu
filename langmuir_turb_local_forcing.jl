@@ -75,11 +75,10 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             auxiliary_fields = (νₑ = νₑ,))
 @show model
 ## ICs
-r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
+r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly-Nz*z/Lz))] * exp(z / 4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
 uᵢ(x, y, z) = u_f * r(x, y, z)
-vᵢ(x, y, z) = -u_f * r(x, y, z)
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
+set!(model, u=uᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
