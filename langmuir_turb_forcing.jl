@@ -148,7 +148,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, νₑ),
                                                       overwrite_existing = true,
                                                       init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     dir = dir,
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "langmuir_turbulence_averages.jld2",
