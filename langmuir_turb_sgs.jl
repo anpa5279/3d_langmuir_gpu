@@ -88,10 +88,6 @@ update_state!(model; compute_tendencies = true)
 simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
 @show simulation
 
-u, v, w = model.velocities
-T = model.tracers.T
-νₑ = model.diffusivity_fields.νₑ
-
 function progress(simulation)
     u, v, w = simulation.model.velocities
     T = model.tracers.T
@@ -108,7 +104,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
@@ -119,28 +115,20 @@ function save_IC!(file, model)
     file["IC/wind_speed"] = u₁₀
     return nothing
 end
+
+u, v, w = model.velocities
+T = model.tracers.T
+νₑ = model.diffusivity_fields.νₑ
+
 output_interval = 60minutes
-
-W = Average(w, dims=(1, 2))
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
-T = Average(T, dims=(1, 2))
-
 dir = "sgs/"
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, νₑ),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
+                                                      filename = "sgs_fields.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
-                                                      
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
-                                                    dir = dir,
-                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "langmuir_turbulence_averages.jld2",
-                                                    array_type = Array{Float64},
-                                                    overwrite_existing = true)
 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 run!(simulation) #; pickup = true
