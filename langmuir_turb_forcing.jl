@@ -80,7 +80,6 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T,),
                             timestepper = :RungeKutta3,
-                            tracers = (:T),
                             closure = nothing, #closure = Smagorinsky(coefficient=0.1)
                             stokes_drift = stokes,
                             boundary_conditions = (u=u_bcs, T=T_bcs),
