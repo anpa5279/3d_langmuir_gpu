@@ -11,6 +11,7 @@ mkdir outputs/$jobn
 cp langmuir_turb_sgs.jl outputs/$jobn/
 cp langmuir_turb_forcing.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
+cp smagorinsky_forcing.jl outputs/$jobn/
 
 cd outputs/$jobn/
 touch Project.toml
