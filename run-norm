@@ -8,11 +8,13 @@ jobn=sgs_force_smag_comparison
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
+cp langmuir_turb_sgs.jl outputs/$jobn/
 cp langmuir_turb_forcing.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
-##cp Project.toml outputs/$jobn/
+cp smagorinsky_forcing.jl outputs/$jobn/
 
 cd outputs/$jobn/
+touch Project.toml
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
