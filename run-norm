@@ -14,7 +14,7 @@ cp stokes.jl outputs/$jobn/
 cp smagorinsky_forcing.jl outputs/$jobn/
 
 cd outputs/$jobn/
-touch Project.toml
+##touch Project.toml
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
