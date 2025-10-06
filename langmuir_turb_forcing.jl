@@ -154,6 +154,9 @@ function update_viscosity(model)
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
+@show νₑ
 visc_callback(model)
+@show "after callback"
+@show νₑ
 @show "begin simulation"
 run!(simulation) #; pickup = true
