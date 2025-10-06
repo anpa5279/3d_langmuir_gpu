@@ -81,12 +81,11 @@ uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
-    T = model.tracers.T
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    iteration(simulation),
@@ -116,8 +115,8 @@ u, v, w = model.velocities
 T = model.tracers.T
 νₑ = model.auxiliary_fields.νₑ
 
-output_interval = 60minutes
-dir = "forcing-function/"
+output_interval = 15minutes
+dir = "localoutputs/forcing-function/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
@@ -135,6 +134,7 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
+    fill_halo_regions!(νₑ)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
     fill_halo_regions!(w)

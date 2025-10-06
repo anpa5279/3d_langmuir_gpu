@@ -103,7 +103,7 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             stokes_drift = UniformStokesDrift(∂z_uˢ=new_dUSDdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours)
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours)
 function progress(simulation)
     u, v, w = simulation.model.velocities
 

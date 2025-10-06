@@ -80,7 +80,7 @@ uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 96hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)

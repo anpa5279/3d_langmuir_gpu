@@ -28,10 +28,9 @@ function load_data(case)
                     global Nt = length(times)
                     global u = zeros(Float64, ranks * Nx + 1, Ny, Nz, Nt)
                     global v = zeros(Float64, ranks * Nx, Ny + 1, Nz, Nt)
-                    global w = zeros(Float64, ranks * Nx, Ny, Nz + 1, Nt)
+                    global w = zeros(Float64, ranks * Nx, Ny, Nz, Nt)
                     global ν = zeros(Float64, ranks * Nx, Ny, Nz, Nt)
                     global t = zeros(Float64, Nt)
-                    @show size(u), size(v), size(w), size(ν), size(t)
                 end
                 global u_temp = file_path["timeseries/u"]
                 global v_temp = file_path["timeseries/v"]
@@ -41,12 +40,11 @@ function load_data(case)
                 global collect_f = (Nx + 1) + i * Nx
                 global collect_c = Nx + i * Nx
                 global nt = 0
-                @show collect_f, collect_c, start
                 for tstep in keys(times)
                     global nt += 1
                     global u[start:collect_f, :, :, nt] = u_temp[tstep][Hx+1:Nx+Hx+1, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global v[start:collect_c, :, :, nt] = v_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy+1, Hz+1:Nz+Hz]
-                    global w[start:collect_c, :, :, nt] = w_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz+1]
+                    global w[start:collect_c, :, :, nt] = w_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global ν[start:collect_c, :, :, nt] = ν_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global t[nt] = times[tstep]
                 end 
@@ -64,39 +62,85 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
 
     # w is defined on the staggered grid, with points 1 and Nz being zero-value BCs
     # u and v on their staggered grids are periodic, and thus not zero.
-    ν_err = (case2.ν .- case1.ν) ./ case1.ν;
-    u_err = (case2.u .- case1.u) ./ case1.u;
-    v_err = (case2.v .- case1.v) ./ case1.v;
-    w_err = (case2.w .- case1.w) ./ case1.w;
+    global u1 = case1.u
+    global v1 = case1.v
+    global w1 = case1.w
+    global ν1 = case1.ν
+    global u2 = case2.u
+    global v2 = case2.v
+    global w2 = case2.w
+    global ν2 = case2.ν
+    ν_diff = (ν2 .- ν1)
+    global ν_err = ν_diff ./ ν1;
+    ν_err[(ν_diff.==0)] .= 0.0
+    u_diff = (u2 .- u1)
+    global u_err = u_diff ./ u1;
+    u_err[(u_diff.==0)] .= 0.0
+    v_diff = (v2 .- v1)
+    global v_err = v_diff ./ v1;
+    v_err[(v_diff.==0)] .= 0.0
+    w_diff = (w2 .- w1)
+    global w_err = w_diff ./ w1;
+    w_err[(w_diff.==0)] .= 0.0  
 
-    # ν_min = vec(minimum(abs, ν_err, dims=(1, 2, 3)));
-    ν_avg = vec(mean(abs, ν_err, dims=(1, 2, 3)));
-    ν_max = vec(maximum(abs, ν_err, dims=(1, 2, 3)));
+    # ν_min = vec(vcat(minimum(abs, ν_err, dims=(1, 2, 3)));
+    global ν_avg = vec(vcat(mean(abs, ν_err, dims=(1, 2, 3))));
+    global ν_max = vec(vcat(maximum(abs, ν_err, dims=(1, 2, 3))));
+    #ν_avg[isnan.(ν_avg)] .= 0.0
+    #ν_max[isnan.(ν_max)] .= 0.0
+    #ν_avg[isinf.(abs.(ν_avg))] .= 0.0
+    #ν_max[isinf.(abs.(ν_max))] .= 0.0
+    #ν_avg = convert(Vector{Union{Missing,Float64}}, ν_avg)
+    #ν_max = convert(Vector{Union{Missing,Float64}}, ν_max)
+    #ν_avg[ν_avg.==0] .= missing
+    #ν_max[ν_max.==0] .= missing 
 
-    # u_min = vec(minimum(abs, u_err, dims=(1, 2, 3)));
-    u_avg = vec(mean(abs, u_err, dims=(1, 2, 3)));
-    u_max = vec(maximum(abs, u_err, dims=(1, 2, 3)));
+    # u_min = vec(vcat(minimum(abs, u_err, dims=(1, 2, 3)));
+    global u_avg = vec(vcat(mean(abs, u_err, dims=(1, 2, 3))));
+    global u_max = vec(vcat(maximum(abs, u_err, dims=(1, 2, 3))));
+    #u_avg[isnan.(u_avg)] .= 0.0
+    #u_max[isnan.(u_max)] .= 0.0
+    #u_avg[isinf.(abs.(u_avg))] .= 0.0
+    #u_max[isinf.(abs.(u_max))] .= 0.0
+    #u_avg = convert(Vector{Union{Missing,Float64}}, u_avg)
+    #u_max = convert(Vector{Union{Missing,Float64}}, u_max)
+    #u_avg[u_avg.==0] .= missing
+    #u_max[u_max.==0] .= missing
 
-    # v_min = vec(minimum(abs, v_err, dims=(1, 2, 3)));
-    v_avg = vec(mean(abs, v_err, dims=(1, 2, 3)));
-    v_max = vec(maximum(abs, v_err, dims=(1, 2, 3)));
+    # v_min = vec(vcat(minimum(abs, v_err, dims=(1, 2, 3)));
+    global v_avg = vec(vcat(mean(abs, v_err, dims=(1, 2, 3))));
+    global v_max = vec(vcat(maximum(abs, v_err, dims=(1, 2, 3))));
+    #v_avg[isnan.(v_avg)] .= 0.0
+    #v_max[isnan.(v_max)] .= 0.0
+    #v_avg[isinf.(abs.(v_avg))] .= 0.0
+    #v_max[isinf.(abs.(v_max))] .= 0.0
+    #v_avg = convert(Vector{Union{Missing,Float64}}, v_avg)
+    #v_max = convert(Vector{Union{Missing,Float64}}, v_max)
+    #v_avg[v_avg.==0] .= missing
+    #v_max[v_max.==0] .= missing
 
-    # w_min = vec(minimum(abs, w_err, dims=(1, 2, 3)));
-    w_avg = vec(mean(abs, w_err, dims=(1, 2, 3)));
-    w_max = vec(maximum(abs, w_err, dims=(1, 2, 3)));
-    w_avg[isnan.(w_avg)] .= 0.0
-    w_max[isnan.(w_max)] .= 0.0
-
-    yscale = :log10
+    # w_min = vec(vcat(minimum(abs, w_err, dims=(1, 2, 3)));
+    global w_avg = vec(vcat(mean(abs, w_err, dims=(1, 2, 3))));
+    global w_max = vec(vcat(maximum(abs, w_err, dims=(1, 2, 3))));
+    #w_avg[isnan.(w_avg)] .= 0.0
+    #w_max[isnan.(w_max)] .= 0.0
+    #w_avg[isinf.(abs.(w_avg))] .= 0.0
+    #w_max[isinf.(abs.(w_max))] .= 0.0
+    #w_avg = convert(Vector{Union{Missing,Float64}}, w_avg)
+    #w_max = convert(Vector{Union{Missing,Float64}}, w_max)
+    #w_avg[w_avg.==0] .= missing
+    #w_max[w_max.==0] .= missing
     
-    y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])
+    y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])# maximum(maximum, [skipmissing(ν_max), skipmissing(u_max), skipmissing(v_max), skipmissing(w_max)])
     y_min = minimum(minimum, [ν_avg[2:end], u_avg[2:end], v_avg[2:end], w_avg[2:end]])
+    #minimum(minimum, [skipmissing(ν_avg[2:end]), skipmissing(u_avg[2:end]), skipmissing(v_avg[2:end]), skipmissing(w_avg[2:end])])
     
     ytlo = floor(log10(y_min))
     ythi = ceil(log10(y_max))
     ylims = 10.0 .^(ytlo, ythi)
     @show ytlo, ythi, ylims
 
+    yscale = :log10
     if ytlo == -Inf
         @info "$title\n has zero maximum error in all fields!"
         yscale = :identity
@@ -132,8 +176,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = "outputs/forcing"
-case2 = "outputs/sgs"
-case1 = load_data(case1);
-case2 = load_data(case2);
+case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
+case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
 plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs.png")
