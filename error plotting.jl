@@ -120,11 +120,11 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     if !fixed_step
         t = times1 / 3600.0
         xlabel = "time (hours)"
-        legend = :best
+        legend = :bottomright
     else
         t = 0:10
         xlabel = "Iterations"
-        legend = :best
+        legend = :bottomright
     end
 
     dpi = 300
@@ -133,7 +133,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot(t, u_max; color=:blue, linestyle=:solid, linewidth=1.5, marker=:none, label="u max",
         title, xlabel, ylabel="Pointwise Abs Rel Error", legend, 
         yscale, ylims, yticks, minorgrid=false, size=figsize, dpi)
-    
     plot!(t, u_avg; color=:blue, linestyle=:dash, linewidth=2, marker=:none, label="u avg")
     plot!(t, v_max; color=:purple, linestyle=:solid, linewidth=1.5, marker=:none, label="v max")
     plot!(t, v_avg; color=:purple, linestyle=:dash, linewidth=2, marker=:none, label="v avg")
@@ -143,6 +142,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
-case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
+#case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
+#case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
 plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs.png")
