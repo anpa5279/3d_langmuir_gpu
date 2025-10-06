@@ -5,8 +5,8 @@ gpus=2
 ntasks=$((nodes*gpus))
 jobn=sgs_force_smag_comparison
 
-rm -rf outputs/$jobn
-mkdir outputs/$jobn
+###rm -rf outputs/$jobn
+###mkdir outputs/$jobn
 
 cp langmuir_turb_sgs.jl outputs/$jobn/
 cp langmuir_turb_forcing.jl outputs/$jobn/
@@ -51,7 +51,7 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_forcing.jl
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_sgs.jl
 EXEC
 
 qsub < EXEC_STEP
