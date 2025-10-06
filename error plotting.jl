@@ -72,16 +72,16 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     global ν2 = case2.ν
     ν_diff = (ν2 .- ν1)
     global ν_err = ν_diff ./ ν1;
-    ν_err[(ν_diff.==0)] .= 0.0
+    ν_err[(ν_diff.==0)] .= 1e-100
     u_diff = (u2 .- u1)
     global u_err = u_diff ./ u1;
-    u_err[(u_diff.==0)] .= 0.0
+    u_err[(u_diff.==0)] .= 1e-100
     v_diff = (v2 .- v1)
     global v_err = v_diff ./ v1;
-    v_err[(v_diff.==0)] .= 0.0
+    v_err[(v_diff.==0)] .= 1e-100
     w_diff = (w2 .- w1)
     global w_err = w_diff ./ w1;
-    w_err[(w_diff.==0)] .= 0.0  
+    w_err[(w_diff.==0)] .= 1e-100
 
     # ν_min = vec(vcat(minimum(abs, ν_err, dims=(1, 2, 3)));
     global ν_avg = vec(vcat(mean(abs, ν_err, dims=(1, 2, 3))));
@@ -142,6 +142,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-#case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
-#case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
+case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
+case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
 plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs.png")

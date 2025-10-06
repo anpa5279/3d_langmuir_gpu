@@ -138,7 +138,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       init = save_IC!)
 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
-
 function update_viscosity(model)
     arch = model.architecture
     u = model.velocities.u
@@ -146,6 +145,7 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
+    fill_halo_regions!(νₑ)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
     fill_halo_regions!(w)
