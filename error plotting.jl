@@ -142,6 +142,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-#case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
-#case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
+case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
+case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
 plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs.png")

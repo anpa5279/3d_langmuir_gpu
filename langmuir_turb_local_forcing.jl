@@ -79,7 +79,6 @@ r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
-update_state!(model; compute_tendencies = true)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
@@ -141,6 +140,8 @@ function update_viscosity(model)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
     fill_halo_regions!(νₑ)
 end 
-simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+simulation.callbacks[:visc_update] = visc_callback
+visc_callback(model)
 @show "begin simulation"
 run!(simulation) #; pickup = true

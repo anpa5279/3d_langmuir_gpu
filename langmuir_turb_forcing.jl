@@ -152,6 +152,8 @@ function update_viscosity(model)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
     fill_halo_regions!(νₑ)
 end 
-simulation.callbacks[:visc_update] = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+simulation.callbacks[:visc_update] = visc_callback
+visc_callback(model)
 @show "begin simulation"
 run!(simulation) #; pickup = true

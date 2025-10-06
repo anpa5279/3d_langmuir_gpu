@@ -1,12 +1,12 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=2
+gpus=1
 ntasks=$((nodes*gpus))
-jobn=sgs_force_smag_comparison
+jobn=sgs_force_smag_comparison_callback
 
-###rm -rf outputs/$jobn
-###mkdir outputs/$jobn
+rm -rf outputs/$jobn
+mkdir outputs/$jobn
 
 cp langmuir_turb_sgs.jl outputs/$jobn/
 cp langmuir_turb_forcing.jl outputs/$jobn/
@@ -14,7 +14,7 @@ cp stokes.jl outputs/$jobn/
 cp smagorinsky_forcing.jl outputs/$jobn/
 
 cd outputs/$jobn/
-##touch Project.toml
+touch Project.toml
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -51,7 +51,7 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_sgs.jl
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_forcing.jl
 EXEC
 
 qsub < EXEC_STEP
