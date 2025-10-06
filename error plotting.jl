@@ -26,26 +26,26 @@ function load_data(case)
                     global Hy = grid1["Hy"]
                     global Hz = grid1["Hz"]
                     global Nt = length(times)
+                    global ν = zeros(Float64, ranks * Nx, Ny, Nz, Nt)
                     global u = zeros(Float64, ranks * Nx + 1, Ny, Nz, Nt)
                     global v = zeros(Float64, ranks * Nx, Ny + 1, Nz, Nt)
-                    global w = zeros(Float64, ranks * Nx, Ny, Nz, Nt)
-                    global ν = zeros(Float64, ranks * Nx, Ny, Nz, Nt)
+                    global w = zeros(Float64, ranks * Nx, Ny, Nz + 1, Nt)
                     global t = zeros(Float64, Nt)
                 end
+                global ν_temp = file_path["timeseries/νₑ"]
                 global u_temp = file_path["timeseries/u"]
                 global v_temp = file_path["timeseries/v"]
                 global w_temp = file_path["timeseries/w"]
-                global ν_temp = file_path["timeseries/νₑ"]
                 global start = 1 + i * Nx
                 global collect_f = (Nx + 1) + i * Nx
                 global collect_c = Nx + i * Nx
                 global nt = 0
                 for tstep in keys(times)
                     global nt += 1
+                    global ν[start:collect_c, :, :, nt] = ν_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global u[start:collect_f, :, :, nt] = u_temp[tstep][Hx+1:Nx+Hx+1, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global v[start:collect_c, :, :, nt] = v_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy+1, Hz+1:Nz+Hz]
-                    global w[start:collect_c, :, :, nt] = w_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
-                    global ν[start:collect_c, :, :, nt] = ν_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
+                    global w[start:collect_c, :, :, nt] = w_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz+1]
                     global t[nt] = times[tstep]
                 end 
                 i += 1
@@ -86,54 +86,21 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     # ν_min = vec(vcat(minimum(abs, ν_err, dims=(1, 2, 3)));
     global ν_avg = vec(vcat(mean(abs, ν_err, dims=(1, 2, 3))));
     global ν_max = vec(vcat(maximum(abs, ν_err, dims=(1, 2, 3))));
-    #ν_avg[isnan.(ν_avg)] .= 0.0
-    #ν_max[isnan.(ν_max)] .= 0.0
-    #ν_avg[isinf.(abs.(ν_avg))] .= 0.0
-    #ν_max[isinf.(abs.(ν_max))] .= 0.0
-    #ν_avg = convert(Vector{Union{Missing,Float64}}, ν_avg)
-    #ν_max = convert(Vector{Union{Missing,Float64}}, ν_max)
-    #ν_avg[ν_avg.==0] .= missing
-    #ν_max[ν_max.==0] .= missing 
 
     # u_min = vec(vcat(minimum(abs, u_err, dims=(1, 2, 3)));
     global u_avg = vec(vcat(mean(abs, u_err, dims=(1, 2, 3))));
     global u_max = vec(vcat(maximum(abs, u_err, dims=(1, 2, 3))));
-    #u_avg[isnan.(u_avg)] .= 0.0
-    #u_max[isnan.(u_max)] .= 0.0
-    #u_avg[isinf.(abs.(u_avg))] .= 0.0
-    #u_max[isinf.(abs.(u_max))] .= 0.0
-    #u_avg = convert(Vector{Union{Missing,Float64}}, u_avg)
-    #u_max = convert(Vector{Union{Missing,Float64}}, u_max)
-    #u_avg[u_avg.==0] .= missing
-    #u_max[u_max.==0] .= missing
 
     # v_min = vec(vcat(minimum(abs, v_err, dims=(1, 2, 3)));
     global v_avg = vec(vcat(mean(abs, v_err, dims=(1, 2, 3))));
     global v_max = vec(vcat(maximum(abs, v_err, dims=(1, 2, 3))));
-    #v_avg[isnan.(v_avg)] .= 0.0
-    #v_max[isnan.(v_max)] .= 0.0
-    #v_avg[isinf.(abs.(v_avg))] .= 0.0
-    #v_max[isinf.(abs.(v_max))] .= 0.0
-    #v_avg = convert(Vector{Union{Missing,Float64}}, v_avg)
-    #v_max = convert(Vector{Union{Missing,Float64}}, v_max)
-    #v_avg[v_avg.==0] .= missing
-    #v_max[v_max.==0] .= missing
 
     # w_min = vec(vcat(minimum(abs, w_err, dims=(1, 2, 3)));
     global w_avg = vec(vcat(mean(abs, w_err, dims=(1, 2, 3))));
     global w_max = vec(vcat(maximum(abs, w_err, dims=(1, 2, 3))));
-    #w_avg[isnan.(w_avg)] .= 0.0
-    #w_max[isnan.(w_max)] .= 0.0
-    #w_avg[isinf.(abs.(w_avg))] .= 0.0
-    #w_max[isinf.(abs.(w_max))] .= 0.0
-    #w_avg = convert(Vector{Union{Missing,Float64}}, w_avg)
-    #w_max = convert(Vector{Union{Missing,Float64}}, w_max)
-    #w_avg[w_avg.==0] .= missing
-    #w_max[w_max.==0] .= missing
     
-    y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])# maximum(maximum, [skipmissing(ν_max), skipmissing(u_max), skipmissing(v_max), skipmissing(w_max)])
+    y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])
     y_min = minimum(minimum, [ν_avg[2:end], u_avg[2:end], v_avg[2:end], w_avg[2:end]])
-    #minimum(minimum, [skipmissing(ν_avg[2:end]), skipmissing(u_avg[2:end]), skipmissing(v_avg[2:end]), skipmissing(w_avg[2:end])])
     
     ytlo = floor(log10(y_min))
     ythi = ceil(log10(y_max))
