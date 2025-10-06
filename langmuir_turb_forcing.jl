@@ -132,7 +132,7 @@ dir = "forcing-function/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "forcing_fields1.jld2", #$(rank)
+                                                      filename = "forcing_fields.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
@@ -155,8 +155,11 @@ end
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
 @show νₑ
-visc_callback(model)
-@show "after callback"
+update_state!(model; compute_tendencies = true)
+@show "after update_state"
 @show νₑ
+#visc_callback(model)
+#@show "after callback"
+#@show νₑ
 @show "begin simulation"
 run!(simulation) #; pickup = true
