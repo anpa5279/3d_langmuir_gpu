@@ -27,7 +27,7 @@ end
     C = 0.1
     cˢ² = C^2
 
-    return @inbounds νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
+    return @inbounds cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
 # viscosity
 @kernel function smagorinsky_visc!(grid, u, v, w, νₑ)

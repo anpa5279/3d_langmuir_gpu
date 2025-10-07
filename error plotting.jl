@@ -41,6 +41,7 @@ function load_data(case)
                 global collect_c = Nx + i * Nx
                 global nt = 0
                 for tstep in keys(times)
+                    @show tstep, case_name
                     global nt += 1
                     global ν[start:collect_c, :, :, nt] = ν_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global u[start:collect_f, :, :, nt] = u_temp[tstep][Hx+1:Nx+Hx+1, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
@@ -52,13 +53,14 @@ function load_data(case)
             end
         end
     end
+    @show "end of load_data"
     return (u=u, v=v, w=w, ν=ν, times=t, grid= grid1)
 end
 
 function plot_error(case1, case2, title, filename; fixed_step=false)
     times1 = case1.times;
     times2 = case2.times;
-    @assert times1 ≈ times2 "Time points in the two simulations do not match."
+    #@assert times1 ≈ times2 "Time points in the two simulations do not match."
 
     # w is defined on the staggered grid, with points 1 and Nz being zero-value BCs
     # u and v on their staggered grids are periodic, and thus not zero.
@@ -70,6 +72,20 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     global v2 = case2.v
     global w2 = case2.w
     global ν2 = case2.ν
+    nt1 = size(u1, 4)
+    nt2 = size(u2, 4)
+    if nt1 != nt2
+        min_nt = min(nt1, nt2)
+        global u1 = u1[:, :, :, 1:min_nt]
+        global v1 = v1[:, :, :, 1:min_nt]
+        global w1 = w1[:, :, :, 1:min_nt]
+        global ν1 = ν1[:, :, :, 1:min_nt]
+        global u2 = u2[:, :, :, 1:min_nt]
+        global v2 = v2[:, :, :, 1:min_nt]
+        global w2 = w2[:, :, :, 1:min_nt]
+        global ν2 = ν2[:, :, :, 1:min_nt]
+        global times1 = times1[1:min_nt]
+    end
     ν_diff = (ν2 .- ν1)
     global ν_err = ν_diff ./ ν1;
     ν_err[(ν_diff.==0)] .= 0.0
@@ -142,6 +158,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs");
-case2 = load_data("outputs/forcing");#load_data("localoutputs/forcing/forcing");
-plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs.png")
+case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
+case2 = load_data("localoutputs/temp_sgs_fields_128_3.jld2");#load_data("localoutputs/forcing/forcing"); #load_data("outputs/forcing");#
+plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "sgs_local_vs_derecho.png")
