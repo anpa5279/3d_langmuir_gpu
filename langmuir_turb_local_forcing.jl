@@ -62,7 +62,15 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
+#νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
+c = 0.1
+Δ³ = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ * grid.z.Δᵃᵃᶜ
+Δᶠ = cbrt(Δ³)
+νₑ = Field(c^2 * Δᶠ^2 * sqrt(2*(∂x(u)^2 + ∂y(v)^2 + ∂z(w)^2 
+            + 2*((0.5*(∂y(u) + ∂x(v)))^2 
+            + (0.5*(∂z(u) + ∂x(w)))^2 
+            + (0.5*(∂z(v) + ∂y(w)))^2))))
+
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -79,8 +87,7 @@ r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
-
-simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 12hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -127,23 +134,12 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 
 function update_viscosity(model)
-    arch = model.architecture
-    u = model.velocities.u
-    v = model.velocities.v
-    w = model.velocities.w
-    grid = model.grid
-    νₑ = model.auxiliary_fields.νₑ
-    fill_halo_regions!(νₑ)
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-    fill_halo_regions!(w)
-    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
-    fill_halo_regions!(νₑ)
+    compute!(νₑ)
     return nothing
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
-simulation.callbacks[:visc_update] = visc_callback
-update_state!(model, [visc_callback,]; compute_tendencies = false)
+#simulation.callbacks[:visc_update] = visc_callback
+#update_state!(model, [visc_callback,]; compute_tendencies = false)
 @show "after update_state"
 @show νₑ
 @show "begin simulation"
