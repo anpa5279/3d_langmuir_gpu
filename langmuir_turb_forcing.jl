@@ -150,6 +150,7 @@ function update_viscosity(model)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
     fill_halo_regions!(w)
+    return nothing
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
