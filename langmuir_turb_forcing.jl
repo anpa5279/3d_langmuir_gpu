@@ -145,15 +145,15 @@ function update_viscosity(model)
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
     fill_halo_regions!(νₑ)
+    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
+    fill_halo_regions!(νₑ)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
     fill_halo_regions!(w)
-    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
-    fill_halo_regions!(νₑ)
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
-update_state!(model, [visc_callback,]; compute_tendencies = true)
+update_state!(model, [visc_callback,]; compute_tendencies = false)
 @show "after update_state"
 @show νₑ
 @show "begin simulation"
