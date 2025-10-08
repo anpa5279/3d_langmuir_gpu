@@ -131,7 +131,7 @@ dir = "forcing-function/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "forcing_fields_local_halos.jld2", #$(rank)
+                                                      filename = "forcing_fields_async_true.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
@@ -144,15 +144,15 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
-    fill_halo_regions!(νₑ; only_local_halos=true)
-    fill_halo_regions!(u; only_local_halos=true)
-    fill_halo_regions!(v; only_local_halos=true)
-    fill_halo_regions!(w; only_local_halos=true)
+    fill_halo_regions!(νₑ; async = true)
+    fill_halo_regions!(u; async = true)
+    fill_halo_regions!(v; async = true)
+    fill_halo_regions!(w; async = true)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
-    fill_halo_regions!(u; only_local_halos=true)
-    fill_halo_regions!(v; only_local_halos=true)
-    fill_halo_regions!(w; only_local_halos=true)
-    fill_halo_regions!(νₑ; only_local_halos=true)
+    fill_halo_regions!(u; async = true)
+    fill_halo_regions!(v; async = true)
+    fill_halo_regions!(w; async = true)
+    fill_halo_regions!(νₑ; async = true)
     return nothing
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
