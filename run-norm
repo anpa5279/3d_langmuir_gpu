@@ -5,8 +5,8 @@ gpus=1
 ntasks=$((nodes*gpus))
 jobn=sgs_force_smag_kernel_function
 
-##rm -rf outputs/$jobn
-##mkdir outputs/$jobn
+rm -rf outputs/$jobn
+mkdir outputs/$jobn
 
 cp langmuir_turb_sgs.jl outputs/$jobn/
 cp langmuir_turb_forcing.jl outputs/$jobn/
