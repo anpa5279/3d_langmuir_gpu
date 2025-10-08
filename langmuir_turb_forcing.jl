@@ -73,7 +73,7 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-νₑ = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
+νₑ = CenterField(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -136,7 +136,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
 function update_viscosity(model)
     arch = model.architecture
     u = model.velocities.u
@@ -144,11 +143,19 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
+
+    # Ensure halo regions are filled and GPU is synchronized
+    fill_halo_regions!(νₑ)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
     fill_halo_regions!(w)
+
+    # Synchronize GPU operations
+    synchronize()
+
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
     fill_halo_regions!(νₑ)
+    return nothing
 end
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback

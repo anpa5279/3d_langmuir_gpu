@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=1
 ntasks=$((nodes*gpus))
-jobn=sgs_forcing_revert_to_original_field_and_callback
+jobn=sgs_forcing_synchronize
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -46,7 +46,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random");  Pkg.add("KernelAbstractions")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random");  Pkg.add("KernelAbstractions")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
