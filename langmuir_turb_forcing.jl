@@ -73,7 +73,8 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-νₑ = KernelFunctionOperation{Center, Center, Center}(smag_visc, grid, u, v, w) 
+νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
+
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T,),
@@ -89,11 +90,13 @@ r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
+
 simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
+    T = model.tracers.T
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    iteration(simulation),
@@ -107,7 +110,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
@@ -124,7 +127,7 @@ T = model.tracers.T
 νₑ = model.auxiliary_fields.νₑ
 
 output_interval = 60minutes
-dir = "localoutputs/forcing-function/"
+dir = "forcing-function/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
@@ -133,7 +136,26 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
-compute!(νₑ)
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(6.8e4), prefix="model_checkpoint_$(rank)")
+function update_viscosity(model)
+    arch = model.architecture
+    u = model.velocities.u
+    v = model.velocities.v
+    w = model.velocities.w
+    grid = model.grid
+    νₑ = model.auxiliary_fields.νₑ
+    fill_halo_regions!(νₑ)
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    fill_halo_regions!(w)
+    launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
+    fill_halo_regions!(νₑ)
+    return nothing
+end 
+visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
+simulation.callbacks[:visc_update] = visc_callback
+update_state!(model, [visc_callback,]; compute_tendencies = false)
+@show "after update_state"
 @show νₑ
 @show "begin simulation"
 run!(simulation) #; pickup = true
