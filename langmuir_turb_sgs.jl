@@ -80,7 +80,7 @@ uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
 update_state!(model; compute_tendencies = true)
 
-simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_iteration = 15) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -99,7 +99,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
@@ -120,7 +120,7 @@ dir = "sgs/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "sgs_fields.jld2", #$(rank)
+                                                      filename = "sgs_fields_short.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
