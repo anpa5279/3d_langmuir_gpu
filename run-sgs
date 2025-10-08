@@ -3,8 +3,7 @@ nodes=1
 cpus=64
 gpus=1
 ntasks=$((nodes*gpus))
-jobn=sgs_force_smag_comparison_0.96.30
-
+jobn=sgs_force_smag_comparison_noadv
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
@@ -46,9 +45,8 @@ julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 ###julia --project -e 'using Pkg; Pkg.resolve()'
 julia --project -e 'using Pkg; Pkg.gc()'
-julia --project -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.96.30"))'
 # 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("KernelAbstractions"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("KernelAbstractions"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)

@@ -76,7 +76,7 @@ T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 νₑ = CenterField(grid)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
-                            advection = WENO(),
+                            #advection = WENO(),
                             tracers = (:T,),
                             timestepper = :RungeKutta3,
                             closure = nothing, #closure = Smagorinsky(coefficient=0.1)
