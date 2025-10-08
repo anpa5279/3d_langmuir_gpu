@@ -143,16 +143,13 @@ function update_viscosity(model)
     v = model.velocities.v
     w = model.velocities.w
     grid = model.grid
-    νₑ = model.auxiliary_fields.νₑ
-    fill_halo_regions!(νₑ)
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-    fill_halo_regions!(w)
+    #νₑ = model.auxiliary_fields.νₑ
+    #fill_halo_regions!(νₑ)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-    fill_halo_regions!(w)
-    fill_halo_regions!(νₑ)
+    #fill_halo_regions!(u)
+    #fill_halo_regions!(v)
+    #fill_halo_regions!(w)
+    #fill_halo_regions!(νₑ)
     return nothing
 end 
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())

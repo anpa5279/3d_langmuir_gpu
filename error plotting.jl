@@ -158,6 +158,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("outputs/sgs_fields_float64.jld2");# load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
-case2 = load_data("outputs/original");#load_data("localoutputs/sgs/sgs_fields.jld2");#
-plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_return-nothing2.png")
+#case1 = load_data("outputs/sgs_fields_float64.jld2");# load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
+case2 = load_data("outputs/forcing_fields3.jld2");#load_data("localoutputs/sgs/sgs_fields.jld2");#
+plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_fillhallo3.png")
