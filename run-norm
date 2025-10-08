@@ -46,7 +46,6 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
-####julia --project -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.rm("Oceananigans"); Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.96.35"))'
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random");  Pkg.add("KernelAbstractions")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'

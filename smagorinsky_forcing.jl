@@ -17,18 +17,6 @@ using Oceananigans.Utils: launch!
 end
 
 # viscosity
-@inline function smag_visc(i, j, k, grid, u, v, w)
-    # Strain tensor dot product
-    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-    # Filter width
-    Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
-    Δᶠ = cbrt(Δ³)
-    C = 0.1
-    cˢ² = C^2
-
-    return @inbounds cˢ² * Δᶠ^2 * sqrt(2Σ²)
-end
-# viscosity
 @kernel function smagorinsky_visc!(grid, u, v, w, νₑ)
     i, j, k = @index(Global, NTuple)
     # Strain tensor dot product

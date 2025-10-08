@@ -91,7 +91,7 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_
 uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
 
-simulation = Simulation(model, Δt=30.0, stop_iteration = 15) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -110,7 +110,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
@@ -130,8 +130,8 @@ output_interval = 60minutes
 dir = "forcing-function/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
-                                                      schedule = IterationInterval(1),
-                                                      filename = "forcing_fields_short.jld2", #$(rank)
+                                                      schedule = TimeInterval(output_interval),
+                                                      filename = "forcing_fields_async_true.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
