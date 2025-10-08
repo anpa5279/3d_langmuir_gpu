@@ -159,5 +159,5 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     savefig(filename)
 end
 case1 = load_data("outputs/sgs_fields_float64.jld2");# load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
-case2 = load_data("outputs/oroginal");#load_data("localoutputs/sgs/sgs_fields.jld2");#
+case2 = load_data("outputs/original");#load_data("localoutputs/sgs/sgs_fields.jld2");#
 plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_return-nothing2.png")
