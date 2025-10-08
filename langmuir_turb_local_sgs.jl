@@ -13,9 +13,9 @@ using Oceananigans.Fields: CenterField, FieldBoundaryConditions
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils: launch!
 
-Nx = 128        # number of points in each of x direction
-Ny = 128        # number of points in each of y direction
-Nz = 128        # number of points in the vertical direction
+Nx = 32        # number of points in each of x direction
+Ny = 32        # number of points in each of y direction
+Nz = 32        # number of points in the vertical direction
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
@@ -108,7 +108,7 @@ dir = "localoutputs/sgs/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "sgs_fields_128_3.jld2", #$(rank)
+                                                      filename = "sgs_fields_128_3_inbounds.jld2", #$(rank)
                                                       array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)

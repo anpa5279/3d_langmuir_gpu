@@ -41,7 +41,6 @@ function load_data(case)
                 global collect_c = Nx + i * Nx
                 global nt = 0
                 for tstep in keys(times)
-                    @show tstep, case_name
                     global nt += 1
                     global ν[start:collect_c, :, :, nt] = ν_temp[tstep][Hx+1:Nx+Hx, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
                     global u[start:collect_f, :, :, nt] = u_temp[tstep][Hx+1:Nx+Hx+1, Hy+1:Ny+Hy, Hz+1:Nz+Hz]
@@ -53,7 +52,6 @@ function load_data(case)
             end
         end
     end
-    @show "end of load_data"
     return (u=u, v=v, w=w, ν=ν, times=t, grid= grid1)
 end
 
@@ -116,7 +114,7 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     global w_max = vec(vcat(maximum(abs, w_err, dims=(1, 2, 3))));
     
     y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])
-    y_min = minimum(minimum, [ν_avg[2:end], u_avg[2:end], v_avg[2:end], w_avg[2:end]])
+    y_min = minimum(minimum, [ν_avg[1:end], u_avg[1:end], v_avg[2:end], w_avg[1:end]])
     
     ytlo = floor(log10(y_min))
     ythi = ceil(log10(y_max))
@@ -158,6 +156,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
-case2 = load_data("localoutputs/temp_sgs_fields_128_3.jld2");#load_data("localoutputs/forcing/forcing"); #load_data("outputs/forcing");#
-plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "sgs_local_vs_derecho.png")
+case1 = load_data("localoutputs/sgs/sgs_fields_128_3.jld2");#load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
+case2 = load_data("localoutputs/sgs/sgs_fields_128_3_inbounds.jld2");#load_data("localoutputs/forcing/forcing"); #load_data("outputs/forcing");#
+plot_error(case1, case2, "Smagorinsky Closure: Local vs Derecho", "sgs_local_vs_inbounds_local.png")
