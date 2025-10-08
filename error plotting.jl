@@ -115,8 +115,8 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     global w_max = vec(vcat(maximum(abs, w_err, dims=(1, 2, 3))));
     
     y_max = maximum(maximum, [ν_max, u_max, v_max, w_max])
-    y_min = minimum(minimum, [ν_avg[1:end], u_avg[1:end], v_avg[2:end], w_avg[1:end]])
-    
+    y_min = minimum(minimum, [ν_avg, u_avg, v_avg, w_avg])
+    y_min = y_min==0.0 ? minimum(minimum, [ν_avg[2:end], u_avg[2:end], v_avg[2:end], w_avg[2:end]]) : y_min
     ytlo = floor(log10(y_min))
     ythi = ceil(log10(y_max))
     ylims = 10.0 .^(ytlo, ythi)
@@ -130,6 +130,7 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
         legend = :topright
     else
         yticks = 10.0 .^ (Int(ytlo) + 1 : 2 : Int(ythi) - 1)
+        yticks = isempty(yticks) ? [10.0^ytlo, 10.0^ythi] : yticks
     end
 
     if !fixed_step
@@ -157,6 +158,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("localoutputs/sgs/sgs_fields.jld2");# load_data("outputs/sgs");#
-case2 = load_data("localoutputs/sgs/sgs_fields.jld2");#load_data("outputs/forcing");#
-plot_error(case1, case2, "Smagorinsky Closure: Local vs Derecho", "local_forcing_vs_sgs.png")
+case1 = load_data("outputs/sgs_fields_float64.jld2");# load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
+case2 = load_data("outputs/oroginal");#load_data("localoutputs/sgs/sgs_fields.jld2");#
+plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_return-nothing2.png")

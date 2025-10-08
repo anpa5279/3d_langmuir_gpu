@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 gpus=1
 ntasks=$((nodes*gpus))
-jobn=sgs_force_smag_kernel_function
+jobn=sgs_force_smag
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
