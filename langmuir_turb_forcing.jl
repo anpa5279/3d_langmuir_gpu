@@ -72,9 +72,21 @@ v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true)
 w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
-#setting up viscosity
-νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
-
+model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+                            advection = WENO(),
+                            tracers = (:T,),
+                            timestepper = :RungeKutta3,
+                            closure = nothing, #closure = Smagorinsky(coefficient=0.1)
+                            stokes_drift = stokes,
+                            boundary_conditions = (u=u_bcs, T=T_bcs),
+                            forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS))
+## ICs
+r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly-Nz*z/Lz))] * exp(z / 4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
+uᵢ(x, y, z) = u_f * r(x, y, z)
+set!(model, u=uᵢ, T=Tᵢ)
+u, v, w = model.velocities
+νₑ = Field(KernelFunctionOperation{Center, Center, Center}(smag_visc, grid, u, v, w))
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T,),
@@ -132,7 +144,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "forcing_fields.jld2", #$(rank)
-                                                      #array_type = Array{Float64},
+                                                      array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 

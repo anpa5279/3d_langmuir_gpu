@@ -58,7 +58,6 @@ end
 function plot_error(case1, case2, title, filename; fixed_step=false)
     times1 = case1.times;
     times2 = case2.times;
-    #@assert times1 ≈ times2 "Time points in the two simulations do not match."
 
     # w is defined on the staggered grid, with points 1 and Nz being zero-value BCs
     # u and v on their staggered grids are periodic, and thus not zero.
@@ -73,7 +72,7 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     nt1 = size(u1, 4)
     nt2 = size(u2, 4)
     if nt1 != nt2
-        min_nt = min(nt1, nt2)
+        global min_nt = min(nt1, nt2)
         global u1 = u1[:, :, :, 1:min_nt]
         global v1 = v1[:, :, :, 1:min_nt]
         global w1 = w1[:, :, :, 1:min_nt]
@@ -83,7 +82,9 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
         global w2 = w2[:, :, :, 1:min_nt]
         global ν2 = ν2[:, :, :, 1:min_nt]
         global times1 = times1[1:min_nt]
+        global times2 = times2[1:min_nt]
     end
+    @assert times1 ≈ times2 "Time points in the two simulations do not match."
     ν_diff = (ν2 .- ν1)
     global ν_err = ν_diff ./ ν1;
     ν_err[(ν_diff.==0)] .= 0.0
@@ -156,6 +157,6 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
     plot!(t, ν_avg; color=:red, linestyle=:dash, linewidth=2, marker=:none, label="ν avg")
     savefig(filename)
 end
-case1 = load_data("localoutputs/sgs/sgs_fields_128_3.jld2");#load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
-case2 = load_data("localoutputs/sgs/sgs_fields_128_3_inbounds.jld2");#load_data("localoutputs/forcing/forcing"); #load_data("outputs/forcing");#
-plot_error(case1, case2, "Smagorinsky Closure: Local vs Derecho", "sgs_local_vs_inbounds_local.png")
+case1 = load_data("localoutputs/sgs/sgs_fields.jld2");# load_data("outputs/sgs");#
+case2 = load_data("localoutputs/sgs/sgs_fields.jld2");#load_data("outputs/forcing");#
+plot_error(case1, case2, "Smagorinsky Closure: Local vs Derecho", "local_forcing_vs_sgs.png")

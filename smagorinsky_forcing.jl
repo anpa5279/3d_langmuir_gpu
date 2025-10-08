@@ -6,7 +6,6 @@ using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃
 using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ
 using Oceananigans.Operators: volume
 using Oceananigans.Operators: ℑxyᶜᶜᵃ, ℑxyᶠᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶠ
-using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Utils: launch!
 
 # strain tensor squared and summed 

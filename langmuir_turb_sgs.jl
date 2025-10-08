@@ -121,7 +121,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       dir = dir,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "sgs_fields.jld2", #$(rank)
-                                                      #array_type = Array{Float64},
+                                                      array_type = Array{Float64},
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
