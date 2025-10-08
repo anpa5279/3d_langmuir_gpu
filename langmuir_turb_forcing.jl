@@ -73,7 +73,7 @@ w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
-νₑ = CenterField(grid) #, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center))
+νₑ = CenterField(grid, boundary_conditions=FieldBoundaryConditions(grid, (Center, Center, Center)))
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
@@ -144,17 +144,12 @@ function update_viscosity(model)
     w = model.velocities.w
     grid = model.grid
     νₑ = model.auxiliary_fields.νₑ
-    fill_halo_regions!(νₑ; async = true)
-    fill_halo_regions!(u; async = true)
-    fill_halo_regions!(v; async = true)
-    fill_halo_regions!(w; async = true)
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    fill_halo_regions!(w)
     launch!(arch, grid, :xyz, smagorinsky_visc!, grid, u, v, w, νₑ)
-    fill_halo_regions!(u; async = true)
-    fill_halo_regions!(v; async = true)
-    fill_halo_regions!(w; async = true)
-    fill_halo_regions!(νₑ; async = true)
-    return nothing
-end 
+    fill_halo_regions!(νₑ)
+end
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
 update_state!(model, [visc_callback,]; compute_tendencies = false)
