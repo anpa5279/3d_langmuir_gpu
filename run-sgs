@@ -53,8 +53,8 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendo
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_sgs.jl
 mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_forcing.jl
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb_sgs.jl
 EXEC
 
 qsub < EXEC_STEP

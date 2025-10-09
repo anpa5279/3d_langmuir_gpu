@@ -160,4 +160,4 @@ function plot_error(case1, case2, title, filename; fixed_step=false)
 end
 case1 = load_data("outputs/sgs");# load_data("outputs/sgs");#load_data("localoutputs/sgs/sgs_fields.jld2");# 
 case2 = load_data("outputs/forcing");#load_data("localoutputs/sgs/sgs_fields.jld2");#
-plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_first15iterations.png")
+plot_error(case1, case2, "User Forcing Function vs Oceananigans Closure", "forcing_vs_sgs_synchronize.png")
