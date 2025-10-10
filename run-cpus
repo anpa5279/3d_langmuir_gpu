@@ -3,7 +3,7 @@ nodes=1
 cpus=128
 ntasks=1
 jobn=sgs_force_smag_comparison_cpus
-#rm -rf outputs/$jobn
+rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
 cp langmuir_turb_sgs_cpu.jl outputs/$jobn/
