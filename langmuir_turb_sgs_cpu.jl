@@ -1,3 +1,15 @@
+using Pkg
+using MPI
+using Random
+using Statistics
+using Printf
+using Random
+using Oceananigans
+using Oceananigans.DistributedComputations
+using Oceananigans.Units: minute, minutes, hours, seconds
+using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.TimeSteppers: update_state!
+
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction

@@ -30,12 +30,12 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=premium
+#PBS -l job_priority=economy
 #PBS -l walltime=1:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$threads_per_task
+export JULIA_NUM_THREADS=$cpus
 
 module --force purge
 module load ncarenv/23.09 gcc/13.2.0 cray-mpich/8.1.29
