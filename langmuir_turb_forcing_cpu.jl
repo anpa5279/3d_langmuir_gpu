@@ -37,11 +37,10 @@ include("smagorinsky_forcing.jl")
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(CPU()) : CPU()
+arch = Nranks > 1 ? Distributed(CPU(), partition=Partition(Nranks) ) : CPU()
 
 # Determine rank safely depending on architecture
 rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 @show rank
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid 
@@ -54,6 +53,7 @@ dusdz_1d = dstokes_dz.(z1d, u₁₀)
 set!(dusdz, dusdz_1d)
 us_1d = stokes_velocity.(z1d, u₁₀)
 stokes = UniformStokesDrift(∂z_uˢ=dusdz)
+@show stokes 
 
 #BCs
 us_top = us_1d[Nz]
@@ -62,7 +62,8 @@ u_f = La_t^2 * us_top
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-
+@show u_bcs
+@show T_bcs
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 coriolis = FPlane(f=1e-4) # s⁻¹
 
@@ -74,7 +75,7 @@ T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
 νₑ = CenterField(grid)
-
+@show νₑ
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = nothing,
                             tracers = (:T,),
