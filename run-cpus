@@ -44,9 +44,9 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 
-mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
+mpiexec -n $ntasks julia --project langmuir_turb_forcing_cpu.jl
 wait
-mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
+mpiexec -n $ntasks julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
 qsub < EXEC_STEP
