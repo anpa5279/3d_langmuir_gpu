@@ -75,6 +75,12 @@ u_SGS = Forcing(∂ⱼ_τ₁ⱼ, discrete_form=true)
 v_SGS = Forcing(∂ⱼ_τ₂ⱼ, discrete_form=true)
 w_SGS = Forcing(∂ⱼ_τ₃ⱼ, discrete_form=true)
 T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
+if rank == 0
+    @show u_SGS
+    @show v_SGS
+    @show w_SGS
+    @show T_SGS
+end
 
 #setting up viscosity
 νₑ = CenterField(grid)
