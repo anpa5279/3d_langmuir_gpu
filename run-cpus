@@ -1,4 +1,6 @@
 #!/bin/bash
+LD_LIBRARY_PATH = /opt/cray/pe/cti/2.18.3/lib:/opt/cray/pe/pmi/6.1.14/lib:/opt/cray/pe/mpich/8.1.29/ofi/intel/2022.1/lib:/opt/cray/libfabric/1.15.2.0/lib64:/opt/cray/libfabric/1.15.2.0/lib:/glade/u/apps/casper/24.12/spack/opt/spack/intel-oneapi-compilers/2024.2.1/gcc/12.4.0/iq3b/compiler/2024.2/opt/compiler/lib:/glade/u/apps/casper/24.12/spack/opt/spack/intel-oneapi-compilers/2024.2.1/gcc/12.4.0/iq3b/compiler/2024.2/lib:/glade/u/apps/casper/24.12/spack/opt/spack/gcc/12.4.0/5b5c/lib64:/glade/u/apps/derecho/24.12/spack/opt/spack/hdf5/1.12.3/oneapi/2024.2.1/peu3/lib
+
 nodes=1
 cpus=128
 ntasks=$((nodes*cpus))
@@ -26,6 +28,7 @@ cat > EXEC_STEP << EXEC
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
 #PBS -l gpu_type=a100
 
+export LD_LIBRARY_PATH=/glade/u/home/apauls/software/julia-1.10.8/lib:$LD_LIBRARY_PATH
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
