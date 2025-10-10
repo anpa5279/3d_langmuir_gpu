@@ -14,6 +14,19 @@ cp smagorinsky_forcing.jl outputs/$jobn/
 cd outputs/$jobn/
 touch Project.toml
 
+cat > launch.sh << EoF_s
+#! /bin/bash
+
+export JULIA_PATH=/glade/u/home/$USER/software/julia-1.10.8/bin
+export JULIA_LIB_PATH=/glade/u/home/$USER/software/julia-1.10.8/lib
+export PATH=\$JULIA_PATH:\$PATH
+export LD_LIBRARY_PATH=\$JULIA_LIB_PATH:\$LD_LIBRARY_PATH
+
+exec \$*
+EoF_s
+
+chmod +x launch.sh
+
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
@@ -21,12 +34,10 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=economy
+#PBS -l job_priority=premium
 #PBS -l walltime=1:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
-#PBS -l gpu_type=a100
 
-export LD_LIBRARY_PATH=/glade/u/home/apauls/software/julia-1.10.8/lib:$LD_LIBRARY_PATH
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
@@ -44,8 +55,8 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 
 
-mpiexec -n $ntasks julia --project langmuir_turb_forcing_cpu.jl
-mpiexec -n $ntasks julia --project langmuir_turb_sgs_cpu.jl
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
 qsub < EXEC_STEP
