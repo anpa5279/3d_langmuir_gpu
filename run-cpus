@@ -15,6 +15,14 @@ cp smagorinsky_forcing.jl outputs/$jobn/
 cd outputs/$jobn/
 touch Project.toml
 
+cat > launch.sh << EoF_s
+#! /bin/bash
+env LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
+exec \$*
+EoF_s
+
+chmod +x launch.sh
+
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
@@ -41,11 +49,10 @@ julia --project -e 'using Pkg; Pkg.gc()'
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("KernelAbstractions"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
-mpiexec -n $ntasks julia --project langmuir_turb_forcing_cpu.jl
+
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
 wait
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
-mpiexec -n $ntasks julia --project langmuir_turb_sgs_cpu.jl
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
 qsub < EXEC_STEP
