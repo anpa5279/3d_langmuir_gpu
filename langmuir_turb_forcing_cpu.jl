@@ -1,6 +1,5 @@
 using Pkg
 using MPI
-using CUDA
 using Random
 using Statistics
 using Printf
@@ -164,3 +163,4 @@ update_state!(model, [visc_callback,]; compute_tendencies = false)
 @show νₑ
 @show "begin simulation"
 run!(simulation) #; pickup = true
+MPI.Finalize()

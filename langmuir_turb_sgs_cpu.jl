@@ -18,7 +18,7 @@ const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(GPU()) : GPU()
+arch = Nranks > 1 ? Distributed(CPU()) : CPU()
 
 # Determine rank safely depending on architecture
 rank = arch isa Distributed ? arch.local_rank : 0
@@ -107,3 +107,4 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, νₑ, T),
                                                       init = save_IC!)
 
 run!(simulation) #; pickup = true
+MPI.Finalize()
