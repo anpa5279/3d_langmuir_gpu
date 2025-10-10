@@ -30,9 +30,9 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=economy
+#PBS -l job_priority=premium
 #PBS -l walltime=1:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
@@ -50,9 +50,9 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 
-mpiexec -n 1 ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
 wait
-mpiexec -n 1 ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
+mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
 qsub < EXEC_STEP
