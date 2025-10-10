@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=32
+ntasks=1
 jobn=sgs_force_smag_comparison_cpus
 #rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -50,6 +50,7 @@ julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.ad
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 
 mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_forcing_cpu.jl
+wait
 mpiexec -n $ntasks ./launch.sh julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
