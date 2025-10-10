@@ -26,8 +26,6 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=1:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
 
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
-
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$threads_per_task
 
@@ -43,9 +41,10 @@ julia --project -e 'using Pkg; Pkg.gc()'
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("KernelAbstractions"); Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 # Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
-
+export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
 mpiexec -n $ntasks julia --project langmuir_turb_forcing_cpu.jl
 wait
+export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
 mpiexec -n $ntasks julia --project langmuir_turb_sgs_cpu.jl
 EXEC
 
