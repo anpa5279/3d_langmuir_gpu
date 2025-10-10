@@ -1,7 +1,8 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=1
+ntasks=4
+threads_per_task=$(( cpus / ntasks )) 
 jobn=sgs_force_smag_comparison_cpus
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -34,7 +35,7 @@ cat > EXEC_STEP << EXEC
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_THREADS=$threads_per_task
 
 module --force purge
 module load ncarenv/23.09 gcc/13.2.0 cray-mpich/8.1.29

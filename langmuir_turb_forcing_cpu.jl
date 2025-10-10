@@ -42,8 +42,9 @@ arch = Nranks > 1 ? Distributed(CPU()) : CPU()
 # Determine rank safely depending on architecture
 rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
-
+@show rank
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+@show grid 
 
 #stokes drift
 include("stokes.jl")
