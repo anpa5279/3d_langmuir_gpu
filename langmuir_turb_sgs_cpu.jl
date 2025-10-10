@@ -30,11 +30,11 @@ const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(CPU()) : CPU()
+arch = Nranks > 1 ? Distributed(CPU(), partition=Partition(Nranks)) : CPU()
 
 # Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+Nranks = MPI.Comm_size(arch.communicator)
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid 

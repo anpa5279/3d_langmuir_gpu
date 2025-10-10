@@ -41,8 +41,8 @@ Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
 # Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+Nranks = MPI.Comm_size(arch.communicator)
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 

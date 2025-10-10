@@ -37,10 +37,10 @@ include("smagorinsky_forcing.jl")
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(CPU(), partition=Partition(Nranks) ) : CPU()
+arch = Nranks > 1 ? Distributed(CPU(), partition=Partition(Nranks)) : CPU()
 
 # Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
 @show rank
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 if rank == 0
