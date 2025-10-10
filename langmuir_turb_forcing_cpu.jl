@@ -43,7 +43,9 @@ arch = Nranks > 1 ? Distributed(CPU(), partition=Partition(Nranks) ) : CPU()
 rank = arch isa Distributed ? arch.local_rank : 0
 @show rank
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-@show grid 
+if rank == 0
+    @show grid
+end
 
 #stokes drift
 include("stokes.jl")
@@ -53,7 +55,6 @@ dusdz_1d = dstokes_dz.(z1d, u₁₀)
 set!(dusdz, dusdz_1d)
 us_1d = stokes_velocity.(z1d, u₁₀)
 stokes = UniformStokesDrift(∂z_uˢ=dusdz)
-@show stokes 
 
 #BCs
 us_top = us_1d[Nz]
@@ -62,8 +63,10 @@ u_f = La_t^2 * us_top
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-@show u_bcs
-@show T_bcs
+if rank == 0
+    @show u_bcs
+    @show T_bcs
+end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4), constant_salinity = 35.0)
 coriolis = FPlane(f=1e-4) # s⁻¹
 
@@ -75,7 +78,9 @@ T_SGS = Forcing(∇_dot_qᶜ, discrete_form=true)
 
 #setting up viscosity
 νₑ = CenterField(grid)
-@show νₑ
+if rank == 0
+    @show νₑ
+end
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = nothing,
                             tracers = (:T,),
@@ -85,7 +90,9 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs),
                             forcing = (u=u_SGS, v = v_SGS, w = w_SGS, T = T_SGS),
                             auxiliary_fields = (νₑ = νₑ,))
-@show model
+if rank == 0
+    @show model
+end
 ## ICs
 r(x, y, z) = randn(Xoshiro(1234), (Nx + Ny +Nz+3))[Int(1 + round(Nx*x/Lx+Ny*y/Ly-Nz*z/Lz))] * exp(z / 4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
@@ -93,7 +100,9 @@ uᵢ(x, y, z) = u_f * r(x, y, z)
 set!(model, u=uᵢ, T=Tᵢ)
 
 simulation = Simulation(model, Δt=30.0, stop_time = 24hours) #stop_time = 96hours,
-@show simulation
+if rank == 0
+    @show simulation
+end
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -161,8 +170,10 @@ end
 visc_callback = Callback(update_viscosity, IterationInterval(1), callsite=UpdateStateCallsite())
 simulation.callbacks[:visc_update] = visc_callback
 update_state!(model, [visc_callback,]; compute_tendencies = false)
-@show "after update_state"
-@show νₑ
-@show "begin simulation"
+if rank == 0
+    @show "after update_state"
+    @show νₑ
+    @show "begin simulation"
+end
 run!(simulation) #; pickup = true
 MPI.Finalize()
