@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=$((nodes*cpus))
+ntasks=32
 jobn=sgs_force_smag_comparison_cpus
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -16,12 +16,7 @@ touch Project.toml
 
 cat > launch.sh << EoF_s
 #! /bin/bash
-
-export JULIA_PATH=/glade/u/home/$USER/software/julia-1.10.8/bin
-export JULIA_LIB_PATH=/glade/u/home/$USER/software/julia-1.10.8/lib
-export PATH=\$JULIA_PATH:\$PATH
-export LD_LIBRARY_PATH=\$JULIA_LIB_PATH:\$LD_LIBRARY_PATH
-
+env LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
 exec \$*
 EoF_s
 
