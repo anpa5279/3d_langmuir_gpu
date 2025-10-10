@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=$(cpus*nodes)
+ntasks=$((nodes*cpus))
 jobn=sgs_force_smag_comparison_cpus
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
