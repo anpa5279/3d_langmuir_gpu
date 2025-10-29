@@ -59,13 +59,12 @@ set!(us, us_1d)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
-
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(0.0))
+@show "Boundary conditions set"
 coriolis = FPlane(f=1e-4) # s⁻¹
-
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+@show "Additional model parameters set"
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T),
