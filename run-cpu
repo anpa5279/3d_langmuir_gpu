@@ -39,7 +39,7 @@ export PALS_TRANSFER=false
 julia --project -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
 julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences");; Pkg.add("Oceananigans"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project -e 'using MPI'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
