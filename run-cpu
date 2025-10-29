@@ -18,10 +18,10 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q main
+#PBS -q develop
 #PBS -j oe
-#PBS -l job_priority=premium
-#PBS -l walltime=1:00:00
+###PBS -l job_priority=economy
+#PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
