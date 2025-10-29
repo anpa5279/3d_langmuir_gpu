@@ -7,7 +7,7 @@ jobn=cpu-cc-testing
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
-cp langmuir_turb.jl outputs/$jobn/
+cp langmuir_turb-cpu.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
 
 cd outputs/$jobn/
