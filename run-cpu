@@ -4,10 +4,10 @@ jobn=npzd-distr-cpu
 rm -rf $jobn
 mkdir $jobn
 
-cp langmuir_turb.jl ouputs/$jobn/
-cp stokes.jl ouputs/$jobn/
+cp langmuir_turb.jl outputs/$jobn/
+cp stokes.jl outputs/$jobn/
 
-cd ouputs/$jobn/
+cd outputs/$jobn/
 touch Project.toml
 
 cat > EXEC_STEP << EXEC
