@@ -1,8 +1,11 @@
 #!/bin/bash
-
-jobn=npzd-distr-cpu
-rm -rf $jobn
-mkdir $jobn
+nodes=1
+cpus=128
+ntasks=4
+threads_per_task=$(( cpus / ntasks )) 
+jobn=cpu-cc-testing
+rm -rf outputs/$jobn
+mkdir outputs/$jobn
 
 cp langmuir_turb.jl outputs/$jobn/
 cp stokes.jl outputs/$jobn/
@@ -15,15 +18,14 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q main 
+#PBS -q main
 #PBS -j oe
-#PBS -l job_priority=economy
-#PBS -l walltime=06:30:00
-#PBS -l select=1:ncpus=64:mpiprocs=4
+#PBS -l job_priority=premium
+#PBS -l walltime=1:00:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
-# Use moar processes for precompilation to speed things up
-export JULIA_NUM_PRECOMPILE_TASKS=64
-export JULIA_NUM_THREADS=64
+export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
@@ -42,7 +44,7 @@ julia --project -e 'using MPI'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
 # Finally, let's run this thing
 
-mpiexec -n 4 julia --project langmuir_turb.jl
+mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
 
 qsub < EXEC_STEP
