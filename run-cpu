@@ -1,9 +1,9 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=4
+ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing
+jobn=cpu1-cc-testing
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
