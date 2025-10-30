@@ -2,13 +2,13 @@ using Pkg
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/Users/annapauls//Documents/Github repositories/personal_oceananigans/Oceananigans.jl-main")
+Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 32        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -67,7 +67,7 @@ perturb = 1e3
 set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, u=uᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 1*day)
+simulation = Simulation(model, Δt=30, stop_time = 1hours)
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -92,20 +92,18 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
-    if rank == 0
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
-        file["IC/wind_speed"] = u₁₀
-    end
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+    file["IC/wind_speed"] = u₁₀
     return nothing
 end
 
-output_interval = 2hours
+output_interval = 5minutes 
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
@@ -122,7 +120,7 @@ T = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH, T),
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
+                                                      filename = "localoutputs/cc testing/fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
 
