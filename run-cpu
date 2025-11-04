@@ -29,21 +29,19 @@ export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
-module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
+module load ncarenv/23.09 nvhpc/24.7
 
 module list
 
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project -e 'using Pkg; Pkg.resolve()'
 # 2. Update packages to the environment that we need to use. not always necessary
-julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
+julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
-julia --project -e 'using MPI'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 # Only need to run if you want to reset or update things (did you update the amount of  nodes and processors?)
 # Finally, let's run this thing
 
