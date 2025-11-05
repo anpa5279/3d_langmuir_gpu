@@ -105,20 +105,9 @@ end
 
 output_interval = 5minutes 
 
-u, v, w = model.velocities
-BOH₃ = model.tracers.BOH₃
-BOH₄ = model.tracers.BOH₄
-CO₂ = model.tracers.CO₂
-CO₃ = model.tracers.CO₃
-HCO₃ = model.tracers.HCO₃
-OH = model.tracers.OH
-T = model.tracers.T
-W = Average(w, dims=(1, 2))
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
-T = Average(T, dims=(1, 2))
+outputs_fields = merge(simulation.model.velocities, simulation.model.tracers)
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH, T),
+simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "localoutputs/cc testing/fields.jld2", #$(rank)
                                                       overwrite_existing = true,
