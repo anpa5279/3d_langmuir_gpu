@@ -26,7 +26,8 @@ cat > EXEC_STEP << EXEC
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
-
+export OMP_PROC_BIND=FALSE
+export OMP_NUM_THREADS=$ntasks
 
 # Load critical modules
 module --force purge
