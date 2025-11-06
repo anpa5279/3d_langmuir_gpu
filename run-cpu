@@ -27,11 +27,18 @@ cat > EXEC_STEP << EXEC
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
+
 # Load critical modules
 module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 
 module list
+
+# GPU-specific variables are not needed for CPU runs
+unset MPICH_GPU_SUPPORT_ENABLED
+unset MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED
+unset JULIA_MPI_HAS_CUDA
+unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
 
@@ -45,7 +52,6 @@ echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
 julia --project -e 'using MPI; MPI.install_mpiexec()'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(; mpiexec="mpiexec");'
-julia --project -e 'using Pkg; Pkg.build("MPI")'
 
 mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
