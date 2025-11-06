@@ -51,7 +51,7 @@ echo "Developing Oceananigans..."
 julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true);'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec="mpiexec");'
 
 mpiexec -n $ntasks julia --threads $cpus --project langmuir_turb-cpu.jl
 EXEC
