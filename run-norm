@@ -39,9 +39,12 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
+echo "Instantiating project..."
 julia --project -e 'using Pkg; Pkg.instantiate()'
+echo "Resolving project..."
 julia --project -e 'using Pkg; Pkg.resolve()'
-julia --project -e 'Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")' 
+echo "Developing Oceananigans..."
+julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'

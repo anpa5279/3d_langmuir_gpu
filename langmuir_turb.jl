@@ -4,7 +4,7 @@ using CUDA
 using Statistics
 using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/.julia/dev/Oceananigans.jl-main")
+Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
