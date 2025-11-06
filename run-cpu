@@ -34,7 +34,6 @@ module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 module list
 
 export PALS_TRANSFER=false
-export JULIA_CUDA_MEMORY_POOL=none
 
 echo "Instantiating project..."
 julia --project -e 'using Pkg; Pkg.instantiate()'
@@ -44,7 +43,9 @@ echo "Developing Oceananigans..."
 julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true); Pkg.build("MPI")'
+julia --project -e 'using MPI; MPI.install_mpiexec()'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(; mpiexec="mpiexec");'
+julia --project -e 'using Pkg; Pkg.build("MPI")'
 
 mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
