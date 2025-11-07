@@ -45,7 +45,7 @@ echo "Resolving project..."
 julia --project -e 'using Pkg; Pkg.resolve()'
 echo "Developing Oceananigans..."
 julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DiffEqGPU"); Pkg.add("DifferentialEquations")'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 # Finally, let's run this thing
