@@ -19,9 +19,9 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q develop
+#PBS -q main
 #PBS -j oe
-##PBS -l job_priority=economy
+#PBS -l job_priority=economy
 #PBS -l walltime=0:20:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 

@@ -92,7 +92,7 @@ perturb = 1e3
 set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = S0) #u=uᵢ, w=wᵢ, 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 7*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 1hours) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
@@ -123,21 +123,17 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
-    #if rank == 0
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
-    file["IC/wind_speed"] = u₁₀
-    #end
+    if rank == 0
+        file["IC/friction_velocity"] = u_f
+        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+        file["IC/wind_speed"] = u₁₀
+    end
     return nothing
 end
 
-output_interval = 6hours
+output_interval = 5minutes
 
 u, v, w = model.velocities
-#N = model.tracers.N
-#P = model.tracers.P
-#Z = model.tracers.Z
-#D = model.tracers.D
 BOH₃ = model.tracers.BOH₃
 BOH₄ = model.tracers.BOH₄
 CO₂ = model.tracers.CO₂
@@ -145,21 +141,11 @@ CO₃ = model.tracers.CO₃
 HCO₃ = model.tracers.HCO₃
 OH = model.tracers.OH
 T = model.tracers.T
-W = Average(w, dims=(1, 2))
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
-T = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,
                                                       init = save_IC!)
-                                                      
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
-                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "langmuir_turbulence_averages.jld2",
-                                                    overwrite_existing = true)
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
-
 run!(simulation)#; pickup = true)
