@@ -42,17 +42,17 @@ unset JULIA_CUDA_MEMORY_POOL
 export PALS_TRANSFER=false
 
 ##echo "Instantiating project..."
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.instantiate()'
+##julia --project -e 'using Pkg; Pkg.instantiate()'
 ##echo "Resolving project..."
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.resolve()'
+##julia --project -e 'using Pkg; Pkg.resolve()'
 ##echo "Developing Oceananigans..."
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
+##julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 ##echo "Adding necessary packages..."
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll");'
-##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using MPI; MPI.install_mpiexecjl()'
+##julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
+##julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll");'
+##julia --project -e 'using MPI; MPI.install_mpiexecjl()'
 
-mpiexecjl --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -n $ntasks langmuir_turb-cpu.jl
+mpiexecjl --project -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
 qsub < EXEC_STEP
