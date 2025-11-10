@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-cpus=128
+cpus=1
 ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
 jobn=cpu-cc-testing3
@@ -24,10 +24,8 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
-export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
-export OMP_PROC_BIND=FALSE
-export OMP_NUM_THREADS=$ntasks
+####export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+####export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
@@ -52,8 +50,9 @@ julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oce
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec="mpiexec");'
+julia --project -e 'using MPI; MPI.install_mpiexecjl()'
 
-mpiexec -n $ntasks julia --threads $cpus --project langmuir_turb-cpu.jl
+mpiexecjl --project -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
 qsub < EXEC_STEP
