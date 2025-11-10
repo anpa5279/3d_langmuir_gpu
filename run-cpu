@@ -24,8 +24,8 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
-###export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-###export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
@@ -48,7 +48,7 @@ julia --project -e 'using Pkg; Pkg.resolve()'
 echo "Developing Oceananigans..."
 julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 echo "Adding necessary packages..."
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
+julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
