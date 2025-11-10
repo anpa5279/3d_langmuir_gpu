@@ -3,7 +3,7 @@ nodes=1
 cpus=1
 ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing
+jobn=cpu-cc-testing-mpiexecjl
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
@@ -29,7 +29,7 @@ export JULIA_NUM_THREADS=$cpus
 
 # Load critical modules
 module --force purge
-module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
+module load ncarenv/23.09 nvhpc/24.7 openmpi
 
 module list
 
@@ -50,7 +50,8 @@ julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oce
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec = "mpiexec")'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
 
 mpiexecjl --project -n $ntasks langmuir_turb-cpu.jl
 EXEC
