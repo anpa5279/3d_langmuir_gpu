@@ -41,16 +41,16 @@ unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
 
-echo "Instantiating project..."
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using Pkg; Pkg.instantiate()'
-echo "Resolving project..."
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using Pkg; Pkg.resolve()'
-echo "Developing Oceananigans..."
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
-echo "Adding necessary packages..."
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll");'
-julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" 'using MPI; MPI.install_mpiexecjl()'
+##echo "Instantiating project..."
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.instantiate()'
+##echo "Resolving project..."
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.resolve()'
+##echo "Developing Oceananigans..."
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
+##echo "Adding necessary packages..."
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); Pkg.add("DifferentialEquations")'
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll");'
+##julia --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -e 'using MPI; MPI.install_mpiexecjl()'
 
 mpiexecjl --project="/glade/work/apauls/.julia/environments/cc-testing-oc/" -n $ntasks langmuir_turb-cpu.jl
 EXEC
