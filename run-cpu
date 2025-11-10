@@ -21,7 +21,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q develop
 #PBS -j oe
 ###PBS -l job_priority=economy
-#PBS -l walltime=4:00:00
+#PBS -l walltime=0:20:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
@@ -51,9 +51,8 @@ echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec = "mpiexec")'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary(mpiexec = "mpiexec")'
-julia --project -e 'using MPI; MPI.install_mpiexecjl()'
-
+julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
+cd $PBS_O_WORKDIR
 mpiexecjl --project -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
