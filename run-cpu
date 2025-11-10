@@ -51,8 +51,7 @@ echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec = "mpiexec")'
-julia --project -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
-cd $PBS_O_WORKDIR
+
 mpiexecjl --project -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
