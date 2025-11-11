@@ -49,8 +49,8 @@ export PALS_TRANSFER=false
 
 ##echo "Instantiating project..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##echo "Resolving project..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+echo "Resolving project..."
+julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##echo "Developing Oceananigans..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 ##echo "Adding necessary packages..."
