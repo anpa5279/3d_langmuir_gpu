@@ -27,7 +27,6 @@ cat > EXEC_STEP << EXEC
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
 export JULIA_NUM_THREADS=$threads_per_task
-export JULIA_FFTW_THREADS=$ntasks
 
 # Load critical modules
 module --force purge
