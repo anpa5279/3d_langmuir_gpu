@@ -50,7 +50,7 @@ julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oce
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 
 mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
