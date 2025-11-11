@@ -1,9 +1,9 @@
 #!/bin/bash
 nodes=1
-cpus=4
+cpus=128
 ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing-mpiprocs
+jobn=cpu-cc-testing-nompiprocs
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
@@ -48,9 +48,9 @@ julia --project -e 'using Pkg; Pkg.resolve()'
 echo "Developing Oceananigans..."
 julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
 echo "Adding necessary packages..."
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
+julia --project -e 'using Pkg; Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec = "mpiexec")'
+####julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(mpiexec = "mpiexec")'
 
 mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
