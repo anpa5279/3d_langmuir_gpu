@@ -2,8 +2,8 @@
 nodes=1
 cpus=128
 ntasks=$(($nodes*1))
-threads_per_task=$(( nodes*cpus / ntasks ))
-jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexecjl1
+threads_per_task=$(( cpus / ntasks ))
+jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexecjl
 output_dir=outputs/new-cpu-testing1/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc-mpiexecjl/
 rm -rf $output_dir$jobn
@@ -13,9 +13,6 @@ cp langmuir_turb-cpu.jl $output_dir$jobn/
 cp stokes.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
-
-chmod +x langmuir_turb-cpu.jl
-chmod +x stokes.jl
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -58,11 +55,13 @@ export PALS_TRANSFER=false
 ####echo "Adding necessary packages..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 ####echo "Building MPI-related packages..."
+julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
+julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 echo "Running simulation with mpiexecjl from: \$(pwd)"
 ls -l
-mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexecjl --threads $threads_per_task --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
 export TMPDIR=/glade/derecho/scratch/$USER/tmp

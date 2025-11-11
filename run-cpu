@@ -2,7 +2,7 @@
 nodes=1
 cpus=128
 ntasks=2
-threads_per_task=$(( nodes*cpus / ntasks ))
+threads_per_task=$(( cpus / ntasks ))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
 output_dir=outputs/new-cpu-testing1/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc/
