@@ -58,7 +58,7 @@ julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_bi
 
 echo "Running simulation with mpiexecjl from: \$(pwd)"
 ls -l
-mpiexecjl -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
 export TMPDIR=/glade/derecho/scratch/$USER/tmp
