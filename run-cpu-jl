@@ -65,4 +65,4 @@ echo "Running simulation with mpiexecjl..."
 mpiexecjl --project=$project_dir -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
-qsub < EXEC_STEP
+qsub EXEC_STEP
