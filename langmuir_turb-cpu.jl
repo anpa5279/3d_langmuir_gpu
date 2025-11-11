@@ -67,11 +67,11 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 @show "Additional model parameters set"
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T),
+                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T),
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO2 = DIC_bcs)) 
 @show model
 
 # random seed
@@ -80,7 +80,7 @@ r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
 perturb = 1e3
-set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, u=uᵢ, T=Tᵢ)
+set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0, u=uᵢ, T=Tᵢ)
 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 1*day)
@@ -96,12 +96,12 @@ function progress(simulation)
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO₂),
-                   mean(simulation.model.tracers.CO₃),
-                   mean(simulation.model.tracers.HCO₃),
+                   mean(simulation.model.tracers.CO2),
+                   mean(simulation.model.tracers.CO3),
+                   mean(simulation.model.tracers.HCO3),
                    mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH₃),
-                   mean(simulation.model.tracers.BOH₄))
+                   mean(simulation.model.tracers.BOH3),
+                   mean(simulation.model.tracers.BOH4))
 
     @info msg
 
