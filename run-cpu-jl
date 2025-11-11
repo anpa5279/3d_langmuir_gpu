@@ -41,7 +41,6 @@ unset JULIA_MPI_HAS_CUDA
 unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
-cd $WORK/3d_langmuir_gpu/$output_dir$jobn/
 
 ####echo "Instantiating project..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
@@ -58,9 +57,8 @@ julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
 echo "Instantiating project again..."
 julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-
-
-cd $WORK/3d_langmuir_gpu/$output_dir$jobn/
+pwd
+cd /glade/work/apauls/3d_langmuir_gpu/$output_dir$jobn/
 echo "Running simulation with mpiexecjl..."
 mpiexecjl --project=$project_dir -n $ntasks langmuir_turb-cpu.jl
 EXEC
