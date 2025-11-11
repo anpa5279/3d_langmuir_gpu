@@ -34,6 +34,11 @@ module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 module list
 
 # GPU-specific variables are not needed for CPU runs
+# Prevent CUDA.jl from loading entirely
+export JULIA_CUDA_USE_BINARYBUILDER=false
+export JULIA_CUDA_VISIBLE_DEVICES=""
+export JULIA_CUDA_IGNORE_WARNINGS=true
+
 unset MPICH_GPU_SUPPORT_ENABLED
 unset MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED
 unset JULIA_MPI_HAS_CUDA
