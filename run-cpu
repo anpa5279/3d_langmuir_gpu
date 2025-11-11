@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
-cpus=4
-ntasks=$(($nodes*1))
+cpus=128
+ntasks=$(($nodes*4))
 threads_per_task=$(( cpus / ntasks ))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
 output_dir=outputs/new-cpu-testing1/
