@@ -13,7 +13,6 @@ cp langmuir_turb-cpu.jl $output_dir$jobn/
 cp stokes.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
-touch Project.toml
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh

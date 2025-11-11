@@ -13,7 +13,6 @@ cp langmuir_turb-cpu.jl $output_dir$jobn/
 cp stokes.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
-touch Project.toml
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -42,6 +41,9 @@ unset JULIA_MPI_HAS_CUDA
 unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
+
+cd $output_dir$jobn
+pwd
 
 echo "Instantiating project..."
 julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
