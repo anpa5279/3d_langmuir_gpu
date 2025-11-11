@@ -55,7 +55,7 @@ echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project=$project_dir -e 'using MPI; MPI.install_mpiexecjl(force=true)'
-julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
+julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
 echo "Instantiating project again..."
 julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 

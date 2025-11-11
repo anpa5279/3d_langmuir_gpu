@@ -43,14 +43,14 @@ unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
 
-echo "Instantiating project..."
-julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-echo "Resolving project..."
-julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-echo "Developing Oceananigans..."
-julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
-echo "Adding necessary packages..."
-julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
+##echo "Instantiating project..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+##echo "Resolving project..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+##echo "Developing Oceananigans..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
+##echo "Adding necessary packages..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 
