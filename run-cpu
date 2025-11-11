@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-cpus=4
+cpus=128
 ntasks=1
 threads_per_task=$(( nodes*cpus / ntasks ))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
@@ -27,7 +27,6 @@ cat > EXEC_STEP << EXEC
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
 export JULIA_NUM_THREADS=$threads_per_task
-export JULIA_FFTW_THREADS=1
 
 # Load critical modules
 module --force purge
@@ -61,7 +60,7 @@ julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system
 julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 echo "Running simulation with mpiexec from: \$(pwd)"
-mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexec -n $ntasks julia --threads $threads_per_task --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 export TMPDIR=/glade/derecho/scratch/$USER/tmp
 mkdir -p $TMPDIR
