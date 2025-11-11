@@ -41,8 +41,8 @@ unset JULIA_MPI_HAS_CUDA
 unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
-export TMPDIR=/glade/derecho/scratch/\$USER/tmp
-mkdir -p \$TMPDIR
+export TMPDIR=/glade/derecho/scratch/$USER/tmp
+mkdir -p $TMPDIR
 
 ####echo "Instantiating project..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
