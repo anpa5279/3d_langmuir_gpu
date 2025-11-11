@@ -1,16 +1,17 @@
 #!/bin/bash
 nodes=1
-cpus=128
-ntasks=4
+cpus=4
+ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing-128-4-crayvendor 
-rm -rf outputs/$jobn
-mkdir outputs/$jobn
+jobn=cpu-cc-testing-4-1-mpiexec
+output_dir=outputs/new-cpu-testing/
+rm -rf $output_dir$jobn
+mkdir $output_dir$jobn
 
-cp langmuir_turb-cpu.jl outputs/$jobn/
-cp stokes.jl outputs/$jobn/
+cp langmuir_turb-cpu.jl $output_dir$jobn/
+cp stokes.jl $output_dir$jobn/
 
-cd outputs/$jobn/
+cd $output_dir$jobn/
 touch Project.toml
 
 cat > EXEC_STEP << EXEC
@@ -50,7 +51,7 @@ julia --project -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oce
 echo "Adding necessary packages..."
 julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 
 mpiexec -n $ntasks julia --project langmuir_turb-cpu.jl
 EXEC
