@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=2
 cpus=128
-ntasks=$((nodes)*4)
+ntasks=$(($nodes*4))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexecjl
 output_dir=outputs/new-cpu-testing1/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc-mpiexecjl/
