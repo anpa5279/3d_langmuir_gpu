@@ -13,6 +13,9 @@ cp stokes.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
 
+chmod +x langmuir_turb-cpu.jl
+chmod +x stokes.jl
+
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
