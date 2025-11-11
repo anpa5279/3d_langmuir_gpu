@@ -61,7 +61,7 @@ julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 echo "Running simulation with mpiexecjl from: \$(pwd)"
 ls -l
-mpiexecjl --threads $threads_per_task --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
 export TMPDIR=/glade/derecho/scratch/$USER/tmp
