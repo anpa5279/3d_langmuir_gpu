@@ -1,9 +1,9 @@
 #!/bin/bash
 nodes=1
-cpus=128
+cpus=4
 ntasks=1
 threads_per_task=$(( nodes*cpus / ntasks ))
-jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec1
+jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
 output_dir=outputs/new-cpu-testing1/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc/
 rm -rf $output_dir$jobn
