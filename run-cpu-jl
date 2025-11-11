@@ -64,4 +64,4 @@ ls -l
 mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
-qsub EXEC_STEP
+qsub $WORK/3d_langmuir_gpu/$output_dir$jobn/EXEC_STEP
