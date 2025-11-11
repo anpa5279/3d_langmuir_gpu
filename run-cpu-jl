@@ -3,7 +3,7 @@ nodes=1
 cpus=4
 ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing-4-1-mpiexecjl-openmpi1
+jobn=cpu-cc-testing-4-1-mpiexecjl1
 output_dir=outputs/new-cpu-testing/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc-mpiexecjl/
 rm -rf $output_dir$jobn
@@ -54,7 +54,7 @@ export PALS_TRANSFER=false
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 ####julia --project=$project_dir -e 'using MPI; MPI.install_mpiexecjl(force=true)'
-julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
+julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
 
 cd $output_dir$jobn
 echo "Running simulation with mpiexecjl from: \$(pwd)"
