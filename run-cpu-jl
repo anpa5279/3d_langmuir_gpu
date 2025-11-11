@@ -41,8 +41,6 @@ unset JULIA_MPI_HAS_CUDA
 unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
-export TMPDIR=/glade/derecho/scratch/$USER/tmp
-mkdir -p $TMPDIR
 
 ####echo "Instantiating project..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
@@ -64,4 +62,7 @@ ls -l
 mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
+export TMPDIR=/glade/derecho/scratch/$USER/tmp
+mkdir -p $TMPDIR
+cd $WORK/3d_langmuir_gpu/$output_dir$jobn/
 qsub $WORK/3d_langmuir_gpu/$output_dir$jobn/EXEC_STEP
