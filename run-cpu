@@ -52,8 +52,11 @@ export PALS_TRANSFER=false
 ##julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
-
-mpiexec -n $ntasks julia --project=$project_dir langmuir_turb-cpu.jl
+cd $output_dir$jobn
+echo "Running simulation with mpiexecjl from: \$(pwd)"
+mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
-
+export TMPDIR=/glade/derecho/scratch/$USER/tmp
+mkdir -p $TMPDIR
+cd $WORK/3d_langmuir_gpu/$output_dir$jobn/
 qsub < EXEC_STEP
