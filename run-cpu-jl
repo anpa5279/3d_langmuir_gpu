@@ -3,9 +3,9 @@ nodes=1
 cpus=4
 ntasks=1
 threads_per_task=$(( cpus / ntasks )) 
-jobn=cpu-cc-testing-4-1-mpiexec
+jobn=cpu-cc-testing-4-1-mpiexecjl
 output_dir=outputs/new-cpu-testing/
-project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc/
+project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc-mpiexecjl/
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
 
@@ -52,9 +52,14 @@ julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls
 echo "Adding necessary packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
+julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
+julia --project=$project_dir -e 'using MPI; MPI.install_mpiexecjl(force=true)'
+echo "Instantiating project again..."
+julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 
-mpiexec -n $ntasks julia --project=$project_dir langmuir_turb-cpu.jl
+echo "Running simulation with mpiexecjl..."
+mpiexecjl --project=$project_dir -n $ntasks langmuir_turb-cpu.jl
 EXEC
 
 qsub < EXEC_STEP
