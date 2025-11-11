@@ -34,7 +34,6 @@ module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 module list
 
 # GPU-specific variables are not needed for CPU runs
-# Prevent CUDA.jl from loading entirely
 export JULIA_CUDA_USE_BINARYBUILDER=false
 export JULIA_CUDA_VISIBLE_DEVICES=""
 export JULIA_CUDA_IGNORE_WARNINGS=true
@@ -55,8 +54,6 @@ export PALS_TRANSFER=false
 ####echo "Adding necessary packages..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 ####echo "Building MPI-related packages..."
-julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
-####julia --project=$project_dir -e 'using MPI; MPI.install_mpiexecjl(force=true)'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary()'
 
 echo "Running simulation with mpiexecjl from: \$(pwd)"
