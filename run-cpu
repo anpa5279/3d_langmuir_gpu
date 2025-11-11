@@ -1,8 +1,8 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=$(($nodes*4))
-threads_per_task=$(( cpus / ntasks ))
+ntasks=$(($nodes*8))
+threads_per_task=$(( nodes*cpus / ntasks ))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
 output_dir=outputs/new-cpu-testing1/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc/
