@@ -58,7 +58,7 @@ julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
+julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 echo "Running simulation with mpiexec from: \$(pwd)"
 mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
