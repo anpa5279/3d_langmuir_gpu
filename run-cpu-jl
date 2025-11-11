@@ -41,6 +41,8 @@ unset JULIA_MPI_HAS_CUDA
 unset JULIA_CUDA_MEMORY_POOL
 
 export PALS_TRANSFER=false
+export TMPDIR=/glade/derecho/scratch/\$USER/tmp
+mkdir -p \$TMPDIR
 
 ####echo "Instantiating project..."
 ####julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
@@ -55,15 +57,11 @@ julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPref
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 ####julia --project=$project_dir -e 'using MPI; MPI.install_mpiexecjl(force=true)'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_jll_binary("OpenMPI_jll")'
-echo "Instantiating project again..."
-julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 
-cd /glade/work/apauls/3d_langmuir_gpu/$output_dir$jobn/
-echo "Running simulation with mpiexecjl..."
-mpiexecjl --project=$project_dir -n $ntasks langmuir_turb-cpu.jl
+cd $output_dir$jobn
+echo "Running simulation with mpiexecjl from: \$(pwd)"
+ls -l
+mpiexecjl --project=$project_dir -n $ntasks $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
 
-export TMPDIR=/glade/derecho/scratch/$USER/tmp
-mkdir -p $TMPDIR
-cd /glade/work/apauls/3d_langmuir_gpu/$output_dir$jobn/
 qsub EXEC_STEP
