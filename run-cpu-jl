@@ -28,8 +28,8 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
-export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
+export JULIA_NUM_THREADS=$threads_per_task
 
 # Load critical modules
 module --force purge
