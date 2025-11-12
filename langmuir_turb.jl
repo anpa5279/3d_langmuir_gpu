@@ -6,7 +6,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
@@ -37,6 +37,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
+g_Earth = defaults.gravitational_acceleration
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
