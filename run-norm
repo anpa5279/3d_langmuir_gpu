@@ -10,7 +10,7 @@ project_dir=/glade/work/apauls/.julia/environments/v1.10/
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
 
-cp langmuir_turb-cpu.jl $output_dir$jobn/
+cp langmuir_turb.jl $output_dir$jobn/
 cp stokes.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=4:00:00
+#PBS -l walltime=g:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus

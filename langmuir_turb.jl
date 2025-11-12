@@ -74,7 +74,7 @@ vᵢ(x, y, z) = -u_f * 1e-1 * r_z(z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 2*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
