@@ -1,18 +1,19 @@
 #!/bin/bash
 nodes=1
-cpus=64
 gpus=2
+cpus=64
 ntasks=$((nodes*gpus))
-jobn=compare-test-1
+threads_per_task=$(( cpus / ntasks ))
+jobn=comparison-case
+output_dir=outputs/
+project_dir=/glade/work/apauls/.julia/environments/v1.10/
+rm -rf $output_dir$jobn
+mkdir $output_dir$jobn
 
-rm -rf outputs/$jobn
-mkdir outputs/$jobn
+cp langmuir_turb-cpu.jl $output_dir$jobn/
+cp stokes.jl $output_dir$jobn/
 
-cp langmuir_turb.jl outputs/$jobn/
-cp stokes.jl outputs/$jobn/
-cp Project.toml outputs/$jobn/
-
-cd outputs/$jobn/
+cd $output_dir$jobn/
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -23,8 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=4:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus
-#PBS -l gpu_type=a100
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
