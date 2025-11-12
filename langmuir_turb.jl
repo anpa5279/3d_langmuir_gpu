@@ -56,9 +56,9 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(0.0))
-#coriolis = FPlane(f=1e-4) # s⁻¹
+coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
+model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T,),
                             timestepper = :RungeKutta3,
@@ -75,7 +75,7 @@ vᵢ(x, y, z) = -uᵢ(x, y, z)
 set!(model, u=uᵢ, w=0.0, T=Tᵢ)#v=vᵢ, 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 10*day) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
