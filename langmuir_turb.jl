@@ -14,7 +14,6 @@ const Nz = 128        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
-const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
 const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
@@ -50,6 +49,7 @@ us = stokes_velocity(z_d[end], u₁₀)
 u_f = La_t^2 * us
 τx = (u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx)) 
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -63,7 +63,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, ))
 @show model
 
 # ICs
