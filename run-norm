@@ -4,7 +4,7 @@ gpus=2
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=comparison-case
+jobn=comparison-case1
 output_dir=outputs/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 rm -rf $output_dir$jobn
