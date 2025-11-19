@@ -49,7 +49,8 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
 τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
+u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0)) 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
