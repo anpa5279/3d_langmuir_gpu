@@ -10,7 +10,7 @@ function stokes_velocity(z, u₁₀)
     σ = a + 0.5 * df
     u_temp = 0.0
     for k in 1:nf
-        u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z / g_Earth - (fₚ / σ)^4))
+        u_temp = u_temp .+ (2.0 * α * g_Earth / (fₚ * σ) .* exp.(2.0 * σ^2 .* z ./ g_Earth .- (fₚ / σ)^4))
         σ = σ + df
     end 
     #end

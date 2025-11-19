@@ -4,8 +4,8 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=comparison-case1-nocor
-output_dir=outputs/
+jobn=ut-wind-ub-0grad-vbt-0grad-Tb-grad-Tt-0grad
+output_dir=outputs/legacy-code-comparison/bc-testing/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=10:00:00
+#PBS -l walltime=04:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
@@ -41,10 +41,9 @@ export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
 ####julia --project=$project_dir -e 'import Pkg'
-julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
 julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
-# Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 

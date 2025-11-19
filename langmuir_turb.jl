@@ -46,8 +46,8 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
 #BCs
-us = stokes_velocity(z_d[end], u₁₀)
-u_f = La_t^2 * us
+us = stokes_velocity(z_d, u₁₀)
+u_f = La_t^2 * us[end]
 τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
@@ -55,7 +55,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = G
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
-                                bottom = GradientBoundaryCondition(0.0))
+                                bottom = GradientBoundaryCondition(dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
@@ -74,7 +74,7 @@ uᵢ(x, y, z) = u_f * r_z(z)
 set!(model, u=uᵢ, w=0.0, T=Tᵢ)#v=vᵢ, 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 10*day) #stop_time = 96hours,
+simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
 @show simulation
 
 function progress(simulation)
