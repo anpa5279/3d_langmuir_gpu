@@ -1,12 +1,15 @@
-using OceanBioME, Oceananigans
+using Pkg
+using Oceananigans
 using Oceananigans.Units
+using OceanBioME
 using OceanBioME: Biogeochemistry, ScaleNegativeTracers
 using Printf
 using DifferentialEquations
 using JLD2
 using DiffEqCallbacks
 include("cc.jl")
-using .CC: CarbonateChemistry #local module
+using .CC
+import .CC: CarbonateChemistry
 grid = BoxModelGrid()
 bgc = CarbonateChemistry(; grid, scale_negatives = true)#$, 
 
@@ -41,11 +44,16 @@ function boxmodel_ode!(du, u, p, t)
     du[6] = bgc(Val(:BOH₄), 0, 0, 0, t, CO₂, HCO₃, CO₃,  OH, BOH₃, BOH₄, T , S)
 end
 
-t_final = 60 # final time, in seconds
-dt_out =0.05#0.00001 # output rate, not solver timestep size, in seconds
+t_final = 3.0 # final time, in seconds
+dt_out =0.0005#0.00001 # output rate, not solver timestep size, in seconds
 c_0 = [CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄]
 tspan = (0.0, t_final)
 prob = ODEProblem(boxmodel_ode!, c_0, tspan)
 sol = solve(prob, Rodas5(), reltol = 1e-6, abstol = 1e-10, saveat = dt_out) #solve(prob, Rosenbrock23(), reltol = 1e-6, abstol = 1e-10, saveat = dt_out)#solve(prob, alg_hints = [:stiff], reltol = 1e-6, abstol = 1e-10, saveat = dt_out) #tstop = , dt = 0.05)
-
-@save "outputs/0d-case.jld2" t=sol.t u=sol.u
+co2_sol = sol[1, :]
+hco3_sol = sol[2, :]
+co3_sol = sol[3, :]
+oh_sol = sol[4, :]
+boh3_sol = sol[5, :]
+boh4_sol = sol[6, :]
+@save "localoutputs/cc testing/0d-case.jld2" t=sol.t co2=co2_sol hco3=hco3_sol co3=co3_sol oh=oh_sol boh3=boh3_sol boh4=boh4_sol

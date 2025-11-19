@@ -51,7 +51,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 @show "Additional model parameters set"
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T),
+                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T),
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
