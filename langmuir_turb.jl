@@ -54,7 +54,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = G
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
-T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 #coriolis = FPlane(f=1e-4) # s⁻¹
 
