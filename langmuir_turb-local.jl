@@ -6,9 +6,9 @@ Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceana
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
-const Nx = 32        # number of points in each of x direction
-const Ny = 32        # number of points in each of y direction
-const Nz = 32        # number of points in the vertical direction
+const Nx = 128        # number of points in each of x direction
+const Ny = 128        # number of points in each of y direction
+const Nz = 128        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -66,10 +66,10 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1
 uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
 vᵢ(x, y, z) = -uᵢ(x, y, z)
 perturb = 1e3
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) 
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 1hours)
+simulation = Simulation(model, Δt=30, stop_time = 24hours)
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -82,12 +82,12 @@ function progress(simulation)
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO₂),
-                   mean(simulation.model.tracers.CO₃),
-                   mean(simulation.model.tracers.HCO₃),
+                   mean(simulation.model.tracers.CO2),
+                   mean(simulation.model.tracers.CO3),
+                   mean(simulation.model.tracers.HCO3),
                    mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH₃),
-                   mean(simulation.model.tracers.BOH₄))
+                   mean(simulation.model.tracers.BOH3),
+                   mean(simulation.model.tracers.BOH4))
 
     @info msg
 
@@ -105,15 +105,16 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 5minutes 
+output_interval = 30minutes 
 
 outputs_fields = merge(simulation.model.velocities, simulation.model.tracers)
 
 simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
-                                                      schedule = TimeInterval(output_interval),
-                                                      filename = "localoutputs/cc testing/fields.jld2", #$(rank)
-                                                      overwrite_existing = true,
-                                                      init = save_IC!)
+                                                dir = "localoutputs/cc testing/",
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "fields_24hours.jld2", #$(rank)
+                                                overwrite_existing = true,
+                                                init = save_IC!)
 
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(1*day), prefix="model_checkpoint")
 
