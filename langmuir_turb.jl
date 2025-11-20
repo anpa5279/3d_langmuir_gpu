@@ -49,7 +49,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
 τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #FluxBoundaryCondition(τx), 
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0)) 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
 
@@ -69,10 +69,11 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
 @show model
 
 # ICs
-r_z(z) = randn(Xoshiro()) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) 
-uᵢ(x, y, z) = u_f * r_z(z) 
-set!(model, u=uᵢ, w=0.0, T=Tᵢ)#v=vᵢ, 
+r_z(z) = randn(Xoshiro())# * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
+vᵢ(x, y, z) = -uᵢ(x, y, z)
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)#v=vᵢ, 
 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
