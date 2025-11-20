@@ -43,53 +43,47 @@ arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
-#grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) 
 
 #stokes drift
+g_Earth = defaults.gravitational_acceleration
+include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
-Nx_local, Ny_local, Nz_local = size(dusdz)
-z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
-dusdz_1d = dstokes_dz.(z1d, u₁₀)
-set!(dusdz, dusdz_1d)
-us = Field{Nothing, Nothing, Center}(grid)
-us_1d = stokes_velocity.(z1d, u₁₀)
-set!(us, us_1d)
+z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-#v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
-#w_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = ValueBoundaryCondition(0.0)) 
+#BCs
+us = stokes_velocity(z_d, u₁₀)
+u_f = La_t^2 * us[end]
+τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0)) 
+v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
-T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
-                                bottom = GradientBoundaryCondition(0.0))
-coriolis = FPlane(f=1e-4) # s⁻¹
-#biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
-#DIC_bcs = FieldBoundaryConditions(top = GasExchange(; gas = :CO₂, temperature = (args...) -> T0, salinity = (args...) -> 35))
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+                                bottom = GradientBoundaryCondition(dTdz))
+#coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T, :S),
-                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
+                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
-#model = NonhydrostaticModel(; grid, advection = WENO(), timestepper = :RungeKutta3, stokes_drift = UniformStokesDrift(grid; ∂z_uˢ=dusdz))
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 
-# random seed
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-#uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-#wᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+# ICs
+r_z(z) = randn(Xoshiro())# * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
+vᵢ(x, y, z) = -uᵢ(x, y, z)
 perturb = 1e3
-#set!(model, u=uᵢ, w=wᵢ, N=1, P=1, Z=1, D=1, T=Tᵢ, S = 35)
-set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, T=Tᵢ, S = S0) #u=uᵢ, w=wᵢ, 
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) #u=uᵢ, w=wᵢ, 
 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 1hours) #stop_time = 96hours,
@@ -119,19 +113,20 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
-    if rank == 0
+    if rank == 0 || Nranks == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+        file["IC/stokes_velocity"] = us
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
 
-output_interval = 5minutes
+output_interval = 2hours
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
@@ -142,7 +137,7 @@ HCO₃ = model.tracers.HCO₃
 OH = model.tracers.OH
 T = model.tracers.T
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                       overwrite_existing = true,

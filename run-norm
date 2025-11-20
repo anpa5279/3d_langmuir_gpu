@@ -1,5 +1,58 @@
 #!/bin/bash
 nodes=1
+gpus=1
+cpus=64
+ntasks=$((nodes*gpus))
+threads_per_task=$(( cpus / ntasks ))
+jobn=ubt-0grad-vbt-0grad-Tb-grad-Tt-heatflux
+output_dir=outputs/legacy-code-comparison/11-19-25/
+project_dir=/glade/work/apauls/.julia/environments/v1.10/
+rm -rf $output_dir$jobn
+mkdir $output_dir$jobn
+
+cp langmuir_turb.jl $output_dir$jobn/
+cp stokes.jl $output_dir$jobn/
+
+cd $output_dir$jobn/
+
+cat > EXEC_STEP << EXEC
+#!/bin/sh
+
+#PBS -A UCUB0166 
+#PBS -N $jobn
+#PBS -q main
+#PBS -j oe
+#PBS -l job_priority=economy
+#PBS -l walltime=04:00:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
+
+export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+export JULIA_NUM_THREADS=$cpus
+
+module --force purge
+module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
+
+module list
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
+export JULIA_MPI_HAS_CUDA=true
+export PALS_TRANSFER=false
+export JULIA_CUDA_MEMORY_POOL=none
+
+####julia --project=$project_dir -e 'import Pkg'
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+# 2. Update packages to the environment that we need to use. not always necessary
+julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
+julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
+julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
+
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project langmuir_turb.jl
+EXEC
+
+qsub < EXEC_STEP
+#!/bin/bash
+nodes=1
 cpus=64
 gpus=1
 ntasks=$((nodes*gpus))

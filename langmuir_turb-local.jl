@@ -29,12 +29,13 @@ include("stokes.jl")
 
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
-#stokes drift
+#stokes drift gradient
 dusdz = Field{Nothing, Nothing, Center}(grid)
 Nx_local, Ny_local, Nz_local = size(dusdz)
 z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
 dusdz_1d = dstokes_dz.(z1d, u₁₀)
 set!(dusdz, dusdz_1d)
+#stokes drift
 us = Field{Nothing, Nothing, Center}(grid)
 us_1d = stokes_velocity.(z1d, u₁₀)
 set!(us, us_1d)
@@ -43,28 +44,29 @@ set!(us, us_1d)
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(0.0))
 @show "Boundary conditions set"
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 @show "Additional model parameters set"
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             advection = WENO(),
                             tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T),
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))#, CO₂ = DIC_bcs)) 
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 
-# random seed
-r_xy(a) = randn(Xoshiro(1234), 3 * Nx)[Int(1 + round((Nx) * a/(Lx + grid.Δxᶜᵃᵃ)))]
-r_z(z) = randn(Xoshiro(1234), Nz +1)[Int(1 + round((Nz) * z/(-Lz)))] * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+ dTdz * model.grid.Lz * 1e-6 * r_z(z) * r_xy(y) * r_xy(x + Lx)
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) * r_xy(y) * r_xy(x + Lx)
+# ICs
+r_z(z) = randn(Xoshiro())# * exp(z/4)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
+vᵢ(x, y, z) = -uᵢ(x, y, z)
 perturb = 1e3
-set!(model, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0, u=uᵢ, T=Tᵢ)
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) 
 
 day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 1hours)
@@ -98,7 +100,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
+    file["IC/stokes_velocity"] = us_1d
     file["IC/wind_speed"] = u₁₀
     return nothing
 end
