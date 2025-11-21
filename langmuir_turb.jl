@@ -22,9 +22,8 @@ const dTdz = 0.01  # K m⁻¹, temperature gradient
 const T0 = 25.0    # C, temperature at the surface  
 const S0 = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
-##const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-###const La_t = 0.3  # Langmuir turbulence number
-const τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
+const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+const La_t = 0.3  # Langmuir turbulence number
 const wavelength = 60.0    # m
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
@@ -39,12 +38,14 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
+const Uˢ = 0.05501259798225732 # m s⁻¹
+@show Uˢ
+const u_f = La_t^2 * Uˢ
+const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @show u_bcs
 # Stokes drift velocity at the surface
 const vertical_scale = wavelength / 4π
-const Uˢ = 0.05501259798225732 # m s⁻¹
-@show Uˢ
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
 @inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
@@ -61,8 +62,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 
+# ICs
 r_z(z) = randn(Xoshiro())# * exp(z/4)
-u_f = sqrt(abs(τx))
 uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)* 1e-1) : 0.0
 vᵢ(x, y, z) = -uᵢ(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
@@ -97,7 +98,7 @@ function save_IC!(file, model)
     if rank == 0 || Nranks == 1
         file["IC/friction_velocity"] = u_f
         file["IC/stokes_velocity"] = uˢ.(grid.z.Δᵃᵃᶜ)
-        #file["IC/wind_speed"] = u₁₀
+        file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
