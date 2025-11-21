@@ -67,18 +67,11 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 @show model
 
-@inline Ξ(z) = randn() * exp(z / 4)
-
-@inline stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_mixed_layer_depth)
-
-@inline bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
-
-u★ = sqrt(abs(τx))
-@inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
-@inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
-
-set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
-
+r_z(z) = randn(Xoshiro())# * exp(z/4)
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u★ * r_z(z)* 1e-1) : 0.0
+vᵢ(x, y, z) = -uᵢ(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (N² * (-initial_mixed_layer_depth) + N² * model.grid.Lz * 1e-1 * r_z(z)) : N² * z
+set!(model, u=uᵢ, w=0.0, v=vᵢ, b=bᵢ)
 simulation = Simulation(model, Δt=30.0, stop_time=240hours)
 @show simulation
 
