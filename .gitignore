@@ -2,6 +2,9 @@ core
 daf
 outputs_temp/
 outputs/
+outputs/*
+localoutputs/
+localoutputs/*
 outputs.tar.gz
 *.sh
 langmuir_turbulence.mp4

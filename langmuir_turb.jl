@@ -1,59 +1,57 @@
 using Pkg
 using MPI
+using CUDA
+using Statistics
+using Printf
+using Random
 using Oceananigans
+using Oceananigans.Units: minute, minutes, hours, seconds
+using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-using Oceananigans.Units: minute, minutes, hours
-using Oceananigans.BuoyancyFormulations: g_Earth
+const Nx = 128        # number of points in each of x direction
+const Ny = 128        # number of points in each of y direction
+const Nz = 128        # number of points in the vertical direction
+const Lx = 320    # (m) domain horizont
+const Ly = 320     # (m) domain horizontal extents
+const Lz = 96      # (m) domain depth
+const amplitude = 0.8      # m
+const wavelength = 60.0    # m
+const τx = -3.72e-5       # m² s⁻², surface kinematic momentum flux
+const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
+const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
+const initial_mixed_layer_depth = 33.0  #m
+# Automatically distribute among available processors
+MPI.Init() # Initialize MPI
+Nranks = MPI.Comm_size(MPI.COMM_WORLD)
+arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
-mutable struct Params
-    Nx::Int
-    Ny::Int     # number of points in each of horizontal directions
-    Nz::Int     # number of points in the vertical direction
-    Lx::Float64
-    Ly::Float64     # (m) domain horizontal extents
-    Lz::Float64     # (m) domain depth 
-    amplitude::Float64 # m
-    wavelength::Float64 # m
-    τx::Float64 # m² s⁻², surface kinematic momentum flux
-    Jᵇ::Float64 # m² s⁻³, surface buoyancy flux
-    N²::Float64 # s⁻², initial and bottom buoyancy gradient
-    initial_mixed_layer_depth::Float64 #m
-end
+# Determine rank safely depending on architecture
+rank = arch isa Distributed ? arch.local_rank : 0
+Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
-#defaults, these can be changed directly below
-params = Params(32, 32, 32, 128.0, 128.0, 64.0, 0.8, 60.0, -3.72e-5, 2.307e-8, 1.936e-5, 33.0)
-
-# Automatically distributes among available processors
-
-arch = Distributed(GPU())
-@show arch
-rank = arch.local_rank
-Nranks = MPI.Comm_size(arch.communicator)
-println("Hello from process $rank out of $Nranks")
-
-grid = RectilinearGrid(arch; size=(params.Nx, params.Ny, params.Nz), extent=(params.Lx, params.Ly, params.Lz))
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
-const wavenumber = 2π / params.wavelength # m⁻¹
+const wavenumber = 2π / wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
 # The vertical scale over which the Stokes drift of a monochromatic surface wave
 # decays away from the surface is `1/2wavenumber`, or
-const vertical_scale = params.wavelength / 4π
+const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
-const Uˢ = params.amplitude^2 * wavenumber * frequency # m s⁻¹
+const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 @show Uˢ
 
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 @inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
-u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(params.τx))
+u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @show u_boundary_conditions
 
-b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(params.Jᵇ),
-                                                bottom = GradientBoundaryCondition(params.N²))
+b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ),
+                                                bottom = GradientBoundaryCondition(N²))
 @show b_boundary_conditions
 
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -70,22 +68,22 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 @inline Ξ(z) = randn() * exp(z / 4)
 
-@inline stratification(z) = z < - params.initial_mixed_layer_depth ? params.N² * z : params.N² * (-params.initial_mixed_layer_depth)
+@inline stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_mixed_layer_depth)
 
-@inline bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * params.N² * model.grid.Lz
+@inline bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 
-u★ = sqrt(abs(params.τx))
+u★ = sqrt(abs(τx))
 @inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
-simulation = Simulation(model, Δt=45.0, stop_time=48hours)
+simulation = Simulation(model, Δt=45.0, stop_time=240hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
-output_interval = 5minutes
+output_interval = 1*hours
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
