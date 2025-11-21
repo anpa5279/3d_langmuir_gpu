@@ -42,7 +42,8 @@ const Uˢ = 0.05501259798225732 # m s⁻¹
 @show Uˢ
 const u_f = La_t^2 * Uˢ
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0))
 @show u_bcs
 # Stokes drift velocity at the surface
 const vertical_scale = wavelength / 4π
