@@ -44,7 +44,8 @@ const u_f = La_t^2 * Uˢ
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
-@show u_bcs
+
+v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
 # Stokes drift velocity at the surface
 const vertical_scale = wavelength / 4π
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
@@ -60,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs))
 @show model
 
 # ICs
