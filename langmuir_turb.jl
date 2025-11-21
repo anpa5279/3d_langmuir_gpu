@@ -32,6 +32,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
+const g_Earth = defaults.gravitational_acceleration
 const wavenumber = 2π / wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
