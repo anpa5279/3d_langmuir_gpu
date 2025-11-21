@@ -25,7 +25,7 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 ##const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 ###const La_t = 0.3  # Langmuir turbulence number
 const τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
-
+const wavelength = 60.0    # m
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
@@ -41,17 +41,9 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
                                 bottom = GradientBoundaryCondition(dTdz))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @show u_bcs
-# model functions
-const g_Earth = defaults.gravitational_acceleration
-const wavenumber = 2π / wavelength # m⁻¹
-const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
-
-# The vertical scale over which the Stokes drift of a monochromatic surface wave
-# decays away from the surface is `1/2wavenumber`, or
-const vertical_scale = wavelength / 4π
-
 # Stokes drift velocity at the surface
-const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+const vertical_scale = wavelength / 4π
+const Uˢ = 0.05501259798225732 # m s⁻¹
 @show Uˢ
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
 @inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
