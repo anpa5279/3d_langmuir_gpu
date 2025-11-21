@@ -7,11 +7,11 @@ threads_per_task=$(( cpus / ntasks ))
 jobn=run1-dt30s
 output_dir=outputs/legacy-code-comparison/ppt-comparison/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
-script = langmuir_turb-manip.jl
+file_name=langmuir_turb-manip.jl
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
 
-cp $script $output_dir$jobn/
+cp $file_name $output_dir$jobn/
 
 cd $output_dir$jobn/
 
@@ -47,7 +47,7 @@ julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MP
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project $script
+mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project $file_name
 EXEC
 
 qsub < EXEC_STEP
