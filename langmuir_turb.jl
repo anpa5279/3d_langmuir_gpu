@@ -45,7 +45,8 @@ const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
-v_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(0.0))
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), 
+                                bottom = GradientBoundaryCondition(0.0))
 # Stokes drift velocity at the surface
 const vertical_scale = wavelength / 4π
 @inline uˢ(z) = Uˢ * exp(z / vertical_scale)
