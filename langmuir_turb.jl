@@ -88,7 +88,7 @@ output_interval = 1*hours
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, fields_to_output,
+simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
                                                       filename = "langmuir_turbulence_fields_$rank.jld2",
                                                       overwrite_existing = true,
@@ -103,7 +103,7 @@ B = Average(b, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2OutputWriter(model, (; U, V, B, wu, wv),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
