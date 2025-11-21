@@ -82,7 +82,7 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 simulation = Simulation(model, Δt=30.0, stop_time=240hours)
 @show simulation
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 output_interval = 2.4*hours
 
