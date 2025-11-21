@@ -24,7 +24,6 @@ const S0 = 35.0    # ppt, salinity
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
-const wavelength = 60.0    # m
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
@@ -35,22 +34,28 @@ rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+# stokes drift
+#stokes drift
+g_Earth = defaults.gravitational_acceleration
+include("stokes.jl")
+dusdz = Field{Nothing, Nothing, Center}(grid)
+z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+@show dusdz
+
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-const Uˢ = 0.05501259798225732 # m s⁻¹
-@show Uˢ
-const u_f = La_t^2 * Uˢ
+us = stokes_velocity(z_d, u₁₀)
+u_f = La_t^2 * us[end]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
 v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-# Stokes drift velocity at the surface
-const vertical_scale = wavelength / 4π
-@inline uˢ(z) = Uˢ * exp(z / vertical_scale)
-@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+# other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -100,7 +105,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 function save_IC!(file, model)
     if rank == 0 || Nranks == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = uˢ.(grid.z.Δᵃᵃᶜ)
+        file["IC/stokes_velocity"] = us
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
