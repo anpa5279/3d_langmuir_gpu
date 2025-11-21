@@ -15,15 +15,16 @@ const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
 const initial_mixed_layer_depth = 30.0 # m 
-const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
+const Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
 const T0 = 25.0    # C, temperature at the surface  
 const S0 = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
-const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+##const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
+###const La_t = 0.3  # Langmuir turbulence number
+const τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 # Automatically distribute among available processors
 MPI.Init() # Initialize MPI
@@ -35,48 +36,48 @@ rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
-
-#stokes drift
-g_Earth = defaults.gravitational_acceleration
-include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
-
-#BCs
-us = stokes_velocity(z_d, u₁₀)
-u_f = La_t^2 * us[end]
-τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
-
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
-
+# BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-#coriolis = FPlane(f=1e-4) # s⁻¹
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+@show u_bcs
+# model functions
+const g_Earth = defaults.gravitational_acceleration
+const wavenumber = 2π / wavelength # m⁻¹
+const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
-                            advection = WENO(),
-                            tracers = (:T,),
+# The vertical scale over which the Stokes drift of a monochromatic surface wave
+# decays away from the surface is `1/2wavenumber`, or
+const vertical_scale = wavelength / 4π
+
+# Stokes drift velocity at the surface
+const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+@show Uˢ
+@inline uˢ(z) = Uˢ * exp(z / vertical_scale)
+@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+
+coriolis = FPlane(f=1e-4) # s⁻¹
+
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=5),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(coefficient=0.1),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, ))
+                            tracers = :T,
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, T=T_bcs))
 @show model
 
-# ICs
 r_z(z) = randn(Xoshiro())# * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
+u_f = sqrt(abs(τx))
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)* 1e-1) : 0.0
 vᵢ(x, y, z) = -uᵢ(x, y, z)
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)#v=vᵢ, 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
-day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 4*day) #stop_time = 96hours,
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)
+
+simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
 
 function progress(simulation)
@@ -103,13 +104,13 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 function save_IC!(file, model)
     if rank == 0 || Nranks == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = us
-        file["IC/wind_speed"] = u₁₀
+        file["IC/stokes_velocity"] = uˢ.(grid.z.Δᵃᵃᶜ)
+        #file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
 
-output_interval = 2hours
+output_interval = 2.4*hours
 
 u, v, w = model.velocities
 T = model.tracers.T
