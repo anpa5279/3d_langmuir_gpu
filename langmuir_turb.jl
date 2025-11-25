@@ -49,7 +49,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
-const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+const τx = (u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
