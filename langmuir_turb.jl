@@ -61,7 +61,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            #advection = WENO(order=5),
+                            advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
@@ -72,7 +72,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ICs
 r_z(z) = randn(Xoshiro())# * exp(z/4)
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)* 1e-1) : 0.0
+uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
 vᵢ(x, y, z) = -uᵢ(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
