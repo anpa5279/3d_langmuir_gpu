@@ -49,11 +49,11 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
-const τx = (u_f^2)# m² s⁻², surface kinematic momentum flux
+const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
@@ -71,9 +71,11 @@ model = NonhydrostaticModel(; grid, coriolis,
 @show model
 
 # ICs
-r_z(z) = randn(Xoshiro())# * exp(z/4)
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
-vᵢ(x, y, z) = -uᵢ(x, y, z)
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+ampv = 0.01
+ue(x, y, z) = r_z(z) * ampv 
+uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
+vᵢ(x, y, z) = -ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)
