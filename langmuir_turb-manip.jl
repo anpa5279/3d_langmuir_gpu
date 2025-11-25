@@ -58,7 +58,7 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
@@ -67,25 +67,33 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 @show model
 
-r_z(z) = randn(Xoshiro())# * exp(z/4)
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u★ * r_z(z)* 1e-1) : 0.0
-vᵢ(x, y, z) = -uᵢ(x, y, z)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (N² * (-initial_mixed_layer_depth) + N² * model.grid.Lz * 1e-1 * r_z(z)) : N² * z
-set!(model, u=uᵢ, w=0.0, v=vᵢ, b=bᵢ)
-simulation = Simulation(model, Δt=30.0, stop_time=240hours)
+@inline Ξ(z) = randn() * exp(z / 4)
+
+@inline stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_mixed_layer_depth)
+
+@inline bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
+
+u★ = sqrt(abs(τx))
+@inline uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+@inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+
+set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
+
+simulation = Simulation(model, Δt=45.0, stop_time=240hours)
 @show simulation
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
-output_interval = 2.4*hours
+output_interval = 1*hours
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
-                                                      schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
-                                                      overwrite_existing = true,
-                                                      with_halos = false)
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                overwrite_existing = true,
+                                                array_type = Array{Float64},
+                                                with_halos = false)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -93,13 +101,12 @@ b = model.tracers.b
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 B = Average(b, dims=(1, 2))
-wu = Average(w * u, dims=(1, 2))
-wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
-                                                        schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                                                        filename = "langmuir_turbulence_averages_$rank.jld2",
-                                                        overwrite_existing = true,
-                                                        with_halos = false)
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B),
+                                                schedule = AveragedTimeInterval(output_interval, window=2minutes),
+                                                filename = "langmuir_turbulence_averages_$rank.jld2",
+                                                overwrite_existing = true,
+                                                array_type = Array{Float64},
+                                                with_halos = false)
 
 run!(simulation)
