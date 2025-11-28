@@ -74,8 +74,8 @@ model = NonhydrostaticModel(; grid, coriolis,
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = r_z(z) * ampv 
-uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
-vᵢ(x, y, z) = -ue(x, y, z)
+uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
+vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)
