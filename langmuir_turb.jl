@@ -61,18 +61,18 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            #advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            #closure = Smagorinsky(coefficient=0.1),
+                            closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs))
 @show model
 
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-ampv = 0.01
+ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = r_z(z) * ampv 
 uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = -ue(x, y, z)
