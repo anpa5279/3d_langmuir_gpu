@@ -59,6 +59,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
 coriolis = FPlane(f=1e-4) # s⁻¹
+u_force(x, y, z, t) = τx
 
 model = NonhydrostaticModel(; grid, coriolis,
                             #advection = WENO(order=5),
@@ -67,7 +68,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             buoyancy = buoyancy,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
+                            forcing=(u=u_force,))
 @show model
 
 # ICs
