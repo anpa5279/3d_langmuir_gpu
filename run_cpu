@@ -1,0 +1,67 @@
+#!/bin/bash
+nodes=1
+cpus=128
+ntasks=2
+threads_per_task=$(( cpus / ntasks ))
+jobn=cpu-dist-testing/round1/
+output_dir=outputs/
+project_dir=/glade/work/apauls/.julia/environments/v1.10/
+file_name=langmuir_turb-manip.jl
+
+rm -rf $output_dir$jobn
+mkdir $output_dir$jobn
+
+cp $file_name $output_dir$jobn/
+
+cd $output_dir$jobn/
+
+cat > EXEC_STEP << EXEC
+#!/bin/sh
+
+#PBS -A UCUB0166 
+#PBS -N $jobn
+#PBS -q main
+#PBS -j oe
+#PBS -l job_priority=premium
+#PBS -l walltime=04:00:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
+
+export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
+export JULIA_NUM_THREADS=$threads_per_task
+
+# Load critical modules
+module --force purge
+module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
+
+module list
+
+# GPU-specific variables are not needed for CPU runs
+export JULIA_CUDA_USE_BINARYBUILDER=false
+export JULIA_CUDA_VISIBLE_DEVICES=""
+export JULIA_CUDA_IGNORE_WARNINGS=true
+
+unset MPICH_GPU_SUPPORT_ENABLED
+unset MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED
+unset JULIA_MPI_HAS_CUDA
+unset JULIA_CUDA_MEMORY_POOL
+
+export PALS_TRANSFER=false
+
+module list
+##echo "Instantiating project..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+echo "Resolving project..."
+julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+##echo "Developing Oceananigans..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
+##echo "Adding necessary packages..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
+echo "Building MPI-related packages..."
+julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
+julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
+julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
+
+mpiexec -n $ntasks -ppn $nthreads_per_task set_gpu_rank julia --project $file_name
+EXEC
+
+qsub < EXEC_STEP
