@@ -20,15 +20,25 @@ const τx = -3.72e-5       # m² s⁻², surface kinematic momentum flux
 const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
 const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 33.0  #m
-# Automatically distribute among available processors
-MPI.Init() # Initialize MPI
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(GPU()) : GPU()
+MPI.Init()
 
-# Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+      comm = MPI.COMM_WORLD
+local_rank = MPI.Comm_rank(comm)
+         R = MPI.Comm_size(comm)
 
+ Nx = parse(Int, ARGS[1])
+ Ny = parse(Int, ARGS[2])
+ Nz = parse(Int, ARGS[3])
+ Rx = parse(Int, ARGS[4])
+ Ry = parse(Int, ARGS[5])
+ Rz = parse(Int, ARGS[6])
+
+@assert Rx * Ry * Rz == R
+
+@info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) on rank $local_rank..."
+
+topo = (Periodic, Periodic, Periodic)
+arch = Distributed(CPU(), topology=topo, ranks=(Rx, Ry, Rz), communicator=MPI.COMM_WORLD)
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
@@ -86,14 +96,13 @@ conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 output_interval = 1*hours
 
-fields_to_output = merge(model.velocities, model.tracers)
+fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
-                                                schedule = TimeInterval(output_interval),
-                                                filename = "langmuir_turbulence_fields_$rank.jld2",
-                                                overwrite_existing = true,
-                                                array_type = Array{Float64},
-                                                with_halos = false)
+                                                      schedule = TimeInterval(output_interval),
+                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                      overwrite_existing = true,
+                                                      with_halos = false)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -101,12 +110,13 @@ b = model.tracers.b
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 B = Average(b, dims=(1, 2))
+wu = Average(w * u, dims=(1, 2))
+wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B),
-                                                schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                                                filename = "langmuir_turbulence_averages_$rank.jld2",
-                                                overwrite_existing = true,
-                                                array_type = Array{Float64},
-                                                with_halos = false)
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
+                                                        schedule = AveragedTimeInterval(output_interval, window=2minutes),
+                                                        filename = "langmuir_turbulence_averages_$rank.jld2",
+                                                        overwrite_existing = true,
+                                                        with_halos = false)
 
 run!(simulation)
