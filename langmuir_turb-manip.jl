@@ -17,7 +17,7 @@ const τx = -3.72e-5       # m² s⁻², surface kinematic momentum flux
 const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
 const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 33.0  #m
-Logging.global_logger(OceananigansLogger())
+
 MPI.Init()
 
       comm = MPI.COMM_WORLD

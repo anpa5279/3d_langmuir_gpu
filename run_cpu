@@ -48,13 +48,10 @@ unset JULIA_CUDA_MEMORY_POOL
 export PALS_TRANSFER=false
 
 module list
-echo "Instantiating project..."
-julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-julia --project=$project_dir -e 'using Pkg; Pkg.rm("CUDA")'
-echo "Resolving project..."
-julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-##echo "Developing Oceananigans..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
+##echo "Instantiating project..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+##echo "Resolving project..."
+##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##echo "Adding necessary packages..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
 echo "Building MPI-related packages..."
