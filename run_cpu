@@ -62,7 +62,7 @@ julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPref
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
-mpiexec -n $ntasks set_gpu_rank julia --project $file_name
+mpiexec -n $ntasks julia --project $file_name
 EXEC
 
 qsub < EXEC_STEP
