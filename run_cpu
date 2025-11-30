@@ -48,8 +48,9 @@ unset JULIA_CUDA_MEMORY_POOL
 export PALS_TRANSFER=false
 
 module list
-##echo "Instantiating project..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+echo "Instantiating project..."
+julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+julia --project=$project_dir -e 'using Pkg; Pkg.rm("CUDA")'
 echo "Resolving project..."
 julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##echo "Developing Oceananigans..."
