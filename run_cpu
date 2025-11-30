@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 #PBS -l job_priority=premium
 #PBS -l walltime=04:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$cpus
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
 export JULIA_NUM_THREADS=$threads_per_task
@@ -61,7 +61,7 @@ julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPref
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
-mpiexec -n $ntasks -ppn $nthreads_per_task set_gpu_rank julia --project $file_name
+mpiexec -n $ntasks set_gpu_rank julia --project $file_name
 EXEC
 
 qsub < EXEC_STEP
