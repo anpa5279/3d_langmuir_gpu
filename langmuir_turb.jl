@@ -128,14 +128,16 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "langmuir_turbulence_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
+                                                    with_halos = false,
                                                     array_type = Array{Float64},
                                                     init = save_IC!)
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "langmuir_turbulence_averages.jld2",
-                                                    array_type = Array{Float64},
-                                                    overwrite_existing = true)
+                                                    overwrite_existing = true,
+                                                    with_halos = false,
+                                                    array_type = Array{Float64})
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
