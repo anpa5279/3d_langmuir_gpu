@@ -7,9 +7,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const N = 128        # number of points in each of x direction
 const Lx = 320    # (m) domain horizont
 const Ly = 320     # (m) domain horizontal extents
 const Lz = 96      # (m) domain depth
@@ -19,18 +17,19 @@ const τx = -3.72e-5       # m² s⁻², surface kinematic momentum flux
 const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
 const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 33.0  #m
+Logging.global_logger(OceananigansLogger())
 MPI.Init()
 
       comm = MPI.COMM_WORLD
 local_rank = MPI.Comm_rank(comm)
          R = MPI.Comm_size(comm)
 
- Nx = parse(Int, ARGS[1])
- Ny = parse(Int, ARGS[2])
- Nz = parse(Int, ARGS[3])
- Rx = parse(Int, ARGS[4])
- Ry = parse(Int, ARGS[5])
- Rz = parse(Int, ARGS[6])
+ Nx = parse(Int, N)
+ Ny = parse(Int, N)
+ Nz = parse(Int, N)
+ Rx = parse(Int, 1)
+ Ry = parse(Int, 2)
+ Rz = parse(Int, 1)
 
 @assert Rx * Ry * Rz == R
 
