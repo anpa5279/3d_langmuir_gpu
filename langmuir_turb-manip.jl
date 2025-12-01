@@ -20,9 +20,14 @@ const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
 const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 33.0  #m
 
-MPI.Init()
+MPI.Init() # Initialize MPI
+Nranks = MPI.Comm_size(MPI.COMM_WORLD)
+arch = Nranks > 1 ? Distributed(CPU()) : CPU()
 
-arch = Distributed(CPU(), communicator=MPI.COMM_WORLD)
+# Determine rank safely depending on architecture
+rank = arch isa Distributed ? arch.local_rank : 0
+Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
