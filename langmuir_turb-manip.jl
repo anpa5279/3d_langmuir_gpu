@@ -22,7 +22,7 @@ const initial_mixed_layer_depth = 33.0  #m
 
 MPI.Init()
 
-arch = Distributed(CPU(), communicator=MPI.COMM_WORLD)
+arch = Distributed(CPU(), communicator=MPI.COMM_WORLD, partition=Partition(2))
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
