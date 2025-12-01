@@ -40,6 +40,11 @@ export PALS_TRANSFER=false
 
 module list
 
+echo "Building MPI-related packages..."
+julia --project -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
+julia --project -e 'using Pkg; Pkg.precompile()'
+
 mpiexec -n $ntasks julia --project $file_name
 EXEC
 
