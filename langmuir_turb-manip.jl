@@ -7,7 +7,9 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-const N = 128        # number of points in each of x direction
+const Nx = 128        # number of points in each of x direction
+const Ny = 128        # number of points in each of y direction
+const Nz = 128        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizont
 const Ly = 320     # (m) domain horizontal extents
 const Lz = 96      # (m) domain depth
