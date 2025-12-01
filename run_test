@@ -4,7 +4,7 @@ cpus=128
 ntasks=4
 threads_per_task=$(( cpus / ntasks ))
 jobn=model-cpu-test
-file_name=test_distributed_models.jl
+file_name=test.jl
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
