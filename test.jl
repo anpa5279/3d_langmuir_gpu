@@ -1,6 +1,7 @@
 using MPI
 using Test
 using Oceananigans
+using Oceananigans.Grids: topology
 
 # # Distributed model tests
 #
