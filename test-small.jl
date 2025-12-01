@@ -414,7 +414,15 @@ end
         @info "Time-stepping a distributed NonhydrostaticModel without partition and bounded vertically with large grid..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
-        model = NonhydrostaticModel(; grid, advection = WENO(), tracers = :b, buoyancy = BuoyancyTracer())
+        model = NonhydrostaticModel(; grid, coriolis,
+                            #advection = WENO(),
+                            #timestepper = :RungeKutta3,
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            #closure = AnisotropicMinimumDissipation(),
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            #boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions)
+                            )
         @show model
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
