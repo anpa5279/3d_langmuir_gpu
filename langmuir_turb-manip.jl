@@ -30,7 +30,7 @@ arch = Nranks > 1 ? Distributed(CPU()) : CPU()
 rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology = (Periodic, Periodic, Bounded)) #arch
 @show grid
 
 const g_Earth = defaults.gravitational_acceleration
@@ -105,7 +105,7 @@ B = Average(b, dims=(1, 2))
 
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                                                        filename = "langmuir_turbulence_averages_$rank.jld2",
+                                                        filename = "langmuir_turbulence_averages.jld2",
                                                         overwrite_existing = true,
                                                         with_halos = false)
 
