@@ -1,5 +1,6 @@
 using MPI
 using Test
+using Oceananigans
 
 # # Distributed model tests
 #
