@@ -426,31 +426,24 @@ end
 #@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
 @testset "Distributed MPI Oceananigans" begin
-# Only test on CPU because we do not have a GPU pressure solver yet
+    # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-        #child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        @info "Time-stepping a distributed NonhydrostaticModel with linear equation of state..."
-        arch = Distributed(CPU())
-        grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
-        @show grid
-        coriolis = FPlane(f=1e-4) # s⁻¹
-        model = NonhydrostaticModel(; grid, #coriolis,
-                            #advection = WENO(),
-                            #timestepper = :RungeKutta3,
-                            tracers = :T,
-                            buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2.0e-4), constant_salinity=35.0),
-                            #closure = AnisotropicMinimumDissipation(),
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            #boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions)
-                            )
-        @show model
-        time_step!(model, 1)
-        @test model isa NonhydrostaticModel
-        @test model.clock.time ≈ 1
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            arch = Distributed(child_arch; partition)
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            @show grid
+            model = NonhydrostaticModel(; grid)
 
-        simulation = Simulation(model, Δt=1, stop_iteration=2)
-        run!(simulation)
-        @test model isa NonhydrostaticModel
-        @test model.clock.time ≈ 2
+            time_step!(model, 1)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 1
+
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 2
+        end
     end
 end
