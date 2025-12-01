@@ -7,6 +7,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -63,7 +64,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
+                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions), 
+                            pressure_solver = ConjugateGradientPoissonSolver(grid))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
