@@ -66,7 +66,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions), 
-                            pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE))
+                            #pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
+                            )
 @show model
 @show typeof(model.pressures.pNHS)
 @inline Ξ(z) = randn() * exp(z / 4)
