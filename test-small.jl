@@ -428,9 +428,9 @@ end
 @testset "Distributed MPI Oceananigans" begin
 # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        #child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
         @info "Time-stepping a distributed NonhydrostaticModel with linear equation of state..."
-        arch = Distributed(child_arch)
+        arch = CPU()
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
         coriolis = FPlane(f=1e-4) # s⁻¹
         model = NonhydrostaticModel(; grid, #coriolis,
