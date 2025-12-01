@@ -1,4 +1,5 @@
 using MPI
+using Test
 
 # # Distributed model tests
 #
