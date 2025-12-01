@@ -437,7 +437,7 @@ end
                             #advection = WENO(),
                             #timestepper = :RungeKutta3,
                             tracers = :T,
-                            buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2.0e-4), constant_salinity=35.0),
+                            buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(β=2.0e-4), constant_salinity=35.0),
                             #closure = AnisotropicMinimumDissipation(),
                             #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             #boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions)
