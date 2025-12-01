@@ -79,7 +79,7 @@ fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusi
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                      filename = "langmuir_turbulence_fields.jld2",
                                                       overwrite_existing = true,
                                                       with_halos = false)
 

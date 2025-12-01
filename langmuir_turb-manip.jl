@@ -7,7 +7,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-using Oceananigans.Solvers: FFTBasedPoissonSolver#ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, ConjugateGradientPoissonSolver
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -65,7 +65,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions), 
-                            pressure_solver = FFTBasedPoissonSolver(grid))
+                            pressure_solver = ConjugateGradientPoissonSolver(grid))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
@@ -79,7 +79,7 @@ u★ = sqrt(abs(τx))
 @inline wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
-
+@show "ICs set"
 simulation = Simulation(model, Δt=45.0, stop_time=240hours)
 @show simulation
 
@@ -87,11 +87,11 @@ conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 output_interval = 1*hours
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                       schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields_$rank.jld2",
+                                                      filename = "langmuir_turbulence_fields.jld2",
                                                       overwrite_existing = true,
                                                       with_halos = false)
 
@@ -101,10 +101,8 @@ b = model.tracers.b
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 B = Average(b, dims=(1, 2))
-wu = Average(w * u, dims=(1, 2))
-wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B),
                                                         schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                         filename = "langmuir_turbulence_averages_$rank.jld2",
                                                         overwrite_existing = true,
