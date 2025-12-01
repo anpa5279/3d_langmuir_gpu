@@ -39,7 +39,6 @@ unset JULIA_CUDA_MEMORY_POOL
 export PALS_TRANSFER=false
 
 module list
-julia --project=$project_dir -e 'using Pkg; Pkg.add("Test")'
 
 mpiexec -n $ntasks julia --project $file_name
 EXEC

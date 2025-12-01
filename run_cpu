@@ -1,7 +1,7 @@
 #!/bin/bash
-nodes=1
+nodes=2
 cpus=128
-ntasks=2
+ntasks=4
 threads_per_task=$(( cpus / ntasks ))
 jobn=cpu-dist-testing3
 output_dir=outputs/
