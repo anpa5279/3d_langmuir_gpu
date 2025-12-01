@@ -407,39 +407,39 @@ end
 #####
 ##### Run tests!
 #####
-const amplitude = 0.8      # m
-const wavelength = 60.0    # m
-const g_Earth = defaults.gravitational_acceleration
-const wavenumber = 2π / wavelength # m⁻¹
-const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
+#const amplitude = 0.8      # m
+#const wavelength = 60.0    # m
+#const g_Earth = defaults.gravitational_acceleration
+#const wavenumber = 2π / wavelength # m⁻¹
+#const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
 # The vertical scale over which the Stokes drift of a monochromatic surface wave
 # decays away from the surface is `1/2wavenumber`, or
-const vertical_scale = wavelength / 4π
+#const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
-const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
-@show Uˢ
+#const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+#@show Uˢ
 
-@inline uˢ(z) = Uˢ * exp(z / vertical_scale)
+#@inline uˢ(z) = Uˢ * exp(z / vertical_scale)
 
-@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+#@inline ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
 @testset "Distributed MPI Oceananigans" begin
 # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        @info "Time-stepping a distributed NonhydrostaticModel with stokes drift..."
+        @info "Time-stepping a distributed NonhydrostaticModel with RungeKutta3..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
         #coriolis = FPlane(f=1e-4) # s⁻¹
         model = NonhydrostaticModel(; grid, #coriolis,
                             #advection = WENO(),
-                            #timestepper = :RungeKutta3,
+                            timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
                             #closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             #boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions)
                             )
         @show model
