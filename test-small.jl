@@ -414,6 +414,7 @@ end
         @info "Time-stepping a distributed NonhydrostaticModel without partition and bounded vertically with large grid..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
+        coriolis = FPlane(f=1e-4) # s⁻¹
         model = NonhydrostaticModel(; grid, coriolis,
                             #advection = WENO(),
                             #timestepper = :RungeKutta3,
