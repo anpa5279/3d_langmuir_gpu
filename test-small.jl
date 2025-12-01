@@ -429,15 +429,15 @@ end
 # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        @info "Time-stepping a distributed NonhydrostaticModel with coriolis only..."
+        @info "Time-stepping a distributed NonhydrostaticModel with linear equation of state..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
         coriolis = FPlane(f=1e-4) # s⁻¹
-        model = NonhydrostaticModel(; grid, coriolis,
+        model = NonhydrostaticModel(; grid, #coriolis,
                             #advection = WENO(),
                             #timestepper = :RungeKutta3,
-                            #tracers = :b,
-                            #buoyancy = BuoyancyTracer(),
+                            tracers = :T,
+                            buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(β=2.0e-4), constant_salinity=35.0),
                             #closure = AnisotropicMinimumDissipation(),
                             #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             #boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions)
