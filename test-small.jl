@@ -415,7 +415,7 @@ end
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
             arch = Distributed(child_arch; partition)
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid)
+            model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
 
             time_step!(model, 1)
             @test model isa NonhydrostaticModel
@@ -429,7 +429,7 @@ end
         @info "Time-stepping a distributed NonhydrostaticModel without partition..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
 
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
@@ -443,7 +443,7 @@ end
         @info "Time-stepping a distributed NonhydrostaticModel without partition and bounded vertically..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 2, 3))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
 
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
