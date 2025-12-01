@@ -1,21 +1,10 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=2
+ntasks=4
 threads_per_task=$(( cpus / ntasks ))
 jobn=model-cpu-test
-output_dir=outputs/
-project_dir=/glade/work/apauls/.julia/environments/v1.10/
-file_name=test.jl
-
-rm -rf $output_dir$jobn
-mkdir $output_dir$jobn
-
-cp $file_name $output_dir$jobn/
-cp utils_for_runtests.jl $output_dir$jobn/
-cp dependencies_for_runtests.jl $output_dir$jobn/
-
-cd $output_dir$jobn/
+file_name=test_distributed_models.jl
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -50,14 +39,6 @@ unset JULIA_CUDA_MEMORY_POOL
 export PALS_TRANSFER=false
 
 module list
-##echo "Instantiating project..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##echo "Resolving project..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-echo "Building MPI-related packages..."
-julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
-julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
-julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 mpiexec -n $ntasks julia --project $file_name
 EXEC

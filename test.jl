@@ -1,5 +1,3 @@
-include("dependencies_for_runtests.jl")
-
 using MPI
 
 # # Distributed model tests

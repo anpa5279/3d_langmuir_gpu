@@ -9,11 +9,8 @@ using SparseArrays
 using JLD2
 using FFTW
 using OffsetArrays
-using SeawaterPolynomials
 using MPI
 using Adapt
-using GPUArraysCore
-using CUDA
 
 MPI.Initialized() || MPI.Init()
 
