@@ -1,5 +1,4 @@
 using Pkg
-using MPI
 using Statistics
 using Printf
 using Random
@@ -7,10 +6,9 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-using Oceananigans.Solvers: FFTBasedPoissonSolver#ConjugateGradientPoissonSolver
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 32        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizont
 const Ly = 320     # (m) domain horizontal extents
 const Lz = 96      # (m) domain depth
@@ -20,19 +18,10 @@ const τx = -3.72e-5       # m² s⁻², surface kinematic momentum flux
 const Jᵇ = 2.307e-8       # m² s⁻³, surface buoyancy flux
 const N² = 1.936e-5       # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 33.0  #m
-
-MPI.Init() # Initialize MPI
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(CPU()) : CPU()
-
-# Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
-
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
-const g_Earth = defaults.gravitational_acceleration
+const g_Earth = 9.81#defaults.gravitational_acceleration
 const wavenumber = 2π / wavelength # m⁻¹
 const frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
@@ -58,14 +47,13 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            #advection = WENO(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions), 
-                            pressure_solver = FFTBasedPoissonSolver(grid))
+                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 @show model
 
 @inline Ξ(z) = randn() * exp(z / 4)
