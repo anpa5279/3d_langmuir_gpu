@@ -430,8 +430,9 @@ end
     @testset "Time stepping NonhydrostaticModel" begin
         #child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
         @info "Time-stepping a distributed NonhydrostaticModel with linear equation of state..."
-        arch = CPU()
+        arch = Distributed(CPU())
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
+        @show grid
         coriolis = FPlane(f=1e-4) # s⁻¹
         model = NonhydrostaticModel(; grid, #coriolis,
                             #advection = WENO(),
