@@ -7,8 +7,6 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
-using Logging
-using BenchmarkTools
 const N = 128        # number of points in each of x direction
 const Lx = 320    # (m) domain horizont
 const Ly = 320     # (m) domain horizontal extents
@@ -22,23 +20,7 @@ const initial_mixed_layer_depth = 33.0  #m
 
 MPI.Init()
 
-      comm = MPI.COMM_WORLD
-local_rank = MPI.Comm_rank(comm)
-         R = MPI.Comm_size(comm)
-
- Nx = parse(Int, N)
- Ny = parse(Int, N)
- Nz = parse(Int, N)
- Rx = parse(Int, 1)
- Ry = parse(Int, 2)
- Rz = parse(Int, 1)
-
-@assert Rx * Ry * Rz == R
-
-@info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) on rank $local_rank..."
-
-topo = (Periodic, Periodic, Periodic)
-arch = Distributed(CPU(), topology=topo, ranks=(Rx, Ry, Rz), communicator=MPI.COMM_WORLD)
+arch = Distributed(CPU(), communicator=MPI.COMM_WORLD)
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 @show grid
 
