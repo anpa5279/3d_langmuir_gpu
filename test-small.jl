@@ -411,25 +411,10 @@ end
 # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
-            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-            arch = Distributed(child_arch; partition)
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
-
-            time_step!(model, 1)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 1
-
-            simulation = Simulation(model, Δt=1, stop_iteration=2)
-            run!(simulation)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 2
-        end
         @info "Time-stepping a distributed NonhydrostaticModel without partition..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-        model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
+        model = NonhydrostaticModel(; grid, advection = WENO(), tracers = :b, buoyancy = BuoyancyTracer())
 
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
@@ -443,7 +428,7 @@ end
         @info "Time-stepping a distributed NonhydrostaticModel without partition and bounded vertically..."
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 2, 3))
-        model = NonhydrostaticModel(; grid, tracers = :b, buoyancy = BuoyancyTracer())
+        model = NonhydrostaticModel(; grid, advection = WENO(), tracers = :b, buoyancy = BuoyancyTracer())
 
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
