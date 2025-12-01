@@ -415,7 +415,7 @@ end
         arch = Distributed(child_arch)
         grid = RectilinearGrid(arch, size=(128, 128, 128), extent=(1, 2, 3))
         model = NonhydrostaticModel(; grid, advection = WENO(), tracers = :b, buoyancy = BuoyancyTracer())
-
+        @show model
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
         @test model.clock.time ≈ 1

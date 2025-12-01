@@ -52,7 +52,7 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(),
+                            #advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
