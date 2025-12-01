@@ -20,9 +20,9 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q main
+#PBS -q develop
 #PBS -j oe
-#PBS -l job_priority=economy
+####PBS -l job_priority=premium
 #PBS -l walltime=04:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
@@ -53,7 +53,7 @@ module list
 ##echo "Resolving project..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 echo "Adding necessary packages..."
-julia --project=$project_dir -e 'import Pkg; Pkg.add("BenchmarkTools"); Pkg.add("Random")'
+julia --project=$project_dir -e 'import Pkg; Pkg.add("BenchmarkTools"); Pkg.add("Logging")'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
