@@ -65,9 +65,9 @@ model = NonhydrostaticModel(; grid, coriolis,
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions), 
-                            pressure_solver = ConjugateGradientPoissonSolver(grid))
+                            pressure_solver = FFTBasedPoissonSolver(grid, planner_flag=FFTW.ESTIMATE))
 @show model
-
+@show typeof(model.pressures.pNHS)
 @inline Ξ(z) = randn() * exp(z / 4)
 
 @inline stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_mixed_layer_depth)
@@ -80,7 +80,7 @@ u★ = sqrt(abs(τx))
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 @show "ICs set"
-simulation = Simulation(model, Δt=45.0, stop_time=240hours)
+simulation = Simulation(model, Δt=45.0, stop_time=24hours)
 @show simulation
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
