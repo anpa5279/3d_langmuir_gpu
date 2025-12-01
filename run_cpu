@@ -52,6 +52,8 @@ module list
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 ##echo "Resolving project..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+echo "adding packages.."
+julia --project=$project_dir -e 'using Pkg; Pkg.add("FFTW")'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'

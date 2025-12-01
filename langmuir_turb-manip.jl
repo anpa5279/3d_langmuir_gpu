@@ -8,6 +8,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
 using Oceananigans.Solvers: FFTBasedPoissonSolver, ConjugateGradientPoissonSolver
+using FFTW
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
