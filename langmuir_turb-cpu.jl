@@ -72,7 +72,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T, :S),
+                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T, :S),
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
