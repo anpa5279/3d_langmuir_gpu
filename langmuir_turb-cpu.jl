@@ -9,6 +9,8 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.DistributedComputations
+using Oceananigans.Solvers: FFTBasedPoissonSolver
+using FFTW
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
@@ -21,7 +23,7 @@ const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
-const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
+const Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
@@ -44,6 +46,7 @@ rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) 
+@show grid 
 
 #stokes drift
 g_Earth = defaults.gravitational_acceleration
@@ -60,7 +63,7 @@ u_f = La_t^2 * us[end]
 τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -74,20 +77,23 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs), 
+                            pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
+                            )
 @show model
-
 # ICs
-r_z(z) = randn(Xoshiro())# * exp(z/4)
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
-vᵢ(x, y, z) = -uᵢ(x, y, z)
+ampv = 1.0e-3 # m s⁻¹ 
+ue(x, y, z) = r_z(z) * ampv 
+uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
+vᵢ(x, y, z) = -ue(x, y, z)
+
 perturb = 1e3
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) #u=uᵢ, w=wᵢ, 
+set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 1hours) #stop_time = 96hours,
-@show simulation
+simulation = Simulation(model, Δt=30, stop_time = 240*hours)
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -100,47 +106,40 @@ function progress(simulation)
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO₂),
-                   mean(simulation.model.tracers.CO₃),
-                   mean(simulation.model.tracers.HCO₃),
+                   mean(simulation.model.tracers.CO2),
+                   mean(simulation.model.tracers.CO3),
+                   mean(simulation.model.tracers.HCO3),
                    mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH₃),
-                   mean(simulation.model.tracers.BOH₄))
+                   mean(simulation.model.tracers.BOH3),
+                   mean(simulation.model.tracers.BOH4))
 
     @info msg
 
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
-    if rank == 0 || Nranks == 1
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = us
-        file["IC/wind_speed"] = u₁₀
-    end
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = us_1d
+    file["IC/wind_speed"] = u₁₀
     return nothing
 end
 
-output_interval = 2hours
+output_interval = 30minutes 
 
-u, v, w = model.velocities
-BOH₃ = model.tracers.BOH₃
-BOH₄ = model.tracers.BOH₄
-CO₂ = model.tracers.CO₂
-CO₃ = model.tracers.CO₃
-HCO₃ = model.tracers.HCO₃
-OH = model.tracers.OH
-T = model.tracers.T
+outputs_fields = merge(simulation.model.velocities, simulation.model.tracers)
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
-                                                      schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
-                                                      overwrite_existing = true,
-                                                      init = save_IC!)
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
+simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
+                                                dir = "localoutputs/cc testing/",
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "fields_24hours.jld2", #$(rank)
+                                                overwrite_existing = true,
+                                                init = save_IC!)
+
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(30minutes), prefix="model_checkpoint")
+
 run!(simulation)#; pickup = true)

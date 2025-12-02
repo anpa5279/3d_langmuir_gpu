@@ -1,10 +1,10 @@
 #!/bin/bash
 nodes=1
 cpus=128
-ntasks=2
-threads_per_task=$(( cpus / ntasks ))
+ntasks=1
+threads_per_task=$(( nodes * cpus / ntasks ))
 jobn=cpu-cc-testing-$nodes-$cpus-$ntasks-mpiexec
-output_dir=outputs/new-cpu-testing1/
+output_dir=outputs/carbonate-chemistry-sims/
 project_dir=/glade/work/apauls/.julia/environments/cc-testing-oc/
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
@@ -22,7 +22,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q develop
 #PBS -j oe
 ####PBS -l job_priority=economy
-#PBS -l walltime=4:00:00
+#PBS -l walltime=6:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
@@ -52,17 +52,14 @@ echo "Resolving project..."
 julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##echo "Developing Oceananigans..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
-##echo "Adding necessary packages..."
-##julia --project=$project_dir -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random")'
+echo "Adding necessary packages..."
+julia --project=$project_dir -e 'using Pkg; Pkg.add("FFTW")'
 echo "Building MPI-related packages..."
 julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
 
 echo "Running simulation with mpiexec from: \$(pwd)"
-mpiexec -n $ntasks julia --threads $threads_per_task --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
 EXEC
-export TMPDIR=/glade/derecho/scratch/$USER/tmp
-mkdir -p $TMPDIR
-cd $WORK/3d_langmuir_gpu/$output_dir$jobn/
 qsub < EXEC_STEP

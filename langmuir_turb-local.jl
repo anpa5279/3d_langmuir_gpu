@@ -6,6 +6,7 @@ Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceana
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth
+using FFTW
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -46,7 +47,7 @@ u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
-                                bottom = GradientBoundaryCondition(0.0))
+                                bottom = GradientBoundaryCondition(dTdz))
 @show "Boundary conditions set"
 coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
@@ -57,7 +58,9 @@ model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+                            boundary_conditions = (u=u_bcs, T=T_bcs), 
+                            pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
+                            )
 @show model
 
 # ICs
@@ -94,7 +97,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
@@ -116,6 +119,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
                                                 overwrite_existing = true,
                                                 init = save_IC!)
 
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(1*day), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(30minutes), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
