@@ -45,21 +45,20 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
 # BCs
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-7),#Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),#FluxBoundaryCondition(τx), 
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
 coriolis = FPlane(f=1e-4) # s⁻¹
-u_force(x, y, z, t) = τx
 
 model = NonhydrostaticModel(; grid, coriolis,
                             #advection = WENO(order=5),
@@ -68,8 +67,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             buoyancy = buoyancy,
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
-                            forcing=(u=u_force,))
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
+                            )
 @show model
 
 # ICs
@@ -132,7 +131,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     array_type = Array{Float64},
                                                     init = save_IC!)
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T_avg),
+T = Average(T, dims=(1, 2))
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "langmuir_turbulence_averages.jld2",
                                                     overwrite_existing = true,
