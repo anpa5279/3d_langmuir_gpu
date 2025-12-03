@@ -1,15 +1,18 @@
+import Pkg
+Pkg.activate("/Users/annapauls/.julia/environments/carbonate chemsitry/")
 using Pkg
 using Statistics
 using Printf
 using Random
 Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/Oceananigans.jl-main")
+Pkg.status()
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
-using FFTW
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky
+#using Oceananigans.BuoyancyFormulations: g_Earth
+const Nx = 16        # number of points in each of x direction
+const Ny = 16        # number of points in each of y direction
+const Nz = 16        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -25,58 +28,59 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 
-#referring to files with desiraed functions
-include("stokes.jl")
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) 
+@show grid 
 
-grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-
-#stokes drift gradient
-dusdz = Field{Nothing, Nothing, Center}(grid)
-Nx_local, Ny_local, Nz_local = size(dusdz)
-z1d = grid.z.cᵃᵃᶜ[1:Nz_local]
-dusdz_1d = dstokes_dz.(z1d, u₁₀)
-set!(dusdz, dusdz_1d)
 #stokes drift
-us = Field{Nothing, Nothing, Center}(grid)
-us_1d = stokes_velocity.(z1d, u₁₀)
-set!(us, us_1d)
+g_Earth = 9.80665 #defaults.gravitational_acceleration
+include("stokes.jl")
+dusdz = Field{Nothing, Nothing, Center}(grid)
+z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
+dusdz_1d = dstokes_dz.(z_d, u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0)) 
+#BCs
+us = stokes_velocity(z_d, u₁₀)
+u_f = La_t^2 * us[end]
+τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0)) 
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
+
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-@show "Boundary conditions set"
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
-@show "Additional model parameters set"
-model = NonhydrostaticModel(; grid, buoyancy, #coriolis,
+
+model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T),
-                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded inthis timestepper
+                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T, :S),
+                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs), 
-                            pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
+                            #pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
                             )
 @show model
-
 # ICs
-r_z(z) = randn(Xoshiro())# * exp(z/4)
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
-vᵢ(x, y, z) = -uᵢ(x, y, z)
+ampv = 1.0e-3 # m s⁻¹ 
+ue(x, y, z) = r_z(z) * ampv 
+uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
+vᵢ(x, y, z) = -ue(x, y, z)
+
 perturb = 1e3
 set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 
 day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 24hours)
+simulation = Simulation(model, Δt=30, stop_time = 240*hours)
 
 function progress(simulation)
-    u, v, w = simulation.model.velocities
-
+    u, v, w = simulation.model.velocities :CCRungeKutta3
+    
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
     co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
@@ -96,14 +100,12 @@ function progress(simulation)
 
     return nothing
 end
-
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
-
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = us_1d
+    file["IC/stokes_velocity"] = us
     file["IC/wind_speed"] = u₁₀
     return nothing
 end
@@ -115,10 +117,10 @@ outputs_fields = merge(simulation.model.velocities, simulation.model.tracers)
 simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
                                                 dir = "localoutputs/cc testing/",
                                                 schedule = TimeInterval(output_interval),
-                                                filename = "fields_24hours.jld2", #$(rank)
+                                                filename = "fields.jld2", #$(rank)
                                                 overwrite_existing = true,
                                                 init = save_IC!)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(30minutes), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(output_interval/2), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)

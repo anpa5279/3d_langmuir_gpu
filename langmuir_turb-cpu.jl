@@ -123,7 +123,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 #output files
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = us_1d
+    file["IC/stokes_velocity"] = us
     file["IC/wind_speed"] = u₁₀
     return nothing
 end
