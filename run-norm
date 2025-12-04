@@ -4,7 +4,7 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=run13
+jobn=run13c
 output_dir=outputs/legacy-code-comparison/ppt-comparison/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -21,9 +21,9 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166 
 #PBS -N $jobn
-#PBS -q main
+#PBS -q develop
 #PBS -j oe
-#PBS -l job_priority=economy
+###PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
@@ -41,8 +41,8 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-####julia --project=$project_dir -e 'import Pkg'
-##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+julia --project=$project_dir -e 'import Pkg'
+julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
 julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
