@@ -26,6 +26,7 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
+MPI.has_cuda()
 MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
@@ -48,14 +49,16 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
+@show T_bcs
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
-
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+@show u_bcs
+v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
+@show v_bcs
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -79,9 +82,9 @@ ue(x, y, z) = r_z(z) * ampv
 uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-
+@show uᵢ, vᵢ, Tᵢ
 set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)
-
+@show model
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
 
