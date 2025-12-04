@@ -45,7 +45,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
 # BCs
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-7),#Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
@@ -106,7 +106,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 
 #output files
 function save_IC!(file, model)
-    if rank == 0 || Nranks == 1
+    if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
         file["IC/stokes_velocity"] = us
         file["IC/wind_speed"] = u₁₀
@@ -138,6 +138,6 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     overwrite_existing = true,
                                                     with_halos = false,
                                                     array_type = Array{Float64})
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(48hours), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
