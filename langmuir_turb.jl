@@ -59,9 +59,9 @@ v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0),
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
-coriolis = FPlane(f=1e-4) # s⁻¹
+#coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(; grid, #coriolis,
                             #advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
