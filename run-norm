@@ -6,7 +6,8 @@ ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
 jobn=run13c-WENO5
 output_dir=outputs/legacy-code-comparison/ppt-comparison/
-project_dir=/glade/work/apauls/.julia/environments/v1.10/
+project_dir=/glade/u/home/ctowery/TestJuliaCudaMPI
+####/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
 rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
