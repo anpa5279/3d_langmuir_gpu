@@ -46,7 +46,7 @@ export JULIA_CUDA_USE_BINARY_BUILDER=false
 julia --project=$project_dir -e 'import Pkg'
 julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 # 2. Update packages to the environment that we need to use. not always necessary
-#julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
+#julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.96.33")); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Printf"); Pkg.add("Statistics"); Pkg.add("Random"); '
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
