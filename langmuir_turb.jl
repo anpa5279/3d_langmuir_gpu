@@ -1,6 +1,8 @@
 using Pkg
 using MPI
 using CUDA
+@show MPI.has_cuda()
+MPI.Init() # Initialize MPI
 using Statistics
 using Printf
 using Random
@@ -8,7 +10,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
 using Oceananigans.DistributedComputations
-using Oceananigans.TurbulenceClosures: Smagorinsky
+#using Oceananigans.TurbulenceClosures: Smagorinsky
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -26,8 +28,6 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
-@show MPI.has_cuda()
-MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
