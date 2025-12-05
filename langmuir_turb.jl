@@ -3,7 +3,6 @@ using MPI
 using CUDA
 @show MPI.has_cuda()
 @show CUDA.has_cuda()
-@show CUDA.versioninfo()
 MPI.Init() # Initialize MPI
 using Statistics
 using Printf
