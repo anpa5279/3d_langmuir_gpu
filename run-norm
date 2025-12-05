@@ -25,7 +25,7 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 ###PBS -l job_priority=economy
 #PBS -l walltime=6:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80:mem=20gb
+#PBS -l select=$nodes:ncpus=$cpus:mem=20gb:ngpus=$gpus:gpu_type=cc80
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
@@ -36,7 +36,6 @@ module load ncarenv nvhpc cuda cray-mpich hdf5 netcdf intel ncarcompilers
 module list
 
 export MPICH_GPU_SUPPORT_ENABLED=1
-####export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
@@ -44,8 +43,8 @@ export JULIA_CUDA_MEMORY_POOL=none
 ##julia --project=$project_dir -e 'import Pkg'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.96.33"))'
-##julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
+##julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.95.12"))'
+###julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
