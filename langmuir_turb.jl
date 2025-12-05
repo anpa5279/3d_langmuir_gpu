@@ -10,7 +10,6 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans: defaults 
 #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
@@ -39,8 +38,13 @@ rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+# other forcing
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+
+coriolis = FPlane(f=1e-4) # s⁻¹
+
 # stokes drift
-g_Earth = defaults.gravitational_acceleration
+g_Earth = buoyancy.gravitational_acceleration
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -61,10 +65,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 @show v_bcs
-# other forcing
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
-coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=5),
