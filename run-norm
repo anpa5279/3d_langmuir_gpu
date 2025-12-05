@@ -31,8 +31,8 @@ export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
 
 module --force purge
-module load ncarenv nvhpc cuda cray-mpich  
-###module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
+###module load ncarenv nvhpc cuda cray-mpich  
+module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
 
 module list
 
