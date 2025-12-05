@@ -42,11 +42,11 @@ export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 export JULIA_CUDA_USE_BINARYBUILDER=false
 
-#julia --project=$project_dir -e 'import Pkg'
-#julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-#julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+julia --project=$project_dir -e 'import Pkg'
+julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.96.33"))'
-#julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA")'
+julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
