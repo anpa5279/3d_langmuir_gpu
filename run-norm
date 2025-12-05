@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-gpus=1
+gpus=2
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))

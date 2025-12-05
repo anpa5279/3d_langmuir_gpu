@@ -75,6 +75,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 @show model.pressure_solver
+@show model.pressure_solver.storage
+@show model.pressure_solver.grid.architecture
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
