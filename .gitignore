@@ -6,7 +6,6 @@ data/
 ncarles_results/
 *.tar.gz
 test_runs/
-*.sh
 *.mp4
 *.jld2
 langmuir_turbulence.mp4
