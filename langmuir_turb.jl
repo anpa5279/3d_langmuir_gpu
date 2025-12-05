@@ -2,6 +2,7 @@ using Pkg
 using MPI
 using CUDA
 @show MPI.has_cuda()
+@show CUDA.has_cuda()
 MPI.Init() # Initialize MPI
 using Statistics
 using Printf
@@ -37,8 +38,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 # stokes drift
-#stokes drift
-g_Earth = defaults.gravitational_acceleration
+##g_Earth = defaults.gravitational_acceleration
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -74,7 +74,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
-
+@show model.pressure_solver
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
