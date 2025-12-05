@@ -3,6 +3,7 @@ using MPI
 using CUDA
 @show MPI.has_cuda()
 @show CUDA.has_cuda()
+@show CUDA.versioninfo()
 MPI.Init() # Initialize MPI
 using Statistics
 using Printf
@@ -11,7 +12,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
-#using Oceananigans.TurbulenceClosures: Smagorinsky
+using Oceananigans.TurbulenceClosures: Smagorinsky
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -75,7 +76,6 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 @show model.pressure_solver
-@show model.pressure_solver.storage
 @show model.pressure_solver.grid.architecture
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
