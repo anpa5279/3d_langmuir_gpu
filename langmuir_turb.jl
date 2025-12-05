@@ -6,7 +6,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans: defaults #using Oceananigans.BuoyancyFormulations: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
 const Nx = 128        # number of points in each of x direction
