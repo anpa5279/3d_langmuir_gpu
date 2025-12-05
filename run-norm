@@ -43,8 +43,8 @@ export JULIA_CUDA_MEMORY_POOL=none
 ##julia --project=$project_dir -e 'import Pkg'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.95.12"))'
-###julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
+julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.95.12"))'
+##julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
