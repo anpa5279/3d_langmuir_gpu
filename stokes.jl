@@ -1,4 +1,4 @@
-function stokes_velocity(z, u₁₀=5.75)
+function stokes_velocity(z, u₁₀)
     #u = Array{Float64}(undef, length(z))
     α = 0.00615
     fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)

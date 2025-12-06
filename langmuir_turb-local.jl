@@ -60,15 +60,24 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) +1 # index of the base of the mixed layer according to center grid location
+random_matrix = zeros(Nx, Ny, Nz)
+random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
 ampv = 1.0e-3 # m s⁻¹
-ue(x, y, z) = r_z(z) * ampv 
-uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
-vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-@show uᵢ, vᵢ, Tᵢ
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ)
-@show model
+u_e = ampv * random_matrix 
+u_i = -u_e .* permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
+v_i = u_e
+T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
+T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+uᵢ = Field{Face, Center, Center}(grid)
+set!(uᵢ, u_i)
+vᵢ = Field{Center, Face, Center}(grid)
+set!(vᵢ, v_i)
+Tᵢ = Field{Center, Center, Center}(grid)
+set!(Tᵢ, T_i)
+
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+@show "ICs set"
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
 
@@ -94,10 +103,11 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 
 #output files
 function save_IC!(file, model)
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = us
-    file["IC/wind_speed"] = u₁₀
-    
+    if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
+        file["IC/friction_velocity"] = u_f
+        file["IC/stokes_velocity"] = us
+        file["IC/wind_speed"] = u₁₀
+    end
     return nothing
 end
 
