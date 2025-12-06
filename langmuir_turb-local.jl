@@ -4,7 +4,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
+#using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
 const Nx = 16        # number of points in each of x direction
@@ -25,7 +25,7 @@ const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 # stokes drift
-#g_Earth = defaults.gravitational_acceleration
+g_Earth = 9.81 #defaults.gravitational_acceleration
 include("stokes.jl")
 dusdz = Field{Nothing, Nothing, Center}(grid)
 z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
@@ -59,9 +59,6 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
-@show model.pressure_solver
-@show model.pressure_solver.storage
-@show model.pressure_solver.grid.architecture
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
