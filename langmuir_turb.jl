@@ -79,12 +79,13 @@ model = NonhydrostaticModel(; grid, coriolis,
 @show model.pressure_solver
 @show model.pressure_solver.grid.architecture
 # ICs
-r_z(z) = z > - initial_mixed_layer_depth ? randn!(Xoshiro()) : 0.0 
+#r_z(z) = z > - initial_mixed_layer_depth ? randn!(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
-ue(x, y, z) = r_z(z) * ampv 
+ue(x, y, z) = ampv #* r_z(z)
 uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+#Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth) 
 @show uᵢ, vᵢ, Tᵢ
 set!(model, u=uᵢ)
 set!(model, w=0.0)
