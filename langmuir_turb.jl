@@ -7,6 +7,7 @@ MPI.Init() # Initialize MPI
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
+using Printf
 #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
@@ -85,7 +86,10 @@ uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 @show uᵢ, vᵢ, Tᵢ
-set!(model, u=uᵢ)#, w=0.0, v=vᵢ, T=Tᵢ)
+set!(model, u=uᵢ)
+set!(model, w=0.0)
+set!(model, v=vᵢ)
+set!(model, T=Tᵢ)
 @show model
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
