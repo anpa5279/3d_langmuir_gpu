@@ -78,7 +78,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 @show model.pressure_solver
 @show model.pressure_solver.grid.architecture
 # ICs
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+r_z(z) = 1.0#z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = r_z(z) * ampv 
 uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
