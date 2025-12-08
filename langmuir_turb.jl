@@ -10,7 +10,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation #, Smagorinsky
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.status()
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
