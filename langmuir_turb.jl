@@ -10,7 +10,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
-using Oceananigans.TurbulenceClosures: Smagorinsky
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation #, Smagorinsky
 Pkg.status()
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
@@ -69,7 +69,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0),
+                            closure = AnisotropicMinimumDissipation, #Smagorinsky(coefficient=0.1),#, Pr = 3.0),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
