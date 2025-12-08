@@ -65,11 +65,11 @@ v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            #advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = AnisotropicMinimumDissipation, #Smagorinsky(coefficient=0.1),#, Pr = 3.0),
+                            closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
@@ -86,14 +86,15 @@ T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
 T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ = Field{Face, Center, Center}(grid)
 set!(uᵢ, u_i)
-@show uᵢ
+fill_halo_regions!(uᵢ, u_bcs)
 vᵢ = Field{Center, Face, Center}(grid)
 set!(vᵢ, v_i)
-@show vᵢ
+fill_halo_regions!(vᵢ, v_bcs)
 Tᵢ = Field{Center, Center, Center}(grid)
 set!(Tᵢ, T_i)
-@show Tᵢ
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+fill_halo_regions!(Tᵢ, T_bcs)
+
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i, v=v_i, T=T_i) #
 @show "ICs set"
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation

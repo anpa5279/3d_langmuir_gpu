@@ -7,6 +7,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 #using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 const Nx = 16        # number of points in each of x direction
 const Ny = 16        # number of points in each of y direction
 const Nz = 16        # number of points in the vertical direction
@@ -60,23 +61,32 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs
-izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) +1 # index of the base of the mixed layer according to center grid location
-random_matrix = zeros(Nx, Ny, Nz)
-random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
-ampv = 1.0e-3 # m s⁻¹
-u_e = ampv * random_matrix 
-u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
-v_i = u_e
-T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
-T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+#izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) +1 # index of the base of the mixed layer according to center grid location
+#random_matrix = zeros(Nx, Ny, Nz)
+#random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
+#ampv = 1.0e-3 # m s⁻¹
+#u_e = ampv * random_matrix 
+#u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
+#v_i = u_e
+#T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
+#T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+ampv = 1.0e-3 # m s⁻¹ 
+ue(x, y, z) = r_z(z) * ampv 
+u_i(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
+v_i(x, y, z) = -ue(x, y, z)
 uᵢ = Field{Face, Center, Center}(grid)
 set!(uᵢ, u_i)
+fill_halo_regions!(uᵢ, u_bcs)
 vᵢ = Field{Center, Face, Center}(grid)
 set!(vᵢ, v_i)
+fill_halo_regions!(vᵢ, v_bcs)
 Tᵢ = Field{Center, Center, Center}(grid)
 set!(Tᵢ, T_i)
+fill_halo_regions!(Tᵢ, T_bcs)
 
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+set!(model, w=0.0, u=u_i, v=v_i, T=T_i) #u=uᵢ, v=vᵢ, T=Tᵢ) #
 @show "ICs set"
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
@@ -103,11 +113,9 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 
 #output files
 function save_IC!(file, model)
-    if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = us
-        file["IC/wind_speed"] = u₁₀
-    end
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = us
+    file["IC/wind_speed"] = u₁₀
     return nothing
 end
 
