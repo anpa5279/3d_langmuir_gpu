@@ -11,6 +11,7 @@ using Printf
 #using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 Pkg.status()
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
