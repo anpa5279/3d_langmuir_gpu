@@ -7,7 +7,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 #using Oceananigans.BuoyancyFormulations: g_Earth #using Oceananigans: defaults #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: Smagorinsky
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 const Nx = 16        # number of points in each of x direction
 const Ny = 16        # number of points in each of y direction
 const Nz = 16        # number of points in the vertical direction
