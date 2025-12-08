@@ -50,11 +50,11 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            #advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = Smagorinsky(coefficient=0.1, Pr = 3.0),
+                            closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
