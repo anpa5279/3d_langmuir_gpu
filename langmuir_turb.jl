@@ -66,11 +66,11 @@ v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            #advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = AnisotropicMinimumDissipation(), #Smagorinsky(coefficient=0.1),#, Pr = 3.0),
+                            closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0), #AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
