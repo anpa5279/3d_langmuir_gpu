@@ -28,7 +28,7 @@ const T0 = 25.0    # C, temperature at the surface
 const S0 = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3084  # Langmuir turbulence number
+const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
@@ -83,14 +83,16 @@ ampv = 1.0e-3 # m s⁻¹
 u_e = ampv * random_matrix 
 u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
 v_i = u_e
-T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
-T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+#T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
+#T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ = Field{Face, Center, Center}(grid)
 set!(uᵢ, u_i)
 fill_halo_regions!(uᵢ, u_bcs)
 vᵢ = Field{Center, Face, Center}(grid)
 set!(vᵢ, v_i)
 fill_halo_regions!(vᵢ, v_bcs)
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 Tᵢ = Field{Center, Center, Center}(grid)
 set!(Tᵢ, T_i)
 fill_halo_regions!(Tᵢ, T_bcs)
