@@ -56,12 +56,11 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
-                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T, :S),
+                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T),
                             timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
                             closure = Smagorinsky(coefficient=0.1),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs), 
-                            #pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
                             )
 @show model
 # ICs
@@ -79,7 +78,7 @@ day = 24hours
 simulation = Simulation(model, Δt=30, stop_time = 240*hours)
 
 function progress(simulation)
-    u, v, w = simulation.model.velocities :CCRungeKutta3
+    u, v, w = simulation.model.velocities 
     
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
@@ -100,6 +99,7 @@ function progress(simulation)
 
     return nothing
 end
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 
 #output files
