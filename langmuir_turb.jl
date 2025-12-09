@@ -66,7 +66,7 @@ v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            #advection = WENO(order=5),
+                            advection = WENO(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
