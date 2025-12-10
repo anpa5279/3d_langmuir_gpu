@@ -28,7 +28,7 @@ const T0 = 25.0    # C, temperature at the surface
 const S0 = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3  # Langmuir turbulence number
+const La_t = 0.3084  # Langmuir turbulence number
 # Automatically distribute among available processors
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
