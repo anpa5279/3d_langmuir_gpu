@@ -62,7 +62,7 @@ const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
-v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), #GradientBoundaryCondition(0.0), 
+v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
@@ -83,16 +83,14 @@ ampv = 1.0e-3 # m s⁻¹
 u_e = ampv * random_matrix 
 u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
 v_i = u_e
-#T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
-#T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
+T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ = Field{Face, Center, Center}(grid)
 set!(uᵢ, u_i)
 fill_halo_regions!(uᵢ, u_bcs)
 vᵢ = Field{Center, Face, Center}(grid)
 set!(vᵢ, v_i)
 fill_halo_regions!(vᵢ, v_bcs)
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 Tᵢ = Field{Center, Center, Center}(grid)
 set!(Tᵢ, T_i)
 fill_halo_regions!(Tᵢ, T_bcs)
