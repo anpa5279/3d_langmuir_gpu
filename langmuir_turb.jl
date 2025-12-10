@@ -83,7 +83,7 @@ ampv = 1.0e-3 # m s⁻¹
 u_e = ampv * random_matrix 
 u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
 v_i = u_e
-T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz .* 1e-6 .* random_matrix
+T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix # .* 1e-6 
 T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ = Field{Face, Center, Center}(grid)
 set!(uᵢ, u_i)
