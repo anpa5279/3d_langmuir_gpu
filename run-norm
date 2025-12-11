@@ -4,7 +4,7 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=run17c-ic-definition-order-changed
+jobn=run17c-ic-definition-order-changed-dt-15
 output_dir=outputs/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -41,7 +41,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=1:30:00
+#PBS -l walltime=2:30:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:mem=20gb:ngpus=$gpus:gpu_type=cc80
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
