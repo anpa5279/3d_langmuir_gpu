@@ -97,7 +97,7 @@ set!(Tᵢ, T_i)
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i, v=v_i, T=T_i) #
 @show "ICs set"
-simulation = Simulation(model, Δt=15.0, stop_time=240*hours)
+simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
 
 function progress(simulation)
@@ -118,7 +118,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=15seconds)
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.0)
 
 #output files
 function save_IC!(file, model)
