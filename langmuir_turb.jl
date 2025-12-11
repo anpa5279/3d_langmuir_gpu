@@ -57,7 +57,6 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * 
                                 bottom = GradientBoundaryCondition(dTdz))
 
 us = stokes_velocity.(z_d, u₁₀)
-@show us
 u_f = La_t^2 * us[end]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
@@ -77,8 +76,8 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs# --- PARAMETERS ---
-ampv = 1e-3      # velocity amplitude [m/s]
-ampt = 1e-3      # temperature amplitude
+ampv = 1e-2      # velocity amplitude [m/s]
+ampt = 1e-2      # temperature amplitude
 rng = Xoshiro(12345)
 
 # Mixed-layer index (same as your code)
@@ -104,6 +103,7 @@ vprime =  ∂ψ∂x.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, 
 
 # Normalize amplitude exactly like NCAR-LES
 vmax = maximum(sqrt.(uprime.^2 .+ vprime.^2))
+@show vmax
 fac = ampv / vmax
 uprime .*= fac
 vprime .*= fac
@@ -114,8 +114,8 @@ u_i = CuArray(permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])) .+ uprime
 v_i = vprime
 
 # Temperature IC
-T_i = fill(T0, Nx, Ny, Nz)
-T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+r_z(z) = z > - initial_mixed_layer_depth ? Xoshiro() : 0.0 
+T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampt * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
