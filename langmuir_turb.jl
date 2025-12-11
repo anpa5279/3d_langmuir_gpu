@@ -110,7 +110,7 @@ vprime .*= fac
 
 # --- FULL INITIAL CONDITIONS ---
 # Add mean profile us(z) just like your existing code
-u_i = permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1]) .+ uprime
+u_i = CuArray(permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])) .+ uprime
 v_i = vprime
 
 # Temperature IC
