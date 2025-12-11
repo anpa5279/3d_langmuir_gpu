@@ -85,9 +85,9 @@ u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
 v_i = u_e
 T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix .* 1e-3 
 T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
-uᵢ1 = Field{Face, Center, Center}(grid)
-fill_halo_regions!(uᵢ1, u_bcs)
-set!(uᵢ1, u_i)
+uᵢ = Field{Face, Center, Center}(grid)
+fill_halo_regions!(uᵢ, u_bcs)
+set!(uᵢ, u_i)
 vᵢ = Field{Center, Face, Center}(grid)
 fill_halo_regions!(vᵢ, v_bcs)
 set!(vᵢ, v_i)
