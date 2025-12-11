@@ -8,7 +8,6 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
-#using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -28,7 +27,7 @@ const T0 = 25.0    # C, temperature at the surface
 const S0 = 35.0    # ppt, salinity 
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-const La_t = 0.3084  # Langmuir turbulence number
+const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
@@ -37,27 +36,32 @@ arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
+# defining domain and grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
-
 coriolis = FPlane(f=1e-4) # s⁻¹
 
 # stokes drift
-g_Earth = buoyancy.gravitational_acceleration
-include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
+g = buoyancy.gravitational_acceleration
+
+amplitude = 0.8 # m
+wavelength = 60  # m
+wavenumber = 2π / wavelength # m⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
+
+const vertical_scale = wavelength / 4π
+
+# Stokes drift velocity at the surface
+const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 
-us = stokes_velocity.(z_d, u₁₀)
-u_f = La_t^2 * us[end]
+u_f = La_t^2 * Uˢ
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -66,12 +70,12 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            #advection = WENO(order=5),
+                            advection = WENO,#(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0), #AnisotropicMinimumDissipation(), #
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            #closure = AnisotropicMinimumDissipation(),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
@@ -114,7 +118,7 @@ u_i = CuArray(permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])) .+ uprime
 v_i = vprime
 
 # Temperature IC
-r_z(z) = z > - initial_mixed_layer_depth ? Xoshiro() : 0.0 
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampt * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 # --- ASSIGN FIELDS ---
