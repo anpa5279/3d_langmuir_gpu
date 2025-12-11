@@ -122,13 +122,13 @@ uᵢ = Field{Face, Center, Center}(grid)
 vᵢ = Field{Center, Face, Center}(grid)
 Tᵢ = Field{Center, Center, Center}(grid)
 
-set!(uᵢ, u_i)
-set!(vᵢ, v_i)
-set!(Tᵢ, T_i)
-
 fill_halo_regions!(uᵢ, u_bcs)
 fill_halo_regions!(vᵢ, v_bcs)
 fill_halo_regions!(Tᵢ, T_bcs)
+
+set!(uᵢ, u_i)
+set!(vᵢ, v_i)
+set!(Tᵢ, T_i)
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i, v=v_i, T=T_i) #
 @show "ICs set"
