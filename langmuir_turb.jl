@@ -74,32 +74,17 @@ model = NonhydrostaticModel(; grid, coriolis,
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            #closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(), #
+                            closure = AnisotropicMinimumDissipation(), #Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
 # ICs
-izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) +1 # index of the base of the mixed layer according to center grid location
-random_matrix = zeros(Nx, Ny, Nz)
-random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
-ampv = 1.0e-3 # m s⁻¹
-u_e = ampv * random_matrix 
-u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
-v_i = u_e
-T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix .* 1e-3 
-T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
-uᵢ = Field{Face, Center, Center}(grid)
-fill_halo_regions!(uᵢ, u_bcs)
-set!(uᵢ, u_i)
-vᵢ = Field{Center, Face, Center}(grid)
-fill_halo_regions!(vᵢ, v_bcs)
-set!(vᵢ, v_i)
-Tᵢ = Field{Center, Center, Center}(grid)
-fill_halo_regions!(Tᵢ, T_bcs)
-set!(Tᵢ, T_i)
-
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+wᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
 @show "ICs set"
 
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
