@@ -81,21 +81,21 @@ random_matrix = zeros(Nx, Ny, Nz)
 random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
 ampv = 1.0e-3 # m s⁻¹
 u_e = ampv * random_matrix 
-u_i1 = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
-v_i1 = u_e
-T_i1 = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix .* 1e-3 
-T_i1[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
+u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
+v_i = u_e
+T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix .* 1e-3 
+T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ1 = Field{Face, Center, Center}(grid)
 fill_halo_regions!(uᵢ1, u_bcs)
-set!(uᵢ1, u_i1)
-vᵢ1 = Field{Center, Face, Center}(grid)
-fill_halo_regions!(vᵢ1, v_bcs)
-set!(vᵢ1, v_i1)
-Tᵢ1 = Field{Center, Center, Center}(grid)
+set!(uᵢ1, u_i)
+vᵢ = Field{Center, Face, Center}(grid)
+fill_halo_regions!(vᵢ, v_bcs)
+set!(vᵢ, v_i)
+Tᵢ = Field{Center, Center, Center}(grid)
 fill_halo_regions!(Tᵢ, T_bcs)
-set!(Tᵢ1, T_i1)
+set!(Tᵢ, T_i)
 
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i1, v=v_i1, T=T_i1) #
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i, v=v_i, T=T_i) #
 @show "ICs set"
 simulation = Simulation(model, Δt=15.0, stop_time=240*hours)
 @show simulation
