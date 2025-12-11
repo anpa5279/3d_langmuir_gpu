@@ -54,14 +54,14 @@ frequency = sqrt(g * wavenumber) # s⁻¹
 const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
-const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
-∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
 
-u_f = La_t^2 * Uˢ
+u_f = La_t^2 * us
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -70,7 +70,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=5),
+                            advection = WENO, #(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
@@ -79,63 +79,29 @@ model = NonhydrostaticModel(; grid, coriolis,
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
-# ICs# --- PARAMETERS ---
-ampv = 1e-2      # velocity amplitude [m/s]
-ampt = 1e-2      # temperature amplitude
-rng = Xoshiro(12345)
-
-# Mixed-layer index (same as your code)
-izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
-
-# --- RANDOM STREAM FUNCTION ψ(x,y) ---
-N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
-rand_maxtrix = randn(rng, Nx, Ny, N_ml)              # same as Fortran random_number()
-
-# Extend ψ vertically but only in mixed layer
-Ψ = zeros(Nx, Ny, Nz)
-Ψ[:, :, izi:Nz] .= rand_maxtrix
-
-# --- TAKE HORIZONTAL DERIVATIVES ---
-# We use Oceananigans' built-in operators
-psi_field = Field{Center, Center, Center}(grid)
-set!(psi_field, Ψ)
-∂ψ∂x = compute!(∂x(psi_field))   # returns a CCC field
-∂ψ∂y = compute!(∂y(psi_field))
-
-uprime = -∂ψ∂y.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
-vprime =  ∂ψ∂x.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
-
-# Normalize amplitude exactly like NCAR-LES
-vmax = maximum(sqrt.(uprime.^2 .+ vprime.^2))
-@show vmax
-fac = ampv / vmax
-uprime .*= fac
-vprime .*= fac
-
-# --- FULL INITIAL CONDITIONS ---
-# Add mean profile us(z) just like your existing code
-u_i = CuArray(permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])) .+ uprime
-v_i = vprime
-
-# Temperature IC
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampt * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-
-# --- ASSIGN FIELDS ---
+# ICs
+izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) +1 # index of the base of the mixed layer according to center grid location
+random_matrix = zeros(Nx, Ny, Nz)
+random_matrix[:, :, izi:Nz] .= randn(Xoshiro(), Nx, Ny, Nz-izi+1)
+ampv = 1.0e-3 # m s⁻¹
+u_e = ampv * random_matrix 
+u_i = -u_e .+ permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1])
+v_i = u_e
+T_i = T0 .* ones(Nx, Ny, Nz) .+ dTdz .* grid.Lz.* random_matrix .* 1e-3 
+T_i[:, :, 1:izi-1] .= permutedims((T0 .+ dTdz .* (grid.z.cᵃᵃᶜ[1:izi-1] .+ initial_mixed_layer_depth)) .* ones(izi-1, Nx, Ny), [2, 3, 1])
 uᵢ = Field{Face, Center, Center}(grid)
-vᵢ = Field{Center, Face, Center}(grid)
-Tᵢ = Field{Center, Center, Center}(grid)
-
 fill_halo_regions!(uᵢ, u_bcs)
-fill_halo_regions!(vᵢ, v_bcs)
-fill_halo_regions!(Tᵢ, T_bcs)
-
 set!(uᵢ, u_i)
+vᵢ = Field{Center, Face, Center}(grid)
+fill_halo_regions!(vᵢ, v_bcs)
 set!(vᵢ, v_i)
+Tᵢ = Field{Center, Center, Center}(grid)
+fill_halo_regions!(Tᵢ, T_bcs)
 set!(Tᵢ, T_i)
 
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #u=u_i, v=v_i, T=T_i) #
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
 @show "ICs set"
+
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
 
