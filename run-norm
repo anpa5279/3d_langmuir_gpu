@@ -4,7 +4,7 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=run18-icdiv0
+jobn=run19-exp-stokes-weno9
 output_dir=outputs/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -58,8 +58,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 ##julia --project=$project_dir -e 'import Pkg'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.100.7"))'
+julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Random")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
