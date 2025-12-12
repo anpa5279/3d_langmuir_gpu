@@ -24,7 +24,6 @@ function dstokes_dz(z, u₁₀)
     b = 5000.0
     nf = 3^9
     df = (b -  a) / nf
-    #for i in 1:length(z)
     σ = a + 0.5 * df
     du_temp = 0.0
     for k in 1:nf

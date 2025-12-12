@@ -8,7 +8,6 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
-#using Oceananigans.BuoyancyFormulations: g_Earth #
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -50,7 +49,7 @@ wavenumber = 2π / wavelength # m⁻¹
 frequency = sqrt(g * wavenumber) # s⁻¹
 const vertical_scale = wavelength / 4π
 include("stokes.jl")
-us = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)
+const us = stokes_velocity(-Lz/(2*Nz), u₁₀)
 amplitude = (us/(wavenumber*frequency))^0.5
 @show amplitude
 u_s(z) = us * exp(z / vertical_scale)
@@ -59,7 +58,7 @@ u_s(z) = us * exp(z / vertical_scale)
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-u_f = La_t^2 * us[end]
+u_f = La_t^2 * us
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -114,7 +113,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.
 function save_IC!(file, model)
     if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = u_s(model.grid.z.cᵃᵃᶜ)
+        file["IC/stokes_velocity"] = u_s.(model.grid.z.cᵃᵃᶜ)
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
