@@ -55,6 +55,7 @@ const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
 const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+uˢ(z) = us * exp(z / vertical_scale)
 ∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
 # BCs
@@ -70,7 +71,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(), #(order=5),
+                            advection = WENO(order=9), #(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
@@ -81,7 +82,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 @show model
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
+uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) + uˢ(z)
 wᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
@@ -114,7 +115,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.
 function save_IC!(file, model)
     if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = us
+        file["IC/stokes_velocity"] = uˢ.(grid.z.cᵃᵃᶜ)
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
