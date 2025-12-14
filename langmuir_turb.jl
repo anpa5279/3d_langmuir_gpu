@@ -121,7 +121,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 2.4*hours
+output_interval = 12*hours
 
 u, v, w = model.velocities
 T = model.tracers.T
