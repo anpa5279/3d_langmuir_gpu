@@ -82,11 +82,14 @@ model = NonhydrostaticModel(; grid, coriolis,
 @show model
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-uᵢ(x, y, z) = u_f * 1e-1 * r_z(z) + uˢ(z)
-wᵢ(x, y, z) = u_f * 1e-1 * r_z(z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-set!(model, u=uᵢ, w=wᵢ, T=Tᵢ)
+ampv = 1.0e-3 # m s⁻¹
+ue(x, y, z) = ampv * r_z(z)
+uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+vᵢ(x, y, z) = ue(x, y, z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-3 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
+
 
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
@@ -107,7 +110,7 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.0)
 
@@ -115,7 +118,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.
 function save_IC!(file, model)
     if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = uˢ.(grid.z.cᵃᵃᶜ)
+        file["IC/stokes_velocity"] = u_s.(model.grid.z.cᵃᵃᶜ)
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
@@ -128,7 +131,6 @@ T = model.tracers.T
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
-T_avg = Average(T, dims=(1, 2))
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     schedule = TimeInterval(output_interval),
