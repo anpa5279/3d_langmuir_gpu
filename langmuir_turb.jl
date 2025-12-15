@@ -75,7 +75,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
-                            closure = Smagorinsky(coefficient=0.1), #AnisotropicMinimumDissipation(), #
+                            closure = AnisotropicMinimumDissipation(), #Smagorinsky(coefficient=0.1), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
