@@ -86,7 +86,7 @@ ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = ampv * r_z(z)
 uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
 vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-3 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
 
@@ -124,7 +124,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 12*hours
+output_interval = 60*minutes
 
 u, v, w = model.velocities
 T = model.tracers.T
@@ -140,13 +140,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T),
                                                     array_type = Array{Float64},
                                                     init = save_IC!)
                                                       
-T = Average(T, dims=(1, 2))
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
-                                                    schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "langmuir_turbulence_averages.jld2",
-                                                    overwrite_existing = true,
-                                                    with_halos = false,
-                                                    array_type = Array{Float64})
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(48hours), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(10days), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
