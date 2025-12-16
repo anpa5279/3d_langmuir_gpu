@@ -56,7 +56,7 @@ frequency = sqrt(g * wavenumber) # s⁻¹
 const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
-const us = #amplitude^2 * wavenumber * frequency # m s⁻¹
+const us = amplitude^2 * wavenumber * frequency # m s⁻¹
 uˢ(z) = us * exp(z / vertical_scale)
 ∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
