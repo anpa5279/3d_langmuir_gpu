@@ -1,8 +1,6 @@
-using StaticArrays
 using KernelAbstractions: @kernel, @index
 using LinearAlgebra: norm
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Utils: launch!
 import Oceananigans.Architectures: child_architecture
 
