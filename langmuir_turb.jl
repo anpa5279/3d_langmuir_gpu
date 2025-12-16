@@ -71,24 +71,17 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
 # chemical reactions
-co2_forcing_func = CO2_dt_func(i, j, k, grid, clock, model_fields)
-co2_dt = Forcing(co2_forcing_func, discrete_form=true)
+co2_dt = Forcing(CO2_dt_func, discrete_form=true)
 
-hco3_forc_func = HCO3_dt_func(i, j, k, grid, clock, model_fields)
-hco3_dt = Forcing(hco3_forc_func, discrete_form=true)
+hco3_dt = Forcing(HCO3_dt_func, discrete_form=true)
 
-co3_forc_func = CO3_dt_func(i, j, k, grid, clock, model_fields)
-co3_dt = Forcing(co3_forc_func, discrete_form=true)
+co3_dt = Forcing(CO3_dt_func, discrete_form=true)
 
-boh3_forc_func = BOH3_dt_func(i, j, k, grid, clock, model_fields)
-boh3_dt = Forcing(boh3_forc_func, discrete_form=true)
+boh3_dt = Forcing(BOH3_dt_func, discrete_form=true)
 
-boh4_forc_func = BOH4_dt_func(i, j, k, grid, clock, model_fields)
-boh4_dt = Forcing(boh4_forc_func, discrete_form=true)
+boh4_dt = Forcing(BOH4_dt_func, discrete_form=true)
 
-
-oh_forc_func = OH_dt_func(i, j, k, grid, clock, model_fields)
-oh_dt = Forcing(oh_forc_func, discrete_form=true)
+oh_dt = Forcing(OH_dt_func, discrete_form=true)
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
