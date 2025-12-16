@@ -5,7 +5,6 @@ using CUDA
 @show CUDA.has_cuda()
 MPI.Init() # Initialize MPI
 using Random
-Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
@@ -13,8 +12,8 @@ using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 Pkg.status()
-#include("cc.jl")
-#using .CC #: CarbonateChemistry #local module
+include("cc.jl")
+using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
 #using .SRK3
 const Nx = 128        # number of points in each of x direction
@@ -75,15 +74,20 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
+# adding biogeochemistry
+cc_reacts = CarbonateChemistry(; grid, scale_negatives = true)
+@show 
 
+#  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
+                            biogeochemistry = cc_reacts, 
                             timestepper = :RungeKutta3,
-                            tracers = :T,
+                            tracers = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T),
                             buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
                             )
 @show model
 # ICs
@@ -93,11 +97,12 @@ ue(x, y, z) = ampv * r_z(z)
 uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
+
+perturb = 1e3
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
 
-
-simulation = Simulation(model, Δt=1e-7, stop_time=10*minutes)
+simulation = Simulation(model, Δt=1e-6, stop_time=30.0)
 @show simulation
 
 function progress(simulation)
@@ -105,7 +110,7 @@ function progress(simulation)
 
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
-    co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
+    CO₂ = %.1e, CO₃ = %.1e, HCO₃ = %.1e, oh = %.1e, BOH₃ = %.1e, BOH₄ = %.1e",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
@@ -125,19 +130,16 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.0)
-
 #output files
 function save_IC!(file, model)
     if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
         file["IC/stokes_velocity"] = u_s.(model.grid.z.cᵃᵃᶜ)
-        file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
 
-output_interval = 60*minutes
+output_interval = 1.0
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
@@ -150,7 +152,7 @@ T = model.tracers.T
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "langmuir_turbulence_fields.jld2", #$(rank)
+                                                    filename = "vel_tracer_fields.jld2",
                                                     overwrite_existing = true,
                                                     with_halos = false,
                                                     array_type = Array{Float64},
