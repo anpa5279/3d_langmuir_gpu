@@ -40,12 +40,13 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
 @inline function CO2_dt_func(i, j, k, grid, clock, model_fields) 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
+
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
 
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -67,12 +68,13 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 end
 
 @inline function HCO3_dt_func(i, j, k, grid, clock, model_fields) 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
+
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -99,12 +101,13 @@ end
 end
 
 @inline function CO3_dt_func(i, j, k, grid, clock, model_fields) 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
+
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -129,12 +132,13 @@ end
 end
 
 @inline function OH_dt_func(i, j, k, grid, clock, model_fields) 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
+
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
 
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -162,12 +166,13 @@ end
 end
 
 @inline function BOH3_dt_func(i, j, k, grid, clock, model_fields) 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
+
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
 
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
@@ -185,13 +190,13 @@ end
 
 @inline function BOH4_dt_func(i, j, k, grid, clock, model_fields) 
 
-    OH = model_fields.OH
-    CO2 = model_fields.CO2
-    HCO3 = model_fields.HCO3
-    CO3 = model_fields.CO3
-    BOH3 = model_fields.BOH3
-    BOH4 = model_fields.BOH4
-    
+    @inbounds OH = model_fields.OH[i, j, k]
+    @inbounds CO2 = model_fields.CO2[i, j, k]
+    @inbounds HCO3 = model_fields.HCO3[i, j, k]
+    @inbounds CO3 = model_fields.CO3[i, j, k]
+    @inbounds BOH3 = model_fields.BOH3[i, j, k]
+    @inbounds BOH4 = model_fields.BOH4[i, j, k]
+
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
     Kb = K_b(T, 35)
