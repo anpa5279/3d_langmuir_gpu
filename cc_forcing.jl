@@ -4,7 +4,7 @@ using LinearAlgebra: norm
 import Oceananigans.Utils: launch!
 import Oceananigans.Architectures: child_architecture
 
-function split_chem!(model, dt)
+function update_params(model, dt)
     grid = model.grid
     arch = child_architecture(grid)
     tracers = model.tracers

@@ -65,7 +65,7 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                             
                             sediment_model::S = nothing,
 
-                            sinking_speeds = (CO₂ = 0.0, HCO₃ = 0.0, CO₃ = 0.0, H = 0.0, OH = 0.0, BOH₃ = 0.0, BOH₄ = 0.0),
+                            sinking_speeds = (CO2 = 0.0, HCO3 = 0.0, CO3 = 0.0, H = 0.0, OH = 0.0, BOH3 = 0.0, BOH4 = 0.0),
                             open_bottom::Bool = true,
 
                             scale_negatives = false,
@@ -89,7 +89,7 @@ function CarbonateChemistry(; grid::AbstractGrid{FT},
                            modifiers)
 end
 
-required_biogeochemical_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T, :S)
+required_biogeochemical_tracers(::CarbonateChemistry) = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T)
 required_biogeochemical_auxiliary_fields(::CarbonateChemistry) = ()#(:stage)#(:H,)
 
 const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
@@ -127,10 +127,10 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 #QSS approximation
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₂}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
-    K1 = K_1(T, S)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO2}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+    K1 = K_1(T, 35)
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -141,18 +141,18 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     a5 = bgc.alpha5
     b5 = beta5(a5, Kw)
 
-    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
-    if isnan(CO₂) error("CO₂ concentration is NaN") end
-    dcdt = - (a1 + a2 * OH) * CO₂ + (b1 * H + b2) * HCO₃
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
+    if isnan(CO2) error("CO2 concentration is NaN") end
+    dcdt = - (a1 + a2 * OH) * CO2 + (b1 * H + b2) * HCO3
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:HCO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:HCO3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
     
-    K1 = K_1(T, S)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-    Kb = K_b(T, S)
+    K1 = K_1(T, 35)
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
+    Kb = K_b(T, 35)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -167,18 +167,18 @@ end
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
 
-    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
-    if isnan(HCO₃) error("HCO₃ concentration is NaN") end
-    dcdt = (a1 + a2 * OH) * CO₂ - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH₄) * HCO₃ + (a3 * H + b4 + a7 * BOH₃) * CO₃
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
+    if isnan(HCO3) error("HCO3 concentration is NaN") end
+    dcdt = (a1 + a2 * OH) * CO2 - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH4) * HCO3 + (a3 * H + b4 + a7 * BOH3) * CO3
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
+@inline function (bgc::CarbonateChemistry)(::Val{:CO3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
     
-    K1 = K_1(T, S)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-    Kb = K_b(T, S)
+    K1 = K_1(T, 35)
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
+    Kb = K_b(T, 35)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -191,17 +191,17 @@ end
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
 
-    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
-    if isnan(CO₃) error("CO₃ concentration is NaN") end
-    dcdt = (b3 + a4 * OH + b7 * BOH₄) * HCO₃ - (a3 * H + b4 + a7 * BOH₃) * CO₃
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
+    if isnan(CO3) error("CO3 concentration is NaN") end
+    dcdt = (b3 + a4 * OH + b7 * BOH4) * HCO3 - (a3 * H + b4 + a7 * BOH3) * CO3
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
-    K1 = K_1(T, S)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-    Kb = K_b(T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+    K1 = K_1(T, 35)
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
+    Kb = K_b(T, 35)
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
@@ -216,29 +216,29 @@ end
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
 
-    H = H_qss(a1, b1, a3, b3, a5, b5, CO₂, HCO₃, CO₃, OH)
+    H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     #println("a6 = ", a6, " b6 = ", b6)
     if isnan(OH) error("OH concentration is NaN") end
-    dcdt = - a2 * OH * CO₂ + (b2 - a4 * OH) * HCO₃ + b4 * CO₃ + (a5 - b5 * H * OH) - (a6 * OH * BOH₃ - b6 * BOH₄)
+    dcdt = - a2 * OH * CO2 + (b2 - a4 * OH) * HCO3 + b4 * CO3 + (a5 - b5 * H * OH) - (a6 * OH * BOH3 - b6 * BOH4)
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:BOH₃}, x, y, z, t, CO₂, HCO₃, CO₃, OH, BOH₃, BOH₄, T, S) #, H)
-    K2 = K_2(T, S)
-    Kw = K_w(T, S)
-    Kb = K_b(T, S)
+@inline function (bgc::CarbonateChemistry)(::Val{:BOH3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
+    Kb = K_b(T, 35)
 
     a6 = alpha6(bgc.A7, bgc.E8, T)
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(bgc.A8, bgc.E8, T)
     b7 = beta7(a7, K2, Kb)
-    if isnan(BOH₃) error("BOH₃ concentration is NaN") end
-    if isnan(BOH₄) error("BOH₄ concentration is NaN") end
-    dcdt = b7 * BOH₄ * HCO₃ - a7 * BOH₃ * CO₃ - (a6 * OH * BOH₃ - b6 * BOH₄)
+    if isnan(BOH3) error("BOH3 concentration is NaN") end
+    if isnan(BOH4) error("BOH4 concentration is NaN") end
+    dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
     return dcdt # converting to micromol/kg rate
 end
 
-@inline (bgc::CarbonateChemistry)(::Val{:BOH₄}, args...) = -bgc(Val(:BOH₃), args...)
+@inline (bgc::CarbonateChemistry)(::Val{:BOH4}, args...) = -bgc(Val(:BOH3), args...)
 
 #default drift velocity 
 @inline function biogeochemical_drift_velocity(bgc::CarbonateChemistry, ::Val{tracer_name}) where tracer_name
@@ -250,7 +250,7 @@ end
 end
 
 #conserving tracers
-@inline conserved_tracers(::CarbonateChemistry) = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄)
+@inline conserved_tracers(::CarbonateChemistry) = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4)
 
 @inline maximum_sinking_velocity(bgc::CarbonateChemistry) = 0.0
 @inline sinking_tracers(bgc::CarbonateChemistry) = keys(bgc.sinking_velocities)
