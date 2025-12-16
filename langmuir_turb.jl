@@ -118,12 +118,12 @@ function progress(simulation)
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO2),
-                   mean(simulation.model.tracers.CO3),
-                   mean(simulation.model.tracers.HCO3),
-                   mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH3),
-                   mean(simulation.model.tracers.BOH4))
+                   maximum(simulation.model.tracers.CO2),
+                   maximum(simulation.model.tracers.CO3),
+                   maximum(simulation.model.tracers.HCO3),
+                   maximum(simulation.model.tracers.OH),
+                   maximum(simulation.model.tracers.BOH3),
+                   maximum(simulation.model.tracers.BOH4))
 
     @info msg
 
