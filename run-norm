@@ -12,6 +12,7 @@ rm -rf $output_dir$jobn
 mkdir $output_dir$jobn
 
 cp $file_name $output_dir$jobn/
+cp cc.jl $output_dir$jobn/
 
 cd $output_dir$jobn/
 module --force purge
