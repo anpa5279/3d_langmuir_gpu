@@ -37,7 +37,7 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166
 #PBS -N $jobn
-#PBS -q gpudev
+#PBS -q develop
 #PBS -j oe
 ####PBS -l job_priority=economy
 #PBS -l walltime=2:30:00
