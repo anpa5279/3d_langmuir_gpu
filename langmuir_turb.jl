@@ -1,14 +1,18 @@
 using Pkg
 using MPI
 using CUDA
-using Statistics
-using Printf
+@show MPI.has_cuda()
+@show CUDA.has_cuda()
+MPI.Init() # Initialize MPI
 using Random
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+using Printf
 using Oceananigans.DistributedComputations
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+Pkg.status()
 #include("cc.jl")
 #using .CC #: CarbonateChemistry #local module
 #include("strang-rk3.jl") #local module
@@ -21,7 +25,7 @@ const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
 const N² = 5.3e-9    # s⁻², initial and bottom buoyancy gradient
 const initial_mixed_layer_depth = 30.0 # m 
-const Q = 0.0     # W m⁻², surface heat flux. cooling is positive
+const Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 const cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 const dTdz = 0.01  # K m⁻¹, temperature gradient
@@ -30,12 +34,7 @@ const S0 = 35.0    # ppt, salinity
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
-
-#referring to files with desiraed functions
-include("stokes.jl")
-
 # Automatically distribute among available processors
-MPI.Init() # Initialize MPI
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 
@@ -43,50 +42,62 @@ arch = Nranks > 1 ? Distributed(GPU()) : GPU()
 rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) 
+# defining domain and grid
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
-#stokes drift
-g_Earth = defaults.gravitational_acceleration
-include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
-
-#BCs
-us = stokes_velocity(z_d, u₁₀)
-u_f = La_t^2 * us[end]
-τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
-
+# other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+coriolis = FPlane(f=1e-4) # s⁻¹
 
+# stokes drift
+g = buoyancy.gravitational_acceleration
+
+amplitude = 0.8 # m
+wavelength = 60  # m
+wavenumber = 2π / wavelength # m⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
+
+const vertical_scale = wavelength / 4π
+
+# Stokes drift velocity at the surface
+const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+uˢ(z) = us * exp(z / vertical_scale)
+∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
+
+# BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-#coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
-                            advection = WENO(),
-                            tracers = (:BOH₃, :BOH₄, :CO₂, :CO₃, :HCO₃, :OH, :T, :S),
-                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
-                            closure = Smagorinsky(coefficient=0.1),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs))
+u_f = La_t^2 * us
+const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0))
+
+v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
+                                bottom = GradientBoundaryCondition(0.0))
+
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=9), 
+                            timestepper = :RungeKutta3,
+                            tracers = :T,
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(), #
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
+                            )
 @show model
-
 # ICs
-r_z(z) = randn(Xoshiro())# * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-uᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (u_f * r_z(z)) : 0.0
-vᵢ(x, y, z) = -uᵢ(x, y, z)
-perturb = 1e3
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) #u=uᵢ, w=wᵢ, 
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+ampv = 1.0e-3 # m s⁻¹
+ue(x, y, z) = ampv * r_z(z)
+uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+vᵢ(x, y, z) = ue(x, y, z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
+@show "ICs set"
 
-day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 1hours) #stop_time = 96hours,
+
+simulation = Simulation(model, Δt=1e-7, stop_time=10*minutes)
 @show simulation
 
 function progress(simulation)
@@ -112,20 +123,21 @@ function progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.0)
+
 #output files
 function save_IC!(file, model)
-    if rank == 0 || Nranks == 1
+    if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = us
+        file["IC/stokes_velocity"] = u_s.(model.grid.z.cᵃᵃᶜ)
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
 end
 
-output_interval = 2hours
+output_interval = 60*minutes
 
 u, v, w = model.velocities
 BOH₃ = model.tracers.BOH₃
@@ -137,9 +149,12 @@ OH = model.tracers.OH
 T = model.tracers.T
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
-                                                      schedule = TimeInterval(output_interval),
-                                                      filename = "langmuir_turbulence_fields.jld2", #$(rank)
-                                                      overwrite_existing = true,
-                                                      init = save_IC!)
-#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(30000), prefix="model_checkpoint")
+                                                    schedule = TimeInterval(output_interval),
+                                                    filename = "langmuir_turbulence_fields.jld2", #$(rank)
+                                                    overwrite_existing = true,
+                                                    with_halos = false,
+                                                    array_type = Array{Float64},
+                                                    init = save_IC!)
+                                                      
+
 run!(simulation)#; pickup = true)
