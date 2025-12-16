@@ -11,7 +11,7 @@ using Printf
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.status()
-include("cc.jl")
+include("cc_forcing.jl")
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -70,8 +70,8 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-# definging carbonate chemistry model 
-biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
+co2_forcing_func = i, j, k, grid, clock, model_fields
+co2_dt = Forcing(co2_forcing_func, discrete_form=true)
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
