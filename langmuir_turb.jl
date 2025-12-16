@@ -12,10 +12,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 Pkg.status()
-include("cc.jl")
-using .CC #: CarbonateChemistry #local module
-#include("strang-rk3.jl") #local module
-#using .SRK3
+include("cc_forcing.jl")
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -59,7 +56,7 @@ frequency = sqrt(g * wavenumber) # s⁻¹
 const vertical_scale = wavelength / 4π
 
 # Stokes drift velocity at the surface
-const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+const us = #amplitude^2 * wavenumber * frequency # m s⁻¹
 uˢ(z) = us * exp(z / vertical_scale)
 ∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
@@ -83,7 +80,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
                             biogeochemistry = cc_reacts, 
                             timestepper = :RungeKutta3,
-                            tracers = (:CO₂, :HCO₃, :CO₃, :OH, :BOH₃, :BOH₄, :T),
+                            tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
                             buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
@@ -99,10 +96,10 @@ vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 perturb = 1e3
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH₃ = 2.97e2, BOH₄ = 1.19e2, CO₂ = 7.57e0 * perturb, CO₃ = 3.15e2, HCO₃ = 1.67e3, OH = 9.6e0) 
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
 
-simulation = Simulation(model, Δt=1e-6, stop_time=30.0)
+simulation = Simulation(model, Δt=1e-6, stop_time=20.0)
 @show simulation
 
 function progress(simulation)
@@ -110,18 +107,18 @@ function progress(simulation)
 
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
-    CO₂ = %.1e, CO₃ = %.1e, HCO₃ = %.1e, oh = %.1e, BOH₃ = %.1e, BOH₄ = %.1e",
+    CO2 = %.1e, CO3 = %.1e, HCO3 = %.1e, oh = %.1e, BOH3 = %.1e, BOH4 = %.1e",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO₂),
-                   mean(simulation.model.tracers.CO₃),
-                   mean(simulation.model.tracers.HCO₃),
+                   mean(simulation.model.tracers.CO2),
+                   mean(simulation.model.tracers.CO3),
+                   mean(simulation.model.tracers.HCO3),
                    mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH₃),
-                   mean(simulation.model.tracers.BOH₄))
+                   mean(simulation.model.tracers.BOH3),
+                   mean(simulation.model.tracers.BOH4))
 
     @info msg
 
@@ -142,15 +139,15 @@ end
 output_interval = 1.0
 
 u, v, w = model.velocities
-BOH₃ = model.tracers.BOH₃
-BOH₄ = model.tracers.BOH₄
-CO₂ = model.tracers.CO₂
-CO₃ = model.tracers.CO₃
-HCO₃ = model.tracers.HCO₃
+BOH3 = model.tracers.BOH3
+BOH4 = model.tracers.BOH4
+CO2 = model.tracers.CO2
+CO3 = model.tracers.CO3
+HCO3 = model.tracers.HCO3
 OH = model.tracers.OH
 T = model.tracers.T
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH₃, BOH₄, CO₂, CO₃, HCO₃, OH),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4, CO2, CO3, HCO3, OH),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "vel_tracer_fields.jld2",
                                                     overwrite_existing = true,
