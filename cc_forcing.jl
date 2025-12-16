@@ -54,11 +54,11 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
-    a2 = alpha2(bgc.A1, bgc.E1, T)
+    a2 = alpha2(4.70e7 / 1e6, 23.2, T)
     b2 = beta2(a2, Kw, K1)
-    a3 = bgc.alpha3
+    a3 = 5e10 / 1e6
     b3 = beta3(a3, K2)
-    a5 = bgc.alpha5
+    a5 = 1.40e-3 * 1e6
     b5 = beta5(a5, Kw)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
@@ -83,15 +83,15 @@ end
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
-    a2 = alpha2(bgc.A1, bgc.E1, T)
+    a2 = alpha2(4.70e7 / 1e6, 23.2, T)
     b2 = beta2(a2, Kw, K1)
-    a3 = bgc.alpha3
+    a3 = 5e10 / 1e6
     b3 = beta3(a3, K2)
-    a4 = bgc.alpha4
+    a4 = 6.0e9 / 1e6
     b4 = beta4(a4, Kw, K2)
-    a5 = bgc.alpha5
+    a5 = 1.40e-3 * 1e6
     b5 = beta5(a5, Kw)
-    a7 = alpha7(bgc.A8, bgc.E8, T)
+    a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
@@ -116,13 +116,13 @@ end
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
-    a3 = bgc.alpha3
+    a3 = 5e10 / 1e6
     b3 = beta3(a3, K2)
-    a4 = bgc.alpha4
+    a4 = 6.0e9 / 1e6
     b4 = beta4(a4, Kw, K2)
-    a5 = bgc.alpha5
+    a5 = 1.40e-3 * 1e6
     b5 = beta5(a5, Kw)
-    a7 = alpha7(bgc.A8, bgc.E8, T)
+    a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
@@ -147,15 +147,15 @@ end
 
     a1 = alpha1(T)
     b1 = beta1(a1, K1)
-    a2 = alpha2(bgc.A1, bgc.E1, T)
+    a2 = alpha2(4.70e7 / 1e6, 23.2, T)
     b2 = beta2(a2, Kw, K1)
-    a3 = bgc.alpha3
+    a3 = 5e10 / 1e6
     b3 = beta3(a3, K2)
-    a4 = bgc.alpha4
+    a4 = 6.0e9 / 1e6
     b4 = beta4(a4, Kw, K2)
-    a5 = bgc.alpha5
+    a5 = 1.40e-3 * 1e6
     b5 = beta5(a5, Kw)
-    a6 = alpha6(bgc.A7, bgc.E8, T)
+    a6 = alpha6(4.58e10 / 1e6, 20.8, T)
     b6 = beta6(a6, Kw, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
@@ -178,9 +178,9 @@ end
     Kw = K_w(T, 35)
     Kb = K_b(T, 35)
 
-    a6 = alpha6(bgc.A7, bgc.E8, T)
+    a6 = alpha6(4.58e10 / 1e6, 20.8, T)
     b6 = beta6(a6, Kw, Kb)
-    a7 = alpha7(bgc.A8, bgc.E8, T)
+    a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
     if isnan(BOH3) error("BOH3 concentration is NaN") end
     if isnan(BOH4) error("BOH4 concentration is NaN") end
@@ -201,9 +201,9 @@ end
     Kw = K_w(T, 35)
     Kb = K_b(T, 35)
 
-    a6 = alpha6(bgc.A7, bgc.E8, T)
+    a6 = alpha6(4.58e10 / 1e6, 20.8, T)
     b6 = beta6(a6, Kw, Kb)
-    a7 = alpha7(bgc.A8, bgc.E8, T)
+    a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
     if isnan(BOH3) error("BOH3 concentration is NaN") end
     if isnan(BOH4) error("BOH4 concentration is NaN") end
