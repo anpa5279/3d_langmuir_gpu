@@ -39,7 +39,14 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 #QSS approximation
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO2}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+@inline function CO2_dt_func(i, j, k, grid, clock, model_fields) 
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
+
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
@@ -59,7 +66,13 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:HCO3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+@inline function HCO3_dt_func(i, j, k, grid, clock, model_fields) 
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -85,7 +98,13 @@ end
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:CO3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+@inline function CO3_dt_func(i, j, k, grid, clock, model_fields) 
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -109,7 +128,14 @@ end
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:OH}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+@inline function OH_dt_func(i, j, k, grid, clock, model_fields) 
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
+
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
@@ -135,7 +161,14 @@ end
     return dcdt # converting to micromol/kg rate
 end
 
-@inline function (bgc::CarbonateChemistry)(::Val{:BOH3}, x, y, z, t, CO2, HCO3, CO3, OH, BOH3, BOH4, T) #, H)
+@inline function BOH3_dt_func(i, j, k, grid, clock, model_fields) 
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
+
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
     Kb = K_b(T, 35)
@@ -150,21 +183,25 @@ end
     return dcdt # converting to micromol/kg rate
 end
 
-@inline (bgc::CarbonateChemistry)(::Val{:BOH4}, args...) = -bgc(Val(:BOH3), args...)
+@inline function BOH4_dt_func(i, j, k, grid, clock, model_fields) 
 
-#default drift velocity 
-@inline function biogeochemical_drift_velocity(bgc::CarbonateChemistry, ::Val{tracer_name}) where tracer_name
-    if tracer_name in keys(bgc.sinking_velocities)
-        return (u = ZeroField(), v = ZeroField(), w = bgc.sinking_velocities[tracer_name])
-    else
-        return (u = ZeroField(), v = ZeroField(), w = ZeroField())
-    end
+    OH = model_fields.OH
+    CO2 = model_fields.CO2
+    HCO3 = model_fields.HCO3
+    CO3 = model_fields.CO3
+    BOH3 = model_fields.BOH3
+    BOH4 = model_fields.BOH4
+    
+    K2 = K_2(T, 35)
+    Kw = K_w(T, 35)
+    Kb = K_b(T, 35)
+
+    a6 = alpha6(bgc.A7, bgc.E8, T)
+    b6 = beta6(a6, Kw, Kb)
+    a7 = alpha7(bgc.A8, bgc.E8, T)
+    b7 = beta7(a7, K2, Kb)
+    if isnan(BOH3) error("BOH3 concentration is NaN") end
+    if isnan(BOH4) error("BOH4 concentration is NaN") end
+    dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
+    return -dcdt # converting to micromol/kg rate
 end
-
-#conserving tracers
-@inline conserved_tracers(::CarbonateChemistry) = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4)
-
-@inline maximum_sinking_velocity(bgc::CarbonateChemistry) = 0.0
-@inline sinking_tracers(bgc::CarbonateChemistry) = keys(bgc.sinking_velocities)
-
-end #end of module
