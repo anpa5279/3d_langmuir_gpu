@@ -136,7 +136,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval = 1.0
+output_interval =  0.5
 
 u, v, w = model.velocities
 BOH3 = model.tracers.BOH3
