@@ -107,7 +107,6 @@ set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7
 
 simulation = Simulation(model, Δt=1e-6, stop_time=20.0)
 @show simulation
-simulation.callbacks[:chem_update] = Callback(chem_update, Iteration)
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
