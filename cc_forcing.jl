@@ -47,6 +47,7 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
 
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -75,6 +76,7 @@ end
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -108,6 +110,7 @@ end
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
     
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -139,6 +142,7 @@ end
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
 
     K1 = K_1(T, 35)
     K2 = K_2(T, 35)
@@ -173,6 +177,7 @@ end
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
 
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
@@ -196,6 +201,7 @@ end
     @inbounds CO3 = model_fields.CO3[i, j, k]
     @inbounds BOH3 = model_fields.BOH3[i, j, k]
     @inbounds BOH4 = model_fields.BOH4[i, j, k]
+    @inbounds T = model_fields.T[i, j, k]
 
     K2 = K_2(T, 35)
     Kw = K_w(T, 35)
