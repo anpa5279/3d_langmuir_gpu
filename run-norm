@@ -1,10 +1,10 @@
 #!/bin/bash
 nodes=1
-gpus=1
+gpus=2
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=baseline-cc
+jobn=baseline-cc-2-gpus
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -41,7 +41,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=6:00:00
+#PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus

@@ -1,19 +1,12 @@
 using Pkg
-using MPI
-using Statistics
-using Printf
 using Random
-Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+using Printf
 using Oceananigans.DistributedComputations
-using Oceananigans.Solvers: FFTBasedPoissonSolver
-using FFTW
-#include("cc.jl")
-#using .CC #: CarbonateChemistry #local module
-#include("strang-rk3.jl") #local module
-#using .SRK3
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
+Pkg.status()
+include("cc_forcing.jl")
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -31,114 +24,130 @@ const S0 = 35.0    # ppt, salinity
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
-
-#referring to files with desiraed functions
-include("stokes.jl")
-
 # Automatically distribute among available processors
-MPI.Init() # Initialize MPI
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(CPU()) : CPU()
 
-# Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+# defining domain and grid
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) 
-@show grid 
-
-#stokes drift
-#g_Earth = defaults.gravitational_acceleration
-include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
-
-#BCs
-us = stokes_velocity(z_d, u₁₀)
-u_f = La_t^2 * us[end]
-τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
-                                bottom = GradientBoundaryCondition(0.0)) 
-v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0.0), bottom = GradientBoundaryCondition(0.0))
-
+# other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
-
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
-                                bottom = GradientBoundaryCondition(dTdz))
 coriolis = FPlane(f=1e-4) # s⁻¹
 
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
-                            advection = WENO(),
-                            tracers = (:BOH3, :BOH4, :CO2, :CO3, :HCO3, :OH, :T, :S),
-                            timestepper = :CCRungeKutta3, #chemical kinetics are embedded in this timestepper
-                            closure = Smagorinsky(coefficient=0.1),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u=u_bcs, T=T_bcs), 
-                            pressure_solver = FFTBasedPoissonSolver(grid, FFTW.ESTIMATE)
+# stokes drift
+g = buoyancy.gravitational_acceleration
+
+amplitude = 0.8 # m
+wavelength = 60  # m
+wavenumber = 2π / wavelength # m⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
+
+const vertical_scale = wavelength / 4π
+
+# Stokes drift velocity at the surface
+const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+uˢ(z) = us * exp(z / vertical_scale)
+∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
+
+# BCs
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+                                bottom = GradientBoundaryCondition(dTdz))
+
+u_f = La_t^2 * us
+const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+                                bottom = GradientBoundaryCondition(0.0))
+
+v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
+                                bottom = GradientBoundaryCondition(0.0))
+# chemical reactions
+co2_dt = Forcing(CO2_dt_func, discrete_form=true)
+
+hco3_dt = Forcing(HCO3_dt_func, discrete_form=true)
+
+co3_dt = Forcing(CO3_dt_func, discrete_form=true)
+
+boh3_dt = Forcing(BOH3_dt_func, discrete_form=true)
+
+boh4_dt = Forcing(BOH4_dt_func, discrete_form=true)
+
+oh_dt = Forcing(OH_dt_func, discrete_form=true)
+#  defining model
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=9), 
+                            timestepper = :RungeKutta3,
+                            tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(), #
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
                             )
 @show model
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-ampv = 1.0e-3 # m s⁻¹ 
-ue(x, y, z) = r_z(z) * ampv 
-uᵢ(x, y, z) = ue(x, y, z) + stokes_velocity(z, u₁₀)
-vᵢ(x, y, z) = -ue(x, y, z)
+ampv = 1.0e-3 # m s⁻¹
+ue(x, y, z) = ampv * r_z(z)
+uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+vᵢ(x, y, z) = ue(x, y, z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 perturb = 1e3
-set!(model, u=uᵢ, w=0.0, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
+@show "ICs set"
 
-day = 24hours
-simulation = Simulation(model, Δt=30, stop_time = 240*hours)
-
+simulation = Simulation(model, Δt=1e-6, stop_time=5.0)
+@show simulation
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
     # Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n
-    co2 = %.1e, co3 = %.1e, hco3 = %.1e, oh = %.1e, boh3 = %.1e, boh4 = %.1e",
+    CO2 = %.1e, CO3 = %.1e, HCO3 = %.1e, oh = %.1e, BOH3 = %.1e, BOH4 = %.1e",
                    iteration(simulation),
                    prettytime(time(simulation)),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time), 
-                   mean(simulation.model.tracers.CO2),
-                   mean(simulation.model.tracers.CO3),
-                   mean(simulation.model.tracers.HCO3),
-                   mean(simulation.model.tracers.OH),
-                   mean(simulation.model.tracers.BOH3),
-                   mean(simulation.model.tracers.BOH4))
+                   maximum(simulation.model.tracers.CO2),
+                   maximum(simulation.model.tracers.CO3),
+                   maximum(simulation.model.tracers.HCO3),
+                   maximum(simulation.model.tracers.OH),
+                   maximum(simulation.model.tracers.BOH3),
+                   maximum(simulation.model.tracers.BOH4))
 
     @info msg
 
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30seconds)
 #output files
 function save_IC!(file, model)
-    file["IC/friction_velocity"] = u_f
-    file["IC/stokes_velocity"] = us
-    file["IC/wind_speed"] = u₁₀
+    if (iteration(model.simulation) < 2)
+        file["IC/friction_velocity"] = u_f
+        file["IC/stokes_velocity"] = uˢ.(model.grid.z.cᵃᵃᶜ)
+    end
     return nothing
 end
 
-output_interval = 30minutes 
+output_interval =  0.1
 
-outputs_fields = merge(simulation.model.velocities, simulation.model.tracers)
+u, v, w = model.velocities
+BOH3 = model.tracers.BOH3
+BOH4 = model.tracers.BOH4
+CO2 = model.tracers.CO2
+CO3 = model.tracers.CO3
+HCO3 = model.tracers.HCO3
+OH = model.tracers.OH
+T = model.tracers.T
 
-simulation.output_writers[:fields] = JLD2Writer(model, outputs_fields,
-                                                dir = "localoutputs/cc testing/",
-                                                schedule = TimeInterval(output_interval),
-                                                filename = "fields_24hours.jld2", #$(rank)
-                                                overwrite_existing = true,
-                                                init = save_IC!)
-
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(30minutes), prefix="model_checkpoint")
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4, CO2, CO3, HCO3, OH),
+                                                    schedule = TimeInterval(output_interval),
+                                                    filename = "vel_tracer_fields.jld2",
+                                                    overwrite_existing = true,
+                                                    with_halos = false,
+                                                    array_type = Array{Float64},
+                                                    init = save_IC!)
+                                                      
 
 run!(simulation)#; pickup = true)

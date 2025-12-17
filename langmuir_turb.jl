@@ -105,7 +105,7 @@ perturb = 1e3
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
 
-simulation = Simulation(model, Δt=1e-6, stop_time=20.0)
+simulation = Simulation(model, Δt=1e-6, stop_time=5.0)
 @show simulation
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -141,7 +141,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval =  0.5
+output_interval =  0.1
 
 u, v, w = model.velocities
 BOH3 = model.tracers.BOH3
