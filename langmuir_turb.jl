@@ -160,5 +160,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4
                                                     array_type = Array{Float64},
                                                     init = save_IC!)
                                                       
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)
