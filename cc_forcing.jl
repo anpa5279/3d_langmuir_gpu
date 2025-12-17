@@ -212,7 +212,7 @@ end
     return tracer_positive(BOH4, -dcdt, dt) # converting to micromol/kg rate
 end
 
-@inline function tracer_positive(c, dcdt, dt)
+function tracer_positive(c, dcdt, dt)
     c_next = c + dcdt*dt
     small = 1.0e-20
     if c_next < small
