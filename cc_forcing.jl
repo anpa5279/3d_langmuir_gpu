@@ -216,7 +216,6 @@ end
     c_next = c + dcdt*dt
     small = 1.0e-20
     if c_next < small
-        @show "tracer is negative"
         return (small - c) / dt + dcdt 
     else
         return dcdt
