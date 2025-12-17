@@ -217,7 +217,7 @@ end
     c_next = c + dcdt 
     small = 1.0e-20
     if c_next < small
-        return (small - c) / Δt + dcdt 
+        return (small - c) / dt + dcdt 
     else
         return dcdt
     end
