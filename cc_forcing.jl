@@ -63,7 +63,7 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     b5 = beta5(a5, Kw)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(CO2) error("CO2 concentration is NaN") end
+    #if isnan(CO2) error("CO2 concentration is NaN") end
     dcdt = - (a1 + a2 * OH) * CO2 + (b1 * H + b2) * HCO3
     return dcdt # converting to micromol/kg rate
 end
@@ -97,7 +97,7 @@ end
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(HCO3) error("HCO3 concentration is NaN") end
+    #if isnan(HCO3) error("HCO3 concentration is NaN") end
     dcdt = (a1 + a2 * OH) * CO2 - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH4) * HCO3 + (a3 * H + b4 + a7 * BOH3) * CO3
     return dcdt # converting to micromol/kg rate
 end
@@ -129,7 +129,7 @@ end
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(CO3) error("CO3 concentration is NaN") end
+    #if isnan(CO3) error("CO3 concentration is NaN") end
     dcdt = (b3 + a4 * OH + b7 * BOH4) * HCO3 - (a3 * H + b4 + a7 * BOH3) * CO3
     return dcdt # converting to micromol/kg rate
 end
@@ -164,7 +164,7 @@ end
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     #println("a6 = ", a6, " b6 = ", b6)
-    if isnan(OH) error("OH concentration is NaN") end
+    #if isnan(OH) error("OH concentration is NaN") end
     dcdt = - a2 * OH * CO2 + (b2 - a4 * OH) * HCO3 + b4 * CO3 + (a5 - b5 * H * OH) - (a6 * OH * BOH3 - b6 * BOH4)
     return dcdt # converting to micromol/kg rate
 end
@@ -187,8 +187,8 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
-    if isnan(BOH3) error("BOH3 concentration is NaN") end
-    if isnan(BOH4) error("BOH4 concentration is NaN") end
+    #if isnan(BOH3) error("BOH3 concentration is NaN") end
+    #if isnan(BOH4) error("BOH4 concentration is NaN") end
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
     return dcdt # converting to micromol/kg rate
 end
@@ -211,8 +211,8 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
-    if isnan(BOH3) error("BOH3 concentration is NaN") end
-    if isnan(BOH4) error("BOH4 concentration is NaN") end
+    #if isnan(BOH3) error("BOH3 concentration is NaN") end
+    #if isnan(BOH4) error("BOH4 concentration is NaN") end
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
     return -dcdt # converting to micromol/kg rate
 end

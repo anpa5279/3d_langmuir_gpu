@@ -4,7 +4,7 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=baseline-cc-32-premium
+jobn=baseline-cc-32
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -40,7 +40,7 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-#PBS -l job_priority=premium
+#PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
 
@@ -58,7 +58,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 ##julia --project=$project_dir -e 'import Pkg'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.add("KernelAbstractions")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
