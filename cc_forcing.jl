@@ -1,11 +1,4 @@
-using KernelAbstractions: @kernel, @index
-using LinearAlgebra: norm
-
-import Oceananigans.Utils: launch!
-import Oceananigans.Architectures: child_architecture
-
 const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
-
 #Dickson and Goyet 1994, who references Roy et al. 1993,  Dickson 1990, and Millero 1994
 @inline K_1(T, S) = exp(-2307.1266 / (T + 273.15) + 2.83655 - 1.5529413 * log(T + 273.15) +
             (-4.0484 / (T + 273.15) - 0.20760841) * sqrt(S) + 0.08468345 * S -
@@ -40,6 +33,7 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 @inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
 #updating tracers 
 @inline function CO2_dt_func(i, j, k, grid, clock, model_fields) 
+    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -65,10 +59,11 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     if isnan(CO2) error("CO2 concentration is NaN") end
     dcdt = - (a1 + a2 * OH) * CO2 + (b1 * H + b2) * HCO3
-    return dcdt # converting to micromol/kg rate
+    return return tracer_positive(CO2, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function HCO3_dt_func(i, j, k, grid, clock, model_fields) 
+    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -99,10 +94,11 @@ end
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     if isnan(HCO3) error("HCO3 concentration is NaN") end
     dcdt = (a1 + a2 * OH) * CO2 - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH4) * HCO3 + (a3 * H + b4 + a7 * BOH3) * CO3
-    return dcdt # converting to micromol/kg rate
+    return return tracer_positive(HCO3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function CO3_dt_func(i, j, k, grid, clock, model_fields) 
+    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -131,10 +127,11 @@ end
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     if isnan(CO3) error("CO3 concentration is NaN") end
     dcdt = (b3 + a4 * OH + b7 * BOH4) * HCO3 - (a3 * H + b4 + a7 * BOH3) * CO3
-    return dcdt # converting to micromol/kg rate
+    return tracer_positive(CO3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function OH_dt_func(i, j, k, grid, clock, model_fields) 
+    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -164,16 +161,12 @@ end
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
     #println("a6 = ", a6, " b6 = ", b6)
-    if isnan(OH) 
-        @show OH, CO2, CO3, HCO3, BOH3, BOH4
-        error("OH concentration is NaN") 
-    end
     dcdt = - a2 * OH * CO2 + (b2 - a4 * OH) * HCO3 + b4 * CO3 + (a5 - b5 * H * OH) - (a6 * OH * BOH3 - b6 * BOH4)
-    return dcdt # converting to micromol/kg rate
+    return tracer_positive(OH, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function BOH3_dt_func(i, j, k, grid, clock, model_fields) 
-
+    dt = clock.last_stage_Δt
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
     @inbounds HCO3 = model_fields.HCO3[i, j, k]
@@ -190,13 +183,12 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
-    if isnan(BOH3) error("BOH3 concentration is NaN") end
-    if isnan(BOH4) error("BOH4 concentration is NaN") end
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
-    return dcdt # converting to micromol/kg rate
+    return tracer_positive(BOH3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function BOH4_dt_func(i, j, k, grid, clock, model_fields) 
+    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -217,5 +209,17 @@ end
     if isnan(BOH3) error("BOH3 concentration is NaN") end
     if isnan(BOH4) error("BOH4 concentration is NaN") end
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
-    return -dcdt # converting to micromol/kg rate
+    return tracer_positive(BOH4, -dcdt, dt) # converting to micromol/kg rate
 end
+
+@inline function tracer_positive(c, dcdt, dt)
+    dcdt_min = -c / dt
+    c_next = c + dcdt 
+    small = 1.0e-20
+    if c_next < small
+        return (small - c) / Δt + dcdt 
+    else
+        return dcdt
+    end
+end
+
