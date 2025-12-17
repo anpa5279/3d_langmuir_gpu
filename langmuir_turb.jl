@@ -39,7 +39,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 # defining domain and grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-
+@show grid 
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -143,7 +143,7 @@ function save_IC!(file, model)
     return nothing
 end
 
-output_interval =  0.1
+output_interval =  0.1*seconds
 
 u, v, w = model.velocities
 BOH3 = model.tracers.BOH3
