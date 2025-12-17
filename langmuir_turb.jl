@@ -82,6 +82,7 @@ boh3_dt = Forcing(BOH3_dt_func, discrete_form=true)
 boh4_dt = Forcing(BOH4_dt_func, discrete_form=true)
 
 oh_dt = Forcing(OH_dt_func, discrete_form=true)
+
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
@@ -91,6 +92,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             closure = AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
+                            forcing = (CO2=co2_dt, CO3=co3_dt, HCO3=hco3_dt, BOH3=boh3_dt, BOH4=boh4_dt)
                             )
 @show model
 # ICs
