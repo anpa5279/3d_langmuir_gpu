@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-gpus=2
+gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main
 #PBS -j oe
-####PBS -l job_priority=economy
+#PBS -l job_priority=premium
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
 

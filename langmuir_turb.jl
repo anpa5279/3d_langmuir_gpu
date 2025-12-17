@@ -92,7 +92,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             closure = AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
-                            forcing = (CO2=co2_dt, CO3=co3_dt, HCO3=hco3_dt, BOH3=boh3_dt, BOH4=boh4_dt)
+                            forcing = (CO2=co2_dt, CO3=co3_dt, HCO3=hco3_dt, BOH3=boh3_dt, BOH4=boh4_dt, OH=oh_dt)
                             )
 @show model
 # ICs
