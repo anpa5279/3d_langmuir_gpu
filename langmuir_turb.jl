@@ -134,15 +134,6 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
 
-#output files
-function save_IC!(file, model)
-    if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
-        file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = uˢ.(model.grid.z.cᵃᵃᶜ)
-    end
-    return nothing
-end
-
 output_interval =  0.1*seconds
 
 u, v, w = model.velocities
