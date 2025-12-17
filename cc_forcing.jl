@@ -213,10 +213,10 @@ end
 end
 
 @inline function tracer_positive(c, dcdt, dt)
-    dcdt_min = -c / dt
-    c_next = c + dcdt 
+    c_next = c + dcdt*dt
     small = 1.0e-20
     if c_next < small
+        @info "tracer is negative"
         return (small - c) / dt + dcdt 
     else
         return dcdt
