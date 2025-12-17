@@ -159,8 +159,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4
                                                     filename = "vel_tracer_fields.jld2",
                                                     overwrite_existing = true,
                                                     with_halos = false,
-                                                    array_type = Array{Float64},
-                                                    init = save_IC!)
+                                                    array_type = Array{Float64}
+                                                    )
                                                       
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="model_checkpoint")
 
