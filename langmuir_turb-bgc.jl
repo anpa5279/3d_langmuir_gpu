@@ -144,7 +144,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-simluation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
+simulation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
 
 output_interval =  0.1*seconds
 
