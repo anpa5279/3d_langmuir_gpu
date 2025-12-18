@@ -5,7 +5,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
-using Oceananigans.Diagnostics: NaNChecker
+#using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry
 const Nx = 32        # number of points in each of x direction
@@ -110,7 +110,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-simulation.callbacks[:nan_checker] = Callback(NaNChecker, IterationInterval(1))
+
 
 output_interval =  0.1*seconds
 
