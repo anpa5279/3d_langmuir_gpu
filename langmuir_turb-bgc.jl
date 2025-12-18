@@ -9,7 +9,7 @@ using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 using Oceananigans.DistributedComputations
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry
 const Nx = 32        # number of points in each of x direction
