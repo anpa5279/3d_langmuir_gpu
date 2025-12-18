@@ -15,7 +15,6 @@ cp $file_name $output_dir$jobn/
 
 cd $output_dir$jobn/
 module --force purge
-cat > launch.sh << EoF_s
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
