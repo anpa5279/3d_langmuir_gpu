@@ -16,7 +16,7 @@ function test_CarbonateChemistry(grid, sinking, open_bottom)
     end
 
     # correct tracers and auxiliary fields have been setup, and order has not changed
-    required_tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4)
+    required_tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T)
 
     @test Oceananigans.Biogeochemistry.required_biogeochemical_tracers(model.biogeochemistry) == required_tracers
     @test all(tracer ∈ keys(model.tracers) for tracer in required_tracers)
@@ -27,7 +27,7 @@ function test_CarbonateChemistry(grid, sinking, open_bottom)
     @test all([all(Array(interior(values)) .== 0) for values in values(model.tracers)]) 
 
     # mass conservation
-    set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * 1.0e3, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
+    set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * 1.0e3, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0, T=25.0) 
 
     ΣN₀ = sum(Array(interior(model.tracers.BOH3))) + 
           sum(Array(interior(model.tracers.BOH4))) + 
