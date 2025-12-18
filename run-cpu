@@ -52,12 +52,7 @@ echo "Resolving project..."
 julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 ##echo "Developing Oceananigans..."
 ##julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/Oceananigans.jl-main")' 
-echo "Adding necessary packages..."
-julia --project=$project_dir -e 'using Pkg; Pkg.add("FFTW")'
-echo "Building MPI-related packages..."
-julia --project=$project_dir -e 'using Pkg; Pkg.build("MPI"); Pkg.build("MPIPreferences")'
-julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
-julia --project=$project_dir -e 'using Pkg; Pkg.precompile()'
+
 
 echo "Running simulation with mpiexec from: \$(pwd)"
 mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
