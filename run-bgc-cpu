@@ -1,9 +1,8 @@
 #!/bin/bash
 nodes=1
-gpus=1
-cpus=64
-ntasks=$((nodes*gpus))
-threads_per_task=$(( cpus / ntasks ))
+cpus=128
+ntasks=1
+threads_per_task=$(( nodes * cpus / ntasks ))
 jobn=cpu-baseline-cc-32
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
@@ -25,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 ###PBS -l job_priority=economy
 #PBS -l walltime=6:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
 export JULIA_NUM_THREADS=$cpus
