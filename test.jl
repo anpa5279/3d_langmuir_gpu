@@ -66,36 +66,14 @@ end
 @testset "Float32 CarbonateChemistry" begin
     grid = RectilinearGrid(architecture, Float32; size=(32, 32, 32), extent=(10, 10, 200))
     bgc = CarbonateChemistry(; grid)
-nateChemistry(adapt(to, cc.A1),
-                                adapt(to, cc.E1),
-                                adapt(to, cc.A7),
-                                adapt(to, cc.E7),
-                                adapt(to, cc.A8),
-                                adapt(to, cc.E8),
-                                adapt(to, cc.alpha3),
-                                adapt(to, cc.alpha4),
-                                adapt(to, cc.alpha5), 
-                                adapt(to, cc.sinking_velocities))
     ubgc = bgc.underlying_biogeochemistry
-    @test ubgc.initial_photosynthetic_slope isa Float32
-    @test ubgc.base_maximum_growth isa Float32
-    @test ubgc.nutrient_half_saturation isa Float32
-    @test ubgc.base_respiration_rate isa Float32
-    @test ubgc.phyto_base_mortality_rate isa Float32
-    @test ubgc.maximum_grazing_rate isa Float32
-    @test ubgc.grazing_half_saturation isa Float32
-    @test ubgc.assimulation_efficiency isa Float32
-    @test ubgc.base_excretion_rate isa Float32
-    @test ubgc.zoo_base_mortality_rate isa Float32
-    @test ubgc.remineralization_rate isa Float32
-
-    par = bgc.light_attenuation
-    @test par.water_red_attenuation isa Float32
-    @test par.water_blue_attenuation isa Float32
-    @test par.chlorophyll_red_attenuation isa Float32
-    @test par.chlorophyll_blue_attenuation isa Float32
-    @test par.chlorophyll_red_exponent isa Float32
-    @test par.chlorophyll_blue_exponent isa Float32
-    @test par.pigment_ratio isa Float32
-    @test par.phytoplankton_chlorophyll_ratio isa Float32
+    @test ubgc.A1 isa Float32
+    @test ubgc.E1 isa Float32
+    @test ubgc.A7 isa Float32
+    @test ubgc.E7 isa Float32
+    @test ubgc.A8 isa Float32
+    @test ubgc.E8 isa Float32
+    @test ubgc.alpha3 isa Float32
+    @test ubgc.alpha4 isa Float32
+    @test ubgc.alpha5 isa Float32
 end
