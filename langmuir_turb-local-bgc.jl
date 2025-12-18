@@ -1,13 +1,16 @@
 using Pkg
-Pkg.resolve()
 using Random
 using Oceananigans
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
+using Oceananigans.DistributedComputations
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 #using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/OceanBioME.jl-main/")
-using OceanBioME: CarbonateChemistry
+using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel
+using OceanBioME: ContinuousBiogeochemistry
+
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
 const Nz = 32        # number of points in the vertical direction
@@ -28,7 +31,7 @@ const La_t = 0.3  # Langmuir turbulence number
 
 # defining domain and grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-@show grid 
+@show grid  
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -59,19 +62,6 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-biogeochemistry = CarbonateChemistry(; grid)
-#  defining model
-model = NonhydrostaticModel(; grid, coriolis,
-                            #advection = WENO(order=9), 
-                            biogeochemistry = biogeochemistry,
-                            timestepper = :RungeKutta3,
-                            tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
-                            buoyancy = buoyancy,
-                            #closure = AnisotropicMinimumDissipation(), #
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
-                            )
-@show model
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
@@ -80,6 +70,38 @@ uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
+# BGC model
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives=true)
+
+#  defining model
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=9), 
+                            biogeochemistry = biogeochemistry,
+                            auxiliary_fields = (K1= CenterField(grid), 
+                                                K2= CenterField(grid), 
+                                                Kw= CenterField(grid), 
+                                                Kb= CenterField(grid), 
+                                                a1= CenterField(grid), 
+                                                a2= CenterField(grid), 
+                                                a6= CenterField(grid), 
+                                                a7= CenterField(grid), 
+                                                b1= CenterField(grid), 
+                                                b2= CenterField(grid), 
+                                                b3= CenterField(grid), 
+                                                b4= CenterField(grid), 
+                                                b5= CenterField(grid), 
+                                                b6= CenterField(grid), 
+                                                b7= CenterField(grid), 
+                                                H= CenterField(grid)),
+                            timestepper = :RungeKutta3,
+                            tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(), #
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
+                            )
+@show model
+# ICs
 perturb = 1e3
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
@@ -110,7 +132,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-
+simulation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
 
 output_interval =  0.1*seconds
 
@@ -125,12 +147,12 @@ T = model.tracers.T
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4, CO2, CO3, HCO3, OH),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/vel_tracer_fields.jld2",
+                                                    filename = "vel_tracer_fields.jld2",
                                                     overwrite_existing = true,
                                                     with_halos = false,
                                                     array_type = Array{Float64}
                                                     )
                                                       
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="localoutputs/model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="model_checkpoint")
 
 run!(simulation)#; pickup = true)

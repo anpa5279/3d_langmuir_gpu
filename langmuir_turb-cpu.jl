@@ -7,9 +7,9 @@ using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.status()
 include("cc_forcing.jl")
-const Nx = 128        # number of points in each of x direction
-const Ny = 128        # number of points in each of y direction
-const Nz = 128        # number of points in the vertical direction
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 32        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
