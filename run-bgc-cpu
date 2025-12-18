@@ -42,7 +42,7 @@ module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 
 module list
 
-julia --project=$project_dir $file_name
+mpiexec -n $ntasks julia --project=$project_dir $file_name
 EXEC
 
 
