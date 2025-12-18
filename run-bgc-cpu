@@ -3,7 +3,7 @@ nodes=1
 cpus=16
 ntasks=1
 threads_per_task=$(( nodes * cpus / ntasks ))
-jobn=cpu-baseline-cc-32
+jobn=cpu-baseline-cc-32-1
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb-bgc-cpu.jl
@@ -42,7 +42,7 @@ module list
 julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
 julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 
-mpiexec -n $ntasks julia --project=$project_dir $file_name
+julia --project=$project_dir $file_name
 EXEC
 
 
