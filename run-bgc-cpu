@@ -3,7 +3,7 @@ nodes=1
 cpus=16
 ntasks=1
 threads_per_task=$(( nodes * cpus / ntasks ))
-jobn=cpu-baseline-cc-32-1
+jobn=cpu-baseline-cc-32
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb-bgc-cpu.jl
@@ -13,6 +13,12 @@ mkdir $output_dir$jobn
 cp $file_name $output_dir$jobn/
 
 cd $output_dir$jobn/
+
+##julia --project=$project_dir -e 'import Pkg'
+##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
+##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
+julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -35,12 +41,6 @@ module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 
 module list
-
-##julia --project=$project_dir -e 'import Pkg'
-##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
-julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 
 julia --project=$project_dir $file_name
 EXEC
