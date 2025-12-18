@@ -1,10 +1,10 @@
 #!/bin/bash
 nodes=1
-gpus=2
+gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=baseline-cc-32-1
+jobn=baseline-cc-32
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb-bgc.jl
@@ -57,8 +57,8 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 #julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
 #julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
-#julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
-#julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
+julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
+julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 mpiexec -n $ntasks -ppn $gpus ./launch.sh julia --project=$project_dir $file_name
 EXEC

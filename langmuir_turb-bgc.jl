@@ -6,20 +6,15 @@ using CUDA
 MPI.Init() # Initialize MPI
 using Random
 using Oceananigans
-using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
-#using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
-using OceanBioME: CarbonateChemistry #, carbonate_thermo_kernel
-using OceanBioME: ContinuousBiogeochemistry
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-
-const Nx = 2        # number of points in each of x direction
-const Ny = 2        # number of points in each of y direction
-const Nz = 2        # number of points in the vertical direction
+using OceanBioME: CarbonateChemistry
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 32        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -46,7 +41,6 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 # defining domain and grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid  
-"""
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -77,47 +71,27 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-# ICs
-"""
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-ampv = 1.0e-3 # m s⁻¹
-ue(x, y, z) = ampv * r_z(z)
-uᵢ(x, y, z) = -ue(x, y, z) #+ uˢ(z)
-vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-
-# BGC model
-biogeochemistry = CarbonateChemistry(; grid, scale_negatives=true)
-
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 #  defining model
-model = NonhydrostaticModel(; grid, #coriolis,
-                            #advection = WENO(order=9), 
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
-                            auxiliary_fields = (K1= CenterField(grid), 
-                                                K2= CenterField(grid), 
-                                                Kw= CenterField(grid), 
-                                                Kb= CenterField(grid), 
-                                                a1= CenterField(grid), 
-                                                a2= CenterField(grid), 
-                                                a6= CenterField(grid), 
-                                                a7= CenterField(grid), 
-                                                b1= CenterField(grid), 
-                                                b2= CenterField(grid), 
-                                                b3= CenterField(grid), 
-                                                b4= CenterField(grid), 
-                                                b5= CenterField(grid), 
-                                                b6= CenterField(grid), 
-                                                b7= CenterField(grid), 
-                                                H= CenterField(grid)),
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
-                            #buoyancy = buoyancy,
-                            #closure = AnisotropicMinimumDissipation(), #
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            #boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(), #
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
                             )
 @show model
 # ICs
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+ampv = 1.0e-3 # m s⁻¹
+ue(x, y, z) = ampv * r_z(z)
+uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+vᵢ(x, y, z) = ue(x, y, z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+
 perturb = 1e3
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
@@ -148,33 +122,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-
-function carbonate_thermo_kernel(simluation)
-    arch = simluation.model.architecture
-    grid = simluation.model.grid
-    params = (
-        A1 = 4.70e7/1e6,
-        E1 = 23.2,
-        A7 = 4.58e10/1e6,
-        E8 = 20.8,
-        A8 = 3.05e10/1e6,
-        alpha3 = 5e10/1e6,
-        alpha4 = 6e9/1e6,
-        alpha5 = 1.40e-3*1e6
-        )
-
-    aux = simulation.model.auxiliary_fields
-
-    tracers = (
-        CO2=CO2, HCO3=HCO3, CO3=CO3, OH=OH, T=T
-        )
-
-    launch!(arch, grid, :xyz, carbonate_thermo_kernel!, grid, aux, tracers, params;
-            exclude_periphery=true)
-    return nothing
-end
-simulation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
-
+simulation.callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 output_interval =  0.1*seconds
 
 u, v, w = model.velocities

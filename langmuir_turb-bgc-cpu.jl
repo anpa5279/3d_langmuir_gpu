@@ -3,8 +3,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
-#using Oceananigans.Diagnostics: NaNChecker
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry
 const Nx = 32        # number of points in each of x direction
@@ -85,7 +84,6 @@ set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7
 
 simulation = Simulation(model, Δt=3e-7, stop_time=5.0)
 @show simulation
-
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
