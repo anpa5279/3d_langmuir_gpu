@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-cpus=128
+cpus=16
 ntasks=1
 threads_per_task=$(( nodes * cpus / ntasks ))
 jobn=cpu-baseline-cc-32
@@ -13,7 +13,6 @@ mkdir $output_dir$jobn
 cp $file_name $output_dir$jobn/
 
 cd $output_dir$jobn/
-module --force purge
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -25,6 +24,9 @@ cat > EXEC_STEP << EXEC
 #PBS -l job_priority=premium
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
+
+export FFTW_NUM_THREADS=1
+export OMP_NUM_THREADS=1
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
 export JULIA_NUM_THREADS=$threads_per_task
