@@ -38,9 +38,9 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166
 #PBS -N $jobn
-#PBS -q main
+#PBS -q develop
 #PBS -j oe
-#PBS -l job_priority=economy
+###PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
 
@@ -56,10 +56,6 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-##julia --project=$project_dir -e 'import Pkg'
-##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
-##julia --project=$project_dir -e 'using Pkg; Pkg.add("KernelAbstractions")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
