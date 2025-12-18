@@ -59,7 +59,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
 julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
-julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME"), Pkg.add("MPI")'
+julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 julia --project=$project_dir -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 julia --project=$project_dir -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 

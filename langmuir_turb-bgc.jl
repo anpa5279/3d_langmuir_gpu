@@ -1,8 +1,14 @@
 using Pkg
+using MPI
+using CUDA
+@show MPI.has_cuda()
+@show CUDA.has_cuda()
+MPI.Init() # Initialize MPI
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
+using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry
