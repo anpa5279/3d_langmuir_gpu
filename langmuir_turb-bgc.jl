@@ -71,7 +71,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-biogeochemistry = CarbonateChemistry(; grid)
+biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
@@ -122,7 +122,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-
+simulation.callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 output_interval =  0.1*seconds
 
 u, v, w = model.velocities
