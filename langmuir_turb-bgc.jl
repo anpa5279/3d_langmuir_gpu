@@ -6,13 +6,14 @@ using CUDA
 MPI.Init() # Initialize MPI
 using Random
 using Oceananigans
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 #using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
-using OceanBioME: CarbonateChemistry
+using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -72,11 +73,22 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
+# ICs
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+ampv = 1.0e-3 # m s⁻¹
+ue(x, y, z) = ampv * r_z(z)
+uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+vᵢ(x, y, z) = ue(x, y, z)
+Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+
+# BGC model
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
+aux_fields = carbonate_init_aux(grid)
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
+                            auxiliary_fields = aux_fields,
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
                             buoyancy = buoyancy,
@@ -86,13 +98,6 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-ampv = 1.0e-3 # m s⁻¹
-ue(x, y, z) = ampv * r_z(z)
-uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
-vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
-
 perturb = 1e3
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
@@ -123,6 +128,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
+simluation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
 
 output_interval =  0.1*seconds
 
