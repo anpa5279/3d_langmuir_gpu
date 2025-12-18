@@ -84,7 +84,8 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * a
 
 # BGC model
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
-aux_fields = carbonate_init_aux(grid)
+aux_fields = OceanBioME.carbonate_init_aux(grid)
+
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
