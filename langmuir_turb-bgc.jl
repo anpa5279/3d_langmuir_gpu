@@ -41,7 +41,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 # defining domain and grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid  
-"""
+
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -72,18 +72,18 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-                                """
+                                
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
 #  defining model
-model = NonhydrostaticModel(; grid, #coriolis,
-                            #advection = WENO(order=9), 
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
-                            #buoyancy = buoyancy,
-                            #closure = AnisotropicMinimumDissipation(), #
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            #boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
+                            buoyancy = buoyancy,
+                            closure = AnisotropicMinimumDissipation(), #
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
                             )
 @show model
 # ICs
@@ -95,7 +95,7 @@ vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 perturb = 1e3
-set!(model, BOH3 = 2.97e2/(1e6), BOH4 = 1.19e2/(1e6), CO2 = 7.57e0 * perturb/(1e6), CO3 = 3.15e2/(1e6), HCO3 = 1.67e3/(1e6), OH = 9.6e0/(1e6)) #, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+set!(model, BOH3 = 2.97e2/(1e6), BOH4 = 1.19e2/(1e6), CO2 = 7.57e0 * perturb/(1e6), CO3 = 3.15e2/(1e6), HCO3 = 1.67e3/(1e6), OH = 9.6e0/(1e6), w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) #, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
 @show "ICs set"
 
 simulation = Simulation(model, Δt=3e-7, stop_time=5.0)
