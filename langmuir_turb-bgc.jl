@@ -95,7 +95,7 @@ vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 perturb = 1e3
-set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) #, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
+set!(model, BOH3 = 2.97e2/(1e6), BOH4 = 1.19e2/(1e6), CO2 = 7.57e0 * perturb/(1e6), CO3 = 3.15e2/(1e6), HCO3 = 1.67e3/(1e6), OH = 9.6e0/(1e6)) #, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ)
 @show "ICs set"
 
 simulation = Simulation(model, Δt=3e-7, stop_time=5.0)
