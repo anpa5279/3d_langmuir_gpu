@@ -46,6 +46,7 @@ Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 # defining domain and grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid  
+"""
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -77,6 +78,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
 # ICs
+"""
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = ampv * r_z(z)
@@ -88,8 +90,8 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * a
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives=true)
 
 #  defining model
-model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=9), 
+model = NonhydrostaticModel(; grid, #coriolis,
+                            #advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
                             auxiliary_fields = (K1= CenterField(grid), 
                                                 K2= CenterField(grid), 
@@ -109,10 +111,10 @@ model = NonhydrostaticModel(; grid, coriolis,
                                                 H= CenterField(grid)),
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
-                            buoyancy = buoyancy,
-                            closure = AnisotropicMinimumDissipation(), #
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
+                            #buoyancy = buoyancy,
+                            #closure = AnisotropicMinimumDissipation(), #
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            #boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
                             )
 @show model
 # ICs

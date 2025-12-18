@@ -32,6 +32,7 @@ const La_t = 0.3  # Langmuir turbulence number
 # defining domain and grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid  
+"""
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -62,6 +63,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
+"""
 # ICs
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
@@ -74,8 +76,8 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * a
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives=true)
 
 #  defining model
-model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=9), 
+model = NonhydrostaticModel(; grid, #coriolis,
+                            #advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
                             auxiliary_fields = (K1= CenterField(grid), 
                                                 K2= CenterField(grid), 
@@ -95,15 +97,15 @@ model = NonhydrostaticModel(; grid, coriolis,
                                                 H= CenterField(grid)),
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
-                            buoyancy = buoyancy,
-                            closure = AnisotropicMinimumDissipation(), #
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
+                            #buoyancy = buoyancy,
+                            #closure = AnisotropicMinimumDissipation(), #
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            #boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
                             )
 @show model
 # ICs
 perturb = 1e3
-set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
+set!(model, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
 
 simulation = Simulation(model, Δt=3e-7, stop_time=5.0)
