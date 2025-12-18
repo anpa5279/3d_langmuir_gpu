@@ -148,6 +148,31 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
+
+function carbonate_thermo_kernel(simluation)
+    arch = simluation.model.architecture
+    grid = simluation.model.grid
+    params = (
+        A1 = 4.70e7/1e6,
+        E1 = 23.2,
+        A7 = 4.58e10/1e6,
+        E8 = 20.8,
+        A8 = 3.05e10/1e6,
+        alpha3 = 5e10/1e6,
+        alpha4 = 6e9/1e6,
+        alpha5 = 1.40e-3*1e6
+        )
+
+    aux = simulation.model.auxiliary_fields
+
+    tracers = (
+        CO2=CO2, HCO3=HCO3, CO3=CO3, OH=OH, T=T
+        )
+
+    launch!(arch, grid, :xyz, carbonate_thermo_kernel!, grid, aux, tracers, params;
+            exclude_periphery=true)
+    return nothing
+end
 simulation.callbacks[:cc_updates] = Callback(carbonate_thermo_kernel, IterationInterval(1), callsite=UpdateStateCallsite())
 
 output_interval =  0.1*seconds
