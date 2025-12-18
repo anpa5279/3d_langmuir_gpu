@@ -2,17 +2,17 @@ using OceanBioME, Test, CUDA, Oceananigans, JLD2, Oceananigans.Units, Documenter
 
 architecture = CUDA.has_cuda() ? GPU() : CPU()
 
-using OceanBioME: NutrientPhytoplanktonZooplanktonDetritus
+using OceanBioME: CarbonateChemistry
 using Oceananigans
 
 function test_CarbonateChemistry(grid, sinking, open_bottom)
     
     if sinking
         model = NonhydrostaticModel(;grid,
-                                     biogeochemistry = NutrientPhytoplanktonZooplanktonDetritus(;grid, open_bottom))
+                                     biogeochemistry = CarbonateChemistry(;grid, open_bottom))
     else
         model = NonhydrostaticModel(;grid,
-                                     biogeochemistry = NutrientPhytoplanktonZooplanktonDetritus(;grid, sinking_speeds = NamedTuple()))
+                                     biogeochemistry = CarbonateChemistry(;grid, sinking_speeds = NamedTuple()))
     end
 
     # correct tracers and auxiliary fields have been setup, and order has not changed
@@ -65,8 +65,17 @@ end
 
 @testset "Float32 CarbonateChemistry" begin
     grid = RectilinearGrid(architecture, Float32; size=(32, 32, 32), extent=(10, 10, 200))
-    bgc = NutrientPhytoplanktonZooplanktonDetritus(; grid)
-
+    bgc = CarbonateChemistry(; grid)
+nateChemistry(adapt(to, cc.A1),
+                                adapt(to, cc.E1),
+                                adapt(to, cc.A7),
+                                adapt(to, cc.E7),
+                                adapt(to, cc.A8),
+                                adapt(to, cc.E8),
+                                adapt(to, cc.alpha3),
+                                adapt(to, cc.alpha4),
+                                adapt(to, cc.alpha5), 
+                                adapt(to, cc.sinking_velocities))
     ubgc = bgc.underlying_biogeochemistry
     @test ubgc.initial_photosynthetic_slope isa Float32
     @test ubgc.base_maximum_growth isa Float32
