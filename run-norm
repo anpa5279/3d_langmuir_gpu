@@ -4,7 +4,7 @@ gpus=1
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=baseline-cc-32-1
+jobn=baseline-cc-32
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb.jl
@@ -38,9 +38,9 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166
 #PBS -N $jobn
-#PBS -q develop
+#PBS -q main
 #PBS -j oe
-###PBS -l job_priority=economy
+#PBS -l job_priority=economy
 #PBS -l walltime=6:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=cc80
 
