@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 #using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/OceanBioME.jl-main/")
-using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel
+using OceanBioME: CarbonateChemistry #, carbonate_thermo_kernel
 using OceanBioME: ContinuousBiogeochemistry
 using Oceananigans.Utils: launch!
 
