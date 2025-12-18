@@ -1,10 +1,10 @@
 #!/bin/bash
 nodes=1
-gpus=1
+gpus=2
 cpus=64
 ntasks=$((nodes*gpus))
 threads_per_task=$(( cpus / ntasks ))
-jobn=baseline-cc-32
+jobn=baseline-cc-32-2gpus
 output_dir=outputs/agu-poster/
 project_dir=/glade/work/apauls/.julia/environments/v1.10/
 file_name=langmuir_turb-bgc.jl
