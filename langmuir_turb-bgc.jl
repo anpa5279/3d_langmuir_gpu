@@ -82,7 +82,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoun
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = ampv * r_z(z)
-uᵢ(x, y, z) = -ue(x, y, z) + uˢ(z)
+uᵢ(x, y, z) = -ue(x, y, z) #+ uˢ(z)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
