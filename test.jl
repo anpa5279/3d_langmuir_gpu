@@ -27,7 +27,7 @@ function test_CarbonateChemistry(grid, sinking, open_bottom)
     @test all([all(Array(interior(values)) .== 0) for values in values(model.tracers)]) 
 
     # mass conservation
-    set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
+    set!(model, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * 1.0e3, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 
     ΣN₀ = sum(Array(interior(model.tracers.BOH3))) + 
           sum(Array(interior(model.tracers.BOH4))) + 
