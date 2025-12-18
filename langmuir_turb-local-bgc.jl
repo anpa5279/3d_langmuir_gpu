@@ -7,9 +7,9 @@ using Printf
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry
-const Nx = 2        # number of points in each of x direction
-const Ny = 2        # number of points in each of y direction
-const Nz = 2        # number of points in the vertical direction
+const Nx = 32        # number of points in each of x direction
+const Ny = 32        # number of points in each of y direction
+const Nz = 32        # number of points in the vertical direction
 const Lx = 320    # (m) domain horizontal extents
 const Ly = 320    # (m) domain horizontal extents
 const Lz = 96    # (m) domain depth 
@@ -129,6 +129,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4
                                                     array_type = Array{Float64}
                                                     )
                                                       
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5000), prefix="localoutputs/model_checkpoint")
 
 run!(simulation)#; pickup = true)
