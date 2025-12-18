@@ -15,6 +15,7 @@ using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsk
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
 using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel
 using OceanBioME: ContinuousBiogeochemistry
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
