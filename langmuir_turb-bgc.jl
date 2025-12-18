@@ -84,7 +84,7 @@ vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * ampv * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 
 # BGC model
-biogeochemistry = ContinuousBiogeochemistry(CarbonateChemistry(); scale_negatives=true)
+biogeochemistry = ContinuousBiogeochemistry(CarbonateChemistry(; grid); scale_negatives=true)
 
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
