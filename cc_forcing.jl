@@ -30,10 +30,17 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
 @inline beta7(alpha7, K2, Kb) = alpha7* K2/ Kb# kg/umol/s
 
 #QSS approximation
-@inline H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
+@inline function H_qss(alpha1, beta1, alpha3, beta3, alpha5, beta5, c1, c2, c3, c5) 
+    H = (alpha1*c1 + beta3*c2 + alpha5)/(beta1*c2 + alpha3*c3 + beta5*c5)
+    small = 1.0e-20
+    if (H < small)
+        H = small
+    end
+    return H 
+end 
 #updating tracers 
 @inline function CO2_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
+
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -57,13 +64,15 @@ const R = 0.00831446261815324 # kJ⋅K⁻1⋅mol⁻1
     b5 = beta5(a5, Kw)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(CO2) error("CO2 concentration is NaN") end
+    if isnan(CO2) 
+        error("CO2 concentration is NaN") 
+    end
     dcdt = - (a1 + a2 * OH) * CO2 + (b1 * H + b2) * HCO3
-    return return tracer_positive(CO2, dcdt, dt) # converting to micromol/kg rate
+    return tracer_positive(CO2, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function HCO3_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
+
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -92,13 +101,15 @@ end
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(HCO3) error("HCO3 concentration is NaN") end
+    if isnan(HCO3) 
+        @show H, OH, CO2, HCO3, CO3, BOH3, BOH4
+        error("HCO3 concentration is NaN") 
+    end
     dcdt = (a1 + a2 * OH) * CO2 - (b1 * H + b2 + b3 + a4 * OH + b7 * BOH4) * HCO3 + (a3 * H + b4 + a7 * BOH3) * CO3
-    return return tracer_positive(HCO3, dcdt, dt) # converting to micromol/kg rate
+    return tracer_positive(HCO3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function CO3_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -125,13 +136,15 @@ end
     b7 = beta7(a7, K2, Kb)
 
     H = H_qss(a1, b1, a3, b3, a5, b5, CO2, HCO3, CO3, OH)
-    if isnan(CO3) error("CO3 concentration is NaN") end
+    if isnan(CO3) 
+        error("CO3 concentration is NaN") 
+    end
     dcdt = (b3 + a4 * OH + b7 * BOH4) * HCO3 - (a3 * H + b4 + a7 * BOH3) * CO3
     return tracer_positive(CO3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function OH_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
+
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -166,7 +179,7 @@ end
 end
 
 @inline function BOH3_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
+
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
     @inbounds HCO3 = model_fields.HCO3[i, j, k]
@@ -184,11 +197,12 @@ end
     a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
+    if isnan(BOH3) error("BOH3 concentration is NaN") end
     return tracer_positive(BOH3, dcdt, dt) # converting to micromol/kg rate
 end
 
 @inline function BOH4_dt_func(i, j, k, grid, clock, model_fields) 
-    dt = clock.last_stage_Δt
+
 
     @inbounds OH = model_fields.OH[i, j, k]
     @inbounds CO2 = model_fields.CO2[i, j, k]
@@ -206,17 +220,20 @@ end
     b6 = beta6(a6, Kw, Kb)
     a7 = alpha7(3.05e10 / 1e6, 20.8, T)
     b7 = beta7(a7, K2, Kb)
-    if isnan(BOH3) error("BOH3 concentration is NaN") end
     if isnan(BOH4) error("BOH4 concentration is NaN") end
     dcdt = b7 * BOH4 * HCO3 - a7 * BOH3 * CO3 - (a6 * OH * BOH3 - b6 * BOH4)
     return tracer_positive(BOH4, -dcdt, dt) # converting to micromol/kg rate
 end
 
 function tracer_positive(c, dcdt, dt)
+    #@show dcdt
     c_next = c + dcdt*dt
     small = 1.0e-20
     if c_next < small
-        return (small - c) / dt + dcdt 
+        dcdt_new = (small - c_next) / dt + dcdt 
+        #@show dcdt_new
+        #@show dt
+        return dcdt_new
     else
         return dcdt
     end

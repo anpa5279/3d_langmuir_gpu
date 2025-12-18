@@ -1,11 +1,12 @@
 using Pkg
+Pkg.resolve()
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Printf
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
-
-include("cc_forcing.jl")
+Pkg.develop(path="/Users/annapauls/Documents/Github repositories/personal_oceananigans/OceanBioME.jl-main/")
+using OceanBioME: CarbonateChemistry
 const Nx = 2        # number of points in each of x direction
 const Ny = 2        # number of points in each of y direction
 const Nz = 2        # number of points in the vertical direction
@@ -57,29 +58,17 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
-# chemical reactions
-co2_dt = Forcing(CO2_dt_func, discrete_form=true)
-
-hco3_dt = Forcing(HCO3_dt_func, discrete_form=true)
-
-co3_dt = Forcing(CO3_dt_func, discrete_form=true)
-
-boh3_dt = Forcing(BOH3_dt_func, discrete_form=true)
-
-boh4_dt = Forcing(BOH4_dt_func, discrete_form=true)
-
-oh_dt = Forcing(OH_dt_func, discrete_form=true)
-
+biogeochemistry = CarbonateChemistry(; grid)
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             #advection = WENO(order=9), 
+                            biogeochemistry = biogeochemistry,
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
                             buoyancy = buoyancy,
                             #closure = AnisotropicMinimumDissipation(), #
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs), 
-                            forcing = (CO2=co2_dt, CO3=co3_dt, HCO3=hco3_dt, BOH3=boh3_dt, BOH4=boh4_dt, OH=oh_dt)
+                            boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs) 
                             )
 @show model
 # ICs
@@ -94,7 +83,7 @@ perturb = 1e3
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7.57e0 * perturb, CO3 = 3.15e2, HCO3 = 1.67e3, OH = 9.6e0) 
 @show "ICs set"
 
-simulation = Simulation(model, Δt=1e-6, stop_time=5.0)
+simulation = Simulation(model, Δt=3e-7, stop_time=5.0)
 @show simulation
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -134,7 +123,7 @@ T = model.tracers.T
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, BOH3, BOH4, CO2, CO3, HCO3, OH),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "vel_tracer_fields.jld2",
+                                                    filename = "localoutputs/vel_tracer_fields.jld2",
                                                     overwrite_existing = true,
                                                     with_halos = false,
                                                     array_type = Array{Float64}

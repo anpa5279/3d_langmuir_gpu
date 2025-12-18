@@ -14,6 +14,7 @@ langmuir_turbulence_temp_buoy.mp4
 test.o*
 data/
 *.png
+*.jld2
 localoutputs/
 localoutputs/*
 .DS_Store
