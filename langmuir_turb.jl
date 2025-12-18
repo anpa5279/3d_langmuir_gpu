@@ -109,7 +109,7 @@ set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ, BOH3 = 2.97e2, BOH4 = 1.19e2, CO2 = 7
 
 simulation = Simulation(model, Δt=1e-6, stop_time=5.0)
 @show simulation
-simulation.callbacks[:NaNChecker] = Callback(NaNChecker, IterationInterval(1))
+simulation.callbacks[:nan_checker] = Callback(NaNChecker, IterationInterval(1))
 function progress(simulation)
     u, v, w = simulation.model.velocities
 

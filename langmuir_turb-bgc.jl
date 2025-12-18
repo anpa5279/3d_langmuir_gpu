@@ -123,7 +123,7 @@ function progress(simulation)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(5000))
-simulation.callbacks[:NaNChecker] = Callback(NaNChecker, IterationInterval(1))
+simulation.callbacks[:nan_checker] = Callback(NaNChecker, IterationInterval(1))
 output_interval =  0.1*seconds
 
 u, v, w = model.velocities
