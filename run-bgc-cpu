@@ -16,21 +16,6 @@ cp $file_name $output_dir$jobn/
 cd $output_dir$jobn/
 module --force purge
 cat > launch.sh << EoF_s
-#! /bin/bash
-
-export MPICH_GPU_SUPPORT_ENABLED=1
-export LOCAL_RANK=\${PMI_LOCAL_RANK}
-export GLOBAL_RANK=\${PMI_RANK}
-export CUDA_VISIBLE_DEVICES=\$(expr \${LOCAL_RANK} % $gpus)
-export JULIA_MPI_HAS_CUDA=true
-export JULIA_CUDA_MEMORY_POOL=none
-
-echo "Global Rank \${GLOBAL_RANK} / Local Rank \${LOCAL_RANK} / CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES} / \$(hostname)"
-
-exec \$*
-EoF_s
-
-chmod +x launch.sh
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -50,10 +35,15 @@ module load ncarenv nvhpc cuda cray-mpich
 
 module list
 
-export MPICH_GPU_SUPPORT_ENABLED=1
-export JULIA_MPI_HAS_CUDA=true
-export PALS_TRANSFER=false
-export JULIA_CUDA_MEMORY_POOL=none
+# GPU-specific variables are not needed for CPU runs
+export JULIA_CUDA_USE_BINARYBUILDER=false
+export JULIA_CUDA_VISIBLE_DEVICES=""
+export JULIA_CUDA_IGNORE_WARNINGS=true
+
+unset MPICH_GPU_SUPPORT_ENABLED
+unset MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED
+unset JULIA_MPI_HAS_CUDA
+unset JULIA_CUDA_MEMORY_POOL
 
 ##julia --project=$project_dir -e 'import Pkg'
 ##julia --project=$project_dir -e 'using Pkg; Pkg.instantiate()'
