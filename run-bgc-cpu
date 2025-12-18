@@ -20,10 +20,10 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166
 #PBS -N $jobn
-#PBS -q develop
+#PBS -q main
 #PBS -j oe
-###PBS -l job_priority=economy
-#PBS -l walltime=6:00:00
+#PBS -l job_priority=premium
+#PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
@@ -50,7 +50,7 @@ unset JULIA_CUDA_MEMORY_POOL
 julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
 julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 
-mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$output_dir$jobn/langmuir_turb-cpu.jl
+mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$project_dir $file_name
 EXEC
 
 
