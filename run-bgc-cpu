@@ -50,7 +50,7 @@ unset JULIA_CUDA_MEMORY_POOL
 julia --project=$project_dir -e 'using Pkg; Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")'
 julia --project=$project_dir -e 'using Pkg; Pkg.add("OceanBioME")'
 
-mpiexec -n $ntasks julia --project=$project_dir $WORK/3d_langmuir_gpu/$project_dir $file_name
+mpiexec -n $ntasks julia --project=$project_dir $file_name
 EXEC
 
 
