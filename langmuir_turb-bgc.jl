@@ -13,7 +13,8 @@ using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 #using Oceananigans.Diagnostics: NaNChecker
 Pkg.develop(path="/glade/work/apauls/personal-oceananigans/OceanBioME.jl-main/")
-using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel, carbonate_init_aux
+using OceanBioME: CarbonateChemistry, carbonate_thermo_kernel
+import OceanBioME: carbonate_init_aux
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
