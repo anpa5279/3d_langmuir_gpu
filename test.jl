@@ -34,7 +34,7 @@ function test_CarbonateChemistry(grid, sinking, open_bottom)
           sum(Array(interior(model.tracers.CO2))) + 
           sum(Array(interior(model.tracers.CO3))) + 
           sum(Array(interior(model.tracers.HCO3))) + 
-          sum(Array(interior(model.tracers.OH))) +
+          sum(Array(interior(model.tracers.OH)))
 
     for n in 1:1000
         time_step!(model, 1.0e-7)
@@ -45,7 +45,7 @@ function test_CarbonateChemistry(grid, sinking, open_bottom)
           sum(Array(interior(model.tracers.CO2))) + 
           sum(Array(interior(model.tracers.CO3))) + 
           sum(Array(interior(model.tracers.HCO3))) + 
-          sum(Array(interior(model.tracers.OH))) +
+          sum(Array(interior(model.tracers.OH)))
 
     @test ΣN₀ ≈ ΣN₁ # guess this should actually fail with a high enough accuracy when sinking is on with an open bottom
 
