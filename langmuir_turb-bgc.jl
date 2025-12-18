@@ -84,28 +84,27 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * a
 
 # BGC model
 biogeochemistry = CarbonateChemistry(; grid, scale_negatives = true)
-K1 = CenterField(grid)
-K2 = CenterField(grid)
-Kw = CenterField(grid)
-Kb = CenterField(grid)
-a1 = CenterField(grid)
-a2 = CenterField(grid)
-a6 = CenterField(grid)
-a7 = CenterField(grid)
-b1 = CenterField(grid)
-b2 = CenterField(grid)
-b3 = CenterField(grid)
-b4 = CenterField(grid)
-b5 = CenterField(grid)
-b6 = CenterField(grid)
-b7 = CenterField(grid)
-H = CenterField(grid)
 
 #  defining model
 model = NonhydrostaticModel(; grid, coriolis,
                             advection = WENO(order=9), 
                             biogeochemistry = biogeochemistry,
-                            auxiliary_fields = (K1, K2, Kw, Kb, a1, a2, a6, a7, b1, b2, b3, b4, b5, b6, b7, H),
+                            auxiliary_fields = (K1= CenterField(grid), 
+                                                K2= CenterField(grid), 
+                                                Kw= CenterField(grid), 
+                                                Kb= CenterField(grid), 
+                                                a1= CenterField(grid), 
+                                                a2= CenterField(grid), 
+                                                a6= CenterField(grid), 
+                                                a7= CenterField(grid), 
+                                                b1= CenterField(grid), 
+                                                b2= CenterField(grid), 
+                                                b3= CenterField(grid), 
+                                                b4= CenterField(grid), 
+                                                b5= CenterField(grid), 
+                                                b6= CenterField(grid), 
+                                                b7= CenterField(grid), 
+                                                H= CenterField(grid)),
                             timestepper = :RungeKutta3,
                             tracers = (:CO2, :HCO3, :CO3, :OH, :BOH3, :BOH4, :T),
                             buoyancy = buoyancy,
