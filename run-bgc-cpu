@@ -26,10 +26,11 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=6:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$ntasks
 
-export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_PRECOMPILE_TASKS=$threads_per_task
+export JULIA_NUM_THREADS=$threads_per_task
 
-module load ncarenv nvhpc cuda cray-mpich
+module --force purge
+module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 
 module list
 
