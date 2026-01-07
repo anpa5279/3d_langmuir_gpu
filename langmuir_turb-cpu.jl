@@ -49,7 +49,7 @@ uˢ(z) = us * exp(z / vertical_scale)
 ∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
 # BCs
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ )),
                                 bottom = GradientBoundaryCondition(dTdz))
 
 u_f = La_t^2 * us
