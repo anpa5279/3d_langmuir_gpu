@@ -5,11 +5,11 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.TurbulenceClosures: Smagorinsky
 ## simulation parameters
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
@@ -27,19 +27,15 @@ S₀ = 35.0    # ppt, salinity
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
+g = Oceananigans.defaults.gravitational_acceleration
 ## referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
 include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
-## BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 ## defining forcing (coriolis, buoyancy, etc.)
@@ -52,8 +48,7 @@ model = NonhydrostaticModel(; grid, coriolis, buoyancy,
                             tracers = (:T),
                             timestepper = :RungeKutta3,
                             closure = Smagorinsky(), 
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
-                            boundary_conditions = (u = u_bcs, T=T_bcs,),)#w = w_NBP,
+                            boundary_conditions = (u = u_bcs, w = w_bcs, T=T_bcs,),)#w = w_NBP,
 @show model
 ## ICs
 r(x, y, z) = randn(Xoshiro()) * exp(z/4)
@@ -61,8 +56,9 @@ Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_
 uᵢ(x, y, z) = u_f * r(x, y, z)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ)
-day = 24hours
+
 simulation = Simulation(model, Δt=30, stop_time = 3hours) 
+@show simulation
 ## forcing functions
 ## progress function
 function progress(simulation)
@@ -84,17 +80,19 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30s
 function save_IC!(file, model)
     file["IC/friction_velocity"] = u_f
     file["IC/stokes_velocity"] = stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1]
-    file["IC/wind_speed"] = u₁₀
     return nothing
 end
 output_interval = 0.25hours
+path = "localoutputs"
 u, v, w = model.velocities
 T = model.tracers.T
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
+                                                    dir = path, 
+                                                    array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/periodic_fields.jld2", #$(rank)
+                                                    filename = "periodic_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -103,8 +101,10 @@ V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
+                                                    dir = path, 
+                                                    array_type = Array{Float64},
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/periodic_averages.jld2",
+                                                    filename = "periodic_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)

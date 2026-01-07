@@ -6,7 +6,7 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils: launch!
@@ -111,21 +111,25 @@ output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
 CaCO3 = model.tracers.CaCO3
-b = model.tracers.T * g_Earth * β
+b = model.tracers.T * g * β
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, b),
+                                                    dir = path, 
+                                                    array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
+                                                    filename = "T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
-B = T * g_Earth * β
+B = T * g * β
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, B),
+                                                    dir = path, 
+                                                    array_type = Array{Float64},
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/T-NBP_averages.jld2",
+                                                    filename = "T-NBP_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)

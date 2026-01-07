@@ -4,7 +4,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth 
+ 
 
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
@@ -85,10 +85,10 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-b = T * g_Earth * β
+b = T * g * β
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
+                                                    filename = "T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -99,6 +99,6 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, B),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/T-NBP_averages.jld2",
+                                                    filename = "T-NBP_averages.jld2",
                                                     overwrite_existing = true)
 run!(simulation)#; pickup = true)

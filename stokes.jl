@@ -1,7 +1,7 @@
 function stokes_velocity(z, u₁₀)
     #u = Array{Float64}(undef, length(z))
     α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
+    fₚ = 2π * 0.13 * g / u₁₀ # rad/s (0.22 1/s)
     a = 0.1
     b = 5000.0
     nf = 3^9
@@ -10,7 +10,7 @@ function stokes_velocity(z, u₁₀)
     σ = a + 0.5 * df
     u_temp = 0.0
     for k in 1:nf
-        u_temp = u_temp + (2.0 * α * g_Earth / (fₚ * σ) * exp(2.0 * σ^2 * z / g_Earth - (fₚ / σ)^4))
+        u_temp = u_temp + (2.0 * α * g / (fₚ * σ) * exp(2.0 * σ^2 * z / g - (fₚ / σ)^4))
         σ = σ + df
     end 
     #end
@@ -19,7 +19,7 @@ end
 function dstokes_dz(z, u₁₀)
     #dudz = Array{Float64}(undef, length(z))
     α = 0.00615
-    fₚ = 2π * 0.13 * g_Earth / u₁₀ # rad/s (0.22 1/s)
+    fₚ = 2π * 0.13 * g / u₁₀ # rad/s (0.22 1/s)
     a = 0.1
     b = 5000.0
     nf = 3^9
@@ -28,7 +28,7 @@ function dstokes_dz(z, u₁₀)
     σ = a + 0.5 * df
     du_temp = 0.0
     for k in 1:nf
-        du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z / g_Earth - (fₚ / σ)^4))
+        du_temp = du_temp + (4.0 * α * σ/ (fₚ) * exp(2.0 * σ^2 * z / g - (fₚ / σ)^4))
         σ = σ + df
     end 
     return df * du_temp

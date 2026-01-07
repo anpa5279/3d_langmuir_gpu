@@ -4,7 +4,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 import Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Grids: topology
 using CairoMakie
@@ -67,7 +67,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
-    field_file = "localoutputs/$(name)_fields.jld2"
+    field_file = "$(name)_fields.jld2"
     output_interval = 0.05hours
     u, w = model.velocities
     T = model.tracers.T
@@ -78,7 +78,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                                         filename = field_file, #$(rank)
                                                         overwrite_existing = true,
                                                         init = save_IC!)
-    avg_file = "localoutputs/$(name)_averages.jld2"
+    avg_file = "$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
     U = Average(u, dims=(1, 2))
     T = Average(T, dims=(1, 2))
@@ -130,7 +130,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         Colorbar(fig[2, 6], nPpl, label = "Pa")
 
         resize_to_layout!(fig)
-        record(fig, "localoutputs/$name.mp4", 1:length(w_post.times), framerate = 16) do i;
+        record(fig, "$name.mp4", 1:length(w_post.times), framerate = 16) do i;
             n[] = i
         end
     end
@@ -177,7 +177,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         file["IC/wind_speed"] = u₁₀
         return nothing
     end
-    field_file = "localoutputs/$(name)_fields.jld2"
+    field_file = "$(name)_fields.jld2"
     output_interval = 0.25hours
     u, v, w = model.velocities
     T = model.tracers.T
@@ -188,7 +188,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
                                                         filename = field_file,
                                                         overwrite_existing = true,
                                                         init = save_IC!)
-    avg_file = "localoutputs/$(name)_averages.jld2"
+    avg_file = "$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
     U = Average(u, dims=(1, 2))
     V = Average(v, dims=(1, 2))
@@ -248,7 +248,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
         Colorbar(fig[2, 6], nPpl, label = "Pa")
 
         resize_to_layout!(fig)
-        record(fig, "localoutputs/$name.mp4", 1:length(w_post.times), framerate = 16) do i;
+        record(fig, "$name.mp4", 1:length(w_post.times), framerate = 16) do i;
             n[] = i
         end
     end

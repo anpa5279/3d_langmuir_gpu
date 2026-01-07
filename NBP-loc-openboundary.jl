@@ -6,7 +6,7 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 Nx = 32        # number of points in each of x direction
@@ -123,7 +123,7 @@ P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
+                                                    filename = "T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -133,7 +133,7 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/T-NBP_averages.jld2",
+                                                    filename = "T-NBP_averages.jld2",
                                                     overwrite_existing = true)
 # running the simulation
 run!(simulation)#; pickup = true)

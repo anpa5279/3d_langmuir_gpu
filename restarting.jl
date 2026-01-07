@@ -7,7 +7,7 @@ using Printf
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 using Oceananigans.Fields: interior, set!
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction

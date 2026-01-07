@@ -5,7 +5,6 @@ using Random
 Pkg.develop(path="/Users/annapauls/.julia/dev/Oceananigans.jl-main") #include("dense_scalar.jl")
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth, TracerConcentrationBuoyancy
 #include("dense_scalar.jl")
 const Nx = 32        # number of points in each of x direction
 const Ny = 32        # number of points in each of y direction
@@ -26,6 +25,7 @@ const S₀ = 35.0    # ppt, salinity
 const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
+g = Oceananigans.defaults.gravitational_acceleration
 #referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
@@ -91,7 +91,7 @@ T = model.tracers.T
 CaCO3 = model.tracers.CaCO3
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/T-NBP_fields.jld2", #$(rank)
+                                                    filename = "T-NBP_fields.jld2", #$(rank)
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
@@ -101,6 +101,6 @@ T = Average(T, dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/T-NBP_averages.jld2",
+                                                    filename = "T-NBP_averages.jld2",
                                                     overwrite_existing = true)
 run!(simulation)#; pickup = true)

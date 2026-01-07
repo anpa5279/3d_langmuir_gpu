@@ -6,7 +6,7 @@ using Printf
 using JLD2
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 mutable struct Params
     Nx::Int         # number of points in each of x direction
     Ny::Int         # number of points in each of y direction
@@ -45,11 +45,9 @@ function make_field_face(data, times)
     return field
 end
 
-function video()
+function video(dir = "localoutputs/", field_file, avg_file)
     Nranks = 4
-    fld_file="outputs/langmuir_turbulence_fields_0.jld2"
-    fld_file="localoutputs/NBP_fields.jld2"
-    fld_file="localoutputs/NBP_averages.jld2"
+    fld_file=dir*field_file
     f = jldopen(fld_file)
 
     #time and IC data 
@@ -88,8 +86,8 @@ function video()
     for i in 0:Nranks-1
         println("Loading rank $i")
 
-        fld_file="outputs/langmuir_turbulence_fields_$(i).jld2"
-        averages_file="outputs/langmuir_turbulence_averages_$(i).jld2"
+        fld_file=dir*field_file*"_$(i).jld2"
+        averages_file=dir*avg_file*"_$(i).jld2"
 
         f = jldopen(fld_file)
         T_temp = FieldTimeSeries(averages_file, "T_avg")
@@ -181,7 +179,7 @@ function video()
     V = FieldTimeSeries{Center, Center, Center}(grid, times)
     wu = FieldTimeSeries{Center, Center, Face}(grid, times)
     wv = FieldTimeSeries{Center, Center, Face}(grid, times)
-    B .= g_Earth * p.β * (T_data .- p.T0)
+    B .= g * p.β * (T_data .- p.T0)
     T_data = nothing
     GC.gc()
     U .= U_data

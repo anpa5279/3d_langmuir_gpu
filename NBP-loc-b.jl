@@ -5,7 +5,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BuoyancyFormulations: g_Earth
+
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
 Nz = 128        # number of points in the vertical direction
@@ -51,7 +51,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
 @show model
 # ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 * g_Earth * β : T0 * g_Earth * β + dTdz * g_Earth * β * (z + initial_mixed_layer_depth) #bᵢ(x, y, z) = (-T0)*g_Earth*β/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g_Earth*β
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 * g * β : T0 * g * β + dTdz * g * β * (z + initial_mixed_layer_depth) #bᵢ(x, y, z) = (-T0)*g*β/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g*β
 uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z)
 vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -83,20 +83,20 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 b = model.tracers.b
-T = b / (g_Earth * β)
+T = b / (g * β)
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, T),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "localoutputs/b-NBP_fields.jld2", 
+                                                    filename = "b-NBP_fields.jld2", 
                                                     overwrite_existing = true,
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 B = Average(b, dims=(1, 2))
-T = Average(b / (g_Earth * β), dims=(1, 2))
+T = Average(b / (g * β), dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, B, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
-                                                    filename = "localoutputs/b-NBP_averages.jld2",
+                                                    filename = "b-NBP_averages.jld2",
                                                     overwrite_existing = true)
 run!(simulation)
