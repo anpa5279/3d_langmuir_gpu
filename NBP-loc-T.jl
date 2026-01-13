@@ -4,7 +4,6 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
- 
 
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
@@ -26,9 +25,11 @@ La_t = 0.3  # Langmuir turbulence number
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
 include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = GradientBoundaryCondition(0.0), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 #BCs
@@ -45,7 +46,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(), 
+                            #closure = Smagorinsky(), 
                             stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, T=T_bcs))#, 
                             #auxiliary_fields = (b = buoy,))

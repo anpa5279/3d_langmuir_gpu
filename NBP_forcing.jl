@@ -20,6 +20,7 @@ end
 ##### buoyancy perturbation
 #####
 @inline function buoyancy_perturbation(i, j, k, grid, C, molar_masses, densities, reference_density, thermal_expansion)
+    g = Oceananigans.defaults.gravitational_acceleration
     c_tracers = Base.structdiff(C, (T = nothing,))
     ρ = ρ_total(i, j, k, c_tracers, molar_masses, densities, reference_density)
     gravitational_acceleration = g * (ρ / reference_density - 1.0)#because buoyancy is incorporated into the model. not double dipping

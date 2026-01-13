@@ -5,8 +5,8 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
-import Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
+using Oceananigans.Models: BoundaryAdjacentMean
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 using Oceananigans.TurbulenceClosures: Smagorinsky
@@ -31,7 +31,6 @@ La_t = 0.3  # Langmuir turbulence number
 const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
 const molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
 
-g = Oceananigans.defaults.gravitational_acceleration
 ## referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
@@ -39,7 +38,7 @@ include("stokes.jl")
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))
+w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(-1.0; scheme = BoundaryAdjacentMean(grid, :bottom)))#OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 @inline function CaCO3_t(x, y, t) 
@@ -76,13 +75,13 @@ uᵢ(x, y, z) = u_f * r(x, y, z)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
 
 σ = 10.0 # m
-c0 = 20000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
+c0 = 80000/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
 
 # defining simulation
-simulation = Simulation(model, Δt=30, stop_time = 12hours) 
+simulation = Simulation(model, Δt=30, stop_time = 1.5*24hours) 
 @show simulation
 ## progress function
 function progress(simulation)
@@ -107,12 +106,13 @@ function save_IC!(file, model)
     return nothing
 end
 output_interval = 0.25hours
-path = "localoutputs"
+path = "localoutputs/without negative 1/open boundary -1 boundary adjacent mean"
 u, v, w = model.velocities
 T = model.tracers.T
 CaCO3 = model.tracers.CaCO3
-b = model.tracers.T * g * β
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, b),
+P_static = model.pressures.pHY′
+P_dynamic = model.pressures.pNHS
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
                                                     dir = path,  with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
@@ -123,9 +123,8 @@ W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 T = Average(T, dims=(1, 2))
-B = model.tracers.T * g * β
                                                       
-simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T, B),
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     dir = path,  with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
