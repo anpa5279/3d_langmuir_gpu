@@ -44,21 +44,19 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 # stokes drift
 g = buoyancy.gravitational_acceleration
-wavelength = 60  # m
-wavenumber = 2π / wavelength # m⁻¹
-frequency = sqrt(g * wavenumber) # s⁻¹
-const vertical_scale = wavelength / 4π
 include("stokes.jl")
-const us = stokes_velocity(-Lz/(2*Nz), u₁₀)
-amplitude = (us/(wavenumber*frequency))^0.5
-@show amplitude
-u_s(z) = us * exp(z / vertical_scale)
-∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = GradientBoundaryCondition(0.0), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
                                 bottom = GradientBoundaryCondition(dTdz))
-u_f = La_t^2 * us
+us = stokes_velocity.(model.grid.z.cᵃᵃᶜ[1:Nz])
+u_f = La_t^2 * us[1]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -67,12 +65,12 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoun
                                 bottom = GradientBoundaryCondition(0.0))
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(order=9),
+                            #advection = WENO(order=9),
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,
                             closure = Smagorinsky(coefficient=0.1),#, Pr = 3.0), #AnisotropicMinimumDissipation(), #
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs)
                             )
 @show model
@@ -80,7 +78,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = ampv * r_z(z)
-uᵢ(x, y, z) = -ue(x, y, z) + u_s(z)
+uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-3 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
@@ -113,7 +111,7 @@ conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, max_Δt=30.
 function save_IC!(file, model)
     if (rank == 0 || Nranks == 1)# && iteration(model.simulation) == 1
         file["IC/friction_velocity"] = u_f
-        file["IC/stokes_velocity"] = u_s.(model.grid.z.cᵃᵃᶜ)
+        file["IC/stokes_velocity"] = us
         file["IC/wind_speed"] = u₁₀
     end
     return nothing
