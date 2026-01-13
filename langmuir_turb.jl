@@ -53,10 +53,10 @@ dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 
 # BCs
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),
                                 bottom = GradientBoundaryCondition(dTdz))
-us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz])
-u_f = La_t^2 * us[1]
+us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+u_f = La_t^2 * us[Nz]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))

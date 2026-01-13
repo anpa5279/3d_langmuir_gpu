@@ -37,7 +37,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 @show dusdz
 
 # BCs
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ * Lx * Ly)),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity(z_d, u₁₀)
 u_f = La_t^2 * us[end]
