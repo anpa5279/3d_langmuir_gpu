@@ -38,7 +38,7 @@ include("stokes.jl")
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(-1.0; scheme = BoundaryAdjacentMean(grid, :bottom)))#OpenBoundaryCondition(nothing))
+w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 @inline function CaCO3_t(x, y, t) 
@@ -50,7 +50,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
         return 0.0
     end
 end
-CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = GradientBoundaryCondition(0.0))
+CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), bottom = OpenBoundaryCondition(nothing))
 
 ## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
@@ -106,7 +106,7 @@ function save_IC!(file, model)
     return nothing
 end
 output_interval = 0.25hours
-path = "localoutputs/without negative 1/open boundary -1 boundary adjacent mean"
+path = "localoutputs/without negative 1/open boundary tracer"
 u, v, w = model.velocities
 T = model.tracers.T
 CaCO3 = model.tracers.CaCO3
