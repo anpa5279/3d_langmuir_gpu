@@ -55,7 +55,7 @@ set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),
                                 bottom = GradientBoundaryCondition(dTdz))
-us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz])#, u₁₀)
 u_f = La_t^2 * us[Nz]
 const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
@@ -79,7 +79,7 @@ r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0
 ampv = 1.0e-3 # m s⁻¹
 ue(x, y, z) = ampv * r_z(z)
 ui = Field{Face, Center, Center}(grid)
-uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
+uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z)#, u₁₀)
 set!(ui, uᵢ)
 vᵢ(x, y, z) = ue(x, y, z)
 Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-3 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
