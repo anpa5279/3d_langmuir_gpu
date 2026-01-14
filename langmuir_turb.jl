@@ -85,10 +85,10 @@ izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
 
 # --- RANDOM STREAM FUNCTION ψ(x,y) ---
 N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
-rand_maxtrix = randn(rng, Nx, Ny, N_ml)              # same as Fortran random_number()
+rand_maxtrix = CUDA.randn(rng, Nx, Ny, N_ml)              # same as Fortran random_number()
 
 # Extend ψ vertically but only in mixed layer
-Ψ = zeros(Nx, Ny, Nz)
+Ψ = CUDA.zeros(Nx, Ny, Nz)
 Ψ[:, :, izi:Nz] .= rand_maxtrix
 
 # --- TAKE HORIZONTAL DERIVATIVES ---
