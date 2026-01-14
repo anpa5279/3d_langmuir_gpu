@@ -104,8 +104,9 @@ v_i = vprime
 
 # Temperature IC
 T_i = fill(T0, Nx, Ny, Nz)
+T_i[:, :, 1:(izi-1)] .+= dTdz*(Lz/Nz/2) .* ones(Nx, Ny, (izi-1)) -(dTdz*(Lz/Nz)) .* reshape((izi-1):-1:1, 1, 1, :) .* ones(Nx, Ny, (izi-1))
+@show T_i[Int(Nx/2), Int(Ny/2), :]
 T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
-
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
 vᵢ = Field{Center, Face, Center}(grid)

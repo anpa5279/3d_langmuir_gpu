@@ -1,4 +1,4 @@
-function stokes_velocity(z)#, u₁₀)
+function stokes_velocity(z, u₁₀)
     g = Oceananigans.defaults.gravitational_acceleration
     α = 0.00615
     fₚ = 2π * 0.13 * g / u₁₀ # rad/s (0.22 1/s)

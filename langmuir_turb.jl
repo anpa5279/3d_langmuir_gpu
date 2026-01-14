@@ -75,14 +75,61 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs
-r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
-ampv = 1.0e-3 # m s⁻¹
-ue(x, y, z) = ampv * r_z(z)
-ui = Field{Face, Center, Center}(grid)
-uᵢ(x, y, z) = -ue(x, y, z) + stokes_velocity(z)#, u₁₀)
-set!(ui, uᵢ)
-vᵢ(x, y, z) = ue(x, y, z)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-3 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+# --- PARAMETERS ---
+ampv = 1e-3      # velocity amplitude [m/s]
+ampt = 1e-3      # temperature amplitude
+rng = Xoshiro(12345)
+
+# Mixed-layer index (same as your code)
+izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
+
+# --- RANDOM STREAM FUNCTION ψ(x,y) ---
+N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
+rand_maxtrix = randn(rng, Nx, Ny, N_ml)              # same as Fortran random_number()
+
+# Extend ψ vertically but only in mixed layer
+Ψ = zeros(Nx, Ny, Nz)
+Ψ[:, :, izi:Nz] .= rand_maxtrix
+
+# --- TAKE HORIZONTAL DERIVATIVES ---
+# We use Oceananigans' built-in operators
+psi_field = Field{Center, Center, Center}(grid)
+set!(psi_field, Ψ)
+∂ψ∂x = compute!(∂x(psi_field))   # returns a CCC field
+∂ψ∂y = compute!(∂y(psi_field))
+
+uprime = -∂ψ∂y.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
+vprime =  ∂ψ∂x.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
+
+# Normalize amplitude exactly like NCAR-LES
+vmax = maximum(sqrt.(uprime.^2 .+ vprime.^2))
+fac = ampv / vmax
+uprime .*= fac
+vprime .*= fac
+
+# --- FULL INITIAL CONDITIONS ---
+# Add mean profile us(z) just like your existing code
+u_i = permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1]) .+ uprime
+v_i = vprime
+
+# Temperature IC
+T_i = fill(T0, Nx, Ny, Nz)
+T_i[:, :, 1:(izi-1)] .+= dTdz*(Lz/Nz/2) .* ones(Nx, Ny, (izi-1)) -(dTdz*(Lz/Nz)) .* reshape((izi-1):-1:1, 1, 1, :) .* ones(Nx, Ny, (izi-1))
+@show T_i[Int(Nx/2), Int(Ny/2), :]
+T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+# --- ASSIGN FIELDS ---
+uᵢ = Field{Face, Center, Center}(grid)
+vᵢ = Field{Center, Face, Center}(grid)
+Tᵢ = Field{Center, Center, Center}(grid)
+
+set!(uᵢ, u_i)
+set!(vᵢ, v_i)
+set!(Tᵢ, T_i)
+
+fill_halo_regions!(uᵢ, u_bcs)
+fill_halo_regions!(vᵢ, v_bcs)
+fill_halo_regions!(Tᵢ, T_bcs)
+
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
 
