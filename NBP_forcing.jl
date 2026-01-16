@@ -24,7 +24,10 @@ end
     c_tracers = Base.structdiff(C, (T = nothing,))
     ρ = ρ_total(i, j, k, c_tracers, molar_masses, densities, reference_density)
     gravitational_acceleration = g * (ρ / reference_density - 1.0)#because buoyancy is incorporated into the model. not double dipping
-    return @inbounds gravitational_acceleration * thermal_expansion * C.T[i, j, k]
+    if isnan(gravitational_acceleration)
+        error("nans appearing from forcing")
+    end
+    return gravitational_acceleration
 end
 
 function densescalar(i, j, k, grid, clock, model_fields, parameters)
@@ -32,5 +35,5 @@ function densescalar(i, j, k, grid, clock, model_fields, parameters)
     densities = parameters.densities
     reference_density = parameters.reference_density
     thermal_expansion  = parameters.thermal_expansion
-    return @inbounds -ℑxzᶜᵃᶜ(i, j, k, grid, buoyancy_perturbation, model_fields, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
+    return @inbounds -ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, model_fields, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
 end 
