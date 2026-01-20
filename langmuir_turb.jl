@@ -129,7 +129,7 @@ v_i = vprime
 T_i = fill(T0, Nx, Ny, Nz)
 T_i[:, :, 1:(izi-1)] .+= dTdz*(Lz/Nz/2) .* ones(Nx, Ny, (izi-1)) -(dTdz*(Lz/Nz)) .* reshape((izi-1):-1:1, 1, 1, :) .* ones(Nx, Ny, (izi-1))
 @show T_i[Int(Nx/2), Int(Ny/2), :]
-T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+@allowscalar T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
 @show "T_i defined"
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
@@ -146,7 +146,7 @@ set!(Tᵢ, T_i)
 
 #fill_halo_regions!(uᵢ, u_bcs)
 #fill_halo_regions!(vᵢ, v_bcs)
-3fill_halo_regions!(Tᵢ, T_bcs)
+#fill_halo_regions!(Tᵢ, T_bcs)
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
