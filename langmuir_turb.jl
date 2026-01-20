@@ -129,6 +129,11 @@ v_i = vprime
 # Temperature IC
 T_i = CUDA.fill(T0, Nx, Ny, Nz)
 @views T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+@views T_i[:, :, 1:izi-1] .+= ampt .* Ψ[:, :, izi:Nz]
+for k in 1:izi-1
+    z_loc = grid.z.cᵃᵃᶜ[k]
+    T_i[:, :, k] .-= dTdz*z_loc
+end 
 @show "T_i defined"
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
@@ -143,9 +148,12 @@ set!(vᵢ, v_i)
 set!(Tᵢ, T_i)
 @show "T set"
 
-#fill_halo_regions!(uᵢ, u_bcs)
-#fill_halo_regions!(vᵢ, v_bcs)
-#fill_halo_regions!(Tᵢ, T_bcs)
+fill_halo_regions!(uᵢ, u_bcs)
+@show "u halos filled"
+fill_halo_regions!(vᵢ, v_bcs)
+@show "v halos filled"
+fill_halo_regions!(Tᵢ, T_bcs)
+@show "T halos filled"
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
