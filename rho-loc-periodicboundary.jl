@@ -28,23 +28,18 @@ S₀ = 35.0    # ppt, salinity
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 
-const ρ_calcite = 2710.0 # kg m⁻³, dummy density of CaCO3
-const molar_calcite = 100.09/1000.0 # kg/mol, molar mass of CaCO3
-mass = 1000
-
 ## referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
-include("stokes.jl")
-u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
-τx = -(u_f^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+#include("stokes.jl")
+#u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
+#τx = -(u_f^2)
+u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
-                                bottom = GradientBoundaryCondition(dTdz))
-@inline function CaCO3_t(x, y, t) 
+                                
+@inline function bflux_t(x, y, t) 
     if (t <= 6hours)
         σ = 10.0 # m
         c0 = mass/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
@@ -53,29 +48,26 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
         return 0.0
     end
 end
-CaCO3_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(CaCO3_t), 
-                                    bottom = GradientBoundaryCondition(0.0))
+b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bflux_t), 
+                                    bottom = GradientBoundaryCondition(dTdz))
 
 ## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
-# defining forcing functions
-include("NBP_forcing.jl")
-w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+buoyancy = BuoyancyTracer()
 
 ## defining model
 model = NonhydrostaticModel(; grid, #coriolis, 
                             buoyancy, 
                             advection = WENO(),
-                            tracers = (:T, :CaCO3),
+                            tracers = (:b,),
                             timestepper = :RungeKutta3,
-                            closure = Smagorinsky(), 
-                            boundary_conditions = (u = u_bcs, v = v_bcs, T=T_bcs, CaCO3=CaCO3_bcs),
-                            forcing = (w = w_NBP,))
+                            #closure = Smagorinsky(), 
+                            boundary_conditions = (u = u_bcs, v = v_bcs, T=T_bcs, b=b_bcs),
+                            )
 @show model
 ## ICs
 r(x, y, z) = (1+randn(Xoshiro())) * exp(z/4)
-Tᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
 
@@ -83,7 +75,7 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 c0 = mass/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
 CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, CaCO3=CaCO3ᵢ)
+set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
 # defining simulation
 simulation = Simulation(model, Δt=30, stop_time = 2.0*24hours) 
@@ -113,11 +105,11 @@ end
 output_interval = 0.25hours
 path = "localoutputs/NBP no coriolis and no stokes/"
 u, v, w = model.velocities
-T = model.tracers.T
+b = model.tracers.b
 CaCO3 = model.tracers.CaCO3
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_static, P_dynamic),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
                                                     dir = path,  with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
@@ -126,4 +118,4 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, CaCO3, P_s
                                                     init = save_IC!)
 
 # running the simulation
-run!(simulation)#; pickup = true)
+run!(simulation)
