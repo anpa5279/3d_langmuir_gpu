@@ -1,6 +1,6 @@
 using Pkg
-using MPI
 using CUDA
+using MPI
 @show MPI.has_cuda()
 @show CUDA.has_cuda()
 MPI.Init() # Initialize MPI
@@ -37,6 +37,7 @@ rank = arch isa Distributed ? arch.local_rank : 0
 Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+@show grid
 # other forcing
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
 
@@ -126,10 +127,8 @@ v_i = vprime
 @show "v_i defined"
 
 # Temperature IC
-T_i = fill(T0, Nx, Ny, Nz)
-T_i[:, :, 1:(izi-1)] .+= dTdz*(Lz/Nz/2) .* ones(Nx, Ny, (izi-1)) -(dTdz*(Lz/Nz)) .* reshape((izi-1):-1:1, 1, 1, :) .* ones(Nx, Ny, (izi-1))
-@show T_i[Int(Nx/2), Int(Ny/2), :]
-@allowscalar T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+T_i = CUDA.fill(T0, Nx, Ny, Nz)
+@views T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
 @show "T_i defined"
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
