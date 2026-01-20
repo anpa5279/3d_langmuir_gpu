@@ -118,7 +118,9 @@ vprime .*= fac
 
 # --- FULL INITIAL CONDITIONS ---
 # Add mean profile us(z) just like your existing code
-u_i = permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1]) .+ uprime
+us_gpu = CuArray(us)                      # Nz
+us3 = reshape(us_gpu, 1, 1, Nz)           # (1,1,Nz)
+u_i = us3 .+ uprime                       # GPU + GPU
 @show "u_i defined"
 v_i = vprime
 @show "v_i defined"
