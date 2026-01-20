@@ -64,7 +64,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #ValueBoundaryCondition(0.0), #
                                 bottom = GradientBoundaryCondition(0.0))
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             #advection = WENO(order=9),
                             timestepper = :RungeKutta3,
                             tracers = :T,
