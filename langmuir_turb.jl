@@ -57,7 +57,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 u_f = La_t^2 * us[Nz]
-const τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
+τx = -(u_f^2)# m² s⁻², surface kinematic momentum flux
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 
@@ -75,10 +75,12 @@ model = NonhydrostaticModel(; grid, coriolis,
                             )
 @show model
 # ICs
+"""
 # --- PARAMETERS ---
 ampv = 1e-3      # velocity amplitude [m/s]
 ampt = 1e-3      # temperature amplitude
-rng = Xoshiro(12345)
+Random.seed!(Xoshiro(), 12345) 
+@test randn(Xoshiro(12345)) isa Number
 
 # Mixed-layer index (same as your code)
 izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
@@ -131,7 +133,39 @@ fill_halo_regions!(vᵢ, v_bcs)
 fill_halo_regions!(Tᵢ, T_bcs)
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
+"""
+r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
+@show "random funtion defined"
+T_i(x, y, z) = z > - initial_mixed_layer_depth ? (T0 + dTdz * model.grid.Lz * 1e-6 * r_z(z)) : T0 + dTdz * (z + initial_mixed_layer_depth) 
+@show T_i
+ampv = 1.0e-3 # m s⁻¹ 
+ue(x, y, z) = r_z(z) * ampv 
+@show "ue defined"
+u_i(x, y, z) = -ue(x, y, z) + stokes_velocity(z, u₁₀)
+@show u_i
+v_i(x, y, z) = ue(x, y, z)
+@show v_i
+uᵢ = Field{Face, Center, Center}(grid)
+@show uᵢ
+set!(uᵢ, u_i)
+@show uᵢ
+fill_halo_regions!(uᵢ, u_bcs)
+@show uᵢ
+vᵢ = Field{Center, Face, Center}(grid)
+@show vᵢ
+set!(vᵢ, v_i)
+@show vᵢ
+fill_halo_regions!(vᵢ, v_bcs)
+@show vᵢ
+Tᵢ = Field{Center, Center, Center}(grid)
+@show Tᵢ
+set!(Tᵢ, T_i)
+@show Tᵢ
+fill_halo_regions!(Tᵢ, T_bcs)
+@show Tᵢ
+set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
+
 
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
