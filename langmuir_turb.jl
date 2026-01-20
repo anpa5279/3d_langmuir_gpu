@@ -75,12 +75,11 @@ model = NonhydrostaticModel(grid; coriolis,
                             )
 @show model
 # ICs
-"""
+#"""
 # --- PARAMETERS ---
 ampv = 1e-3      # velocity amplitude [m/s]
 ampt = 1e-3      # temperature amplitude
 Random.seed!(Xoshiro(), 12345) 
-@test randn(Xoshiro(12345)) isa Number
 
 # Mixed-layer index (same as your code)
 izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
@@ -88,51 +87,67 @@ izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
 # --- RANDOM STREAM FUNCTION ψ(x,y) ---
 N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
 rand_maxtrix = CUDA.randn(Nx, Ny, N_ml)              # same as Fortran random_number()
-
+@show "random matrix is made"
 # Extend ψ vertically but only in mixed layer
 Ψ = CUDA.zeros(Nx, Ny, Nz)
+@show "ψ defined "
 Ψ[:, :, izi:Nz] .= rand_maxtrix
+@show "ψ updated"
 
 # --- TAKE HORIZONTAL DERIVATIVES ---
 # We use Oceananigans' built-in operators
 psi_field = Field{Center, Center, Center}(grid)
+@show "field for ψ made"
 set!(psi_field, Ψ)
+@show "field for ψ updated"
 ∂ψ∂x = compute!(∂x(psi_field))   # returns a CCC field
 ∂ψ∂y = compute!(∂y(psi_field))
+@show "erivatives of ψ calculated"
 
 uprime = -∂ψ∂y.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
 vprime =  ∂ψ∂x.arg.data.parent[grid.Hx:Nx+grid.Hx-1, grid.Hy:Ny+grid.Hy-1, grid.Hz:Nz+grid.Hz-1]
+@show "set u and v prime matrices"
 
 # Normalize amplitude exactly like NCAR-LES
 vmax = maximum(sqrt.(uprime.^2 .+ vprime.^2))
 fac = ampv / vmax
+@show "fac defined"
 uprime .*= fac
 vprime .*= fac
+@show "set u and v prime defined"
 
 # --- FULL INITIAL CONDITIONS ---
 # Add mean profile us(z) just like your existing code
 u_i = permutedims(us .* ones(Nz, Nx, Ny), [2, 3, 1]) .+ uprime
+@show "u_i defined"
 v_i = vprime
+@show "v_i defined"
 
 # Temperature IC
 T_i = fill(T0, Nx, Ny, Nz)
 T_i[:, :, 1:(izi-1)] .+= dTdz*(Lz/Nz/2) .* ones(Nx, Ny, (izi-1)) -(dTdz*(Lz/Nz)) .* reshape((izi-1):-1:1, 1, 1, :) .* ones(Nx, Ny, (izi-1))
 @show T_i[Int(Nx/2), Int(Ny/2), :]
 T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+@show "T_i defined"
 # --- ASSIGN FIELDS ---
 uᵢ = Field{Face, Center, Center}(grid)
 vᵢ = Field{Center, Face, Center}(grid)
 Tᵢ = Field{Center, Center, Center}(grid)
+@show "fields defined"
 
 set!(uᵢ, u_i)
+@show "u set"
 set!(vᵢ, v_i)
+@show "v set"
 set!(Tᵢ, T_i)
+@show "T set"
 
-fill_halo_regions!(uᵢ, u_bcs)
-fill_halo_regions!(vᵢ, v_bcs)
-fill_halo_regions!(Tᵢ, T_bcs)
+#fill_halo_regions!(uᵢ, u_bcs)
+#fill_halo_regions!(vᵢ, v_bcs)
+3fill_halo_regions!(Tᵢ, T_bcs)
 
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
+@show "ICs set"
 """
 r_z(z) = z > - initial_mixed_layer_depth ? randn(Xoshiro()) : 0.0 
 @show "random funtion defined"
@@ -165,7 +180,7 @@ fill_halo_regions!(Tᵢ, T_bcs)
 @show Tᵢ
 set!(model, w=0.0, u=uᵢ, v=vᵢ, T=Tᵢ) 
 @show "ICs set"
-
+"""
 
 simulation = Simulation(model, Δt=30.0, stop_time=240*hours)
 @show simulation
