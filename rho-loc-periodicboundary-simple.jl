@@ -18,39 +18,37 @@ Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
-Q = 5.0     # W m⁻², surface heat flux. cooling is positive
-cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
-ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
 dTdz = 0.01  # K m⁻¹, temperature gradient
-T0 = 25.0    # C, temperature at the surface 
 β = 2.0e-4     # 1/K, thermal expansion coefficient
-u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-La_t = 0.3  # Langmuir turbulence number
 
 ## referring to files with desiraed functions
-grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 # BCs
-u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #FluxBoundaryCondition(τx), 
+u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
+g = Oceananigans.defaults.gravitational_acceleration
+
+u_f = 0.001
+b0 = -4e-2 # m s⁻²
 @inline function bflux_t(x, y, t) 
     if (t <= 6hours)
         σ = 10.0 # m
-        c0 = mass/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
-        return c0/sqrt(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+        Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
+        return Jᵇ/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
     else
         return 0.0
     end
 end
-b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bflux_t), 
-                                    bottom = GradientBoundaryCondition(dTdz))
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
+                                    bottom = GradientBoundaryCondition(g*β*dTdz))
 
 buoyancy = BuoyancyTracer()
 
 ## defining model
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             buoyancy, 
                             advection = WENO(),
                             tracers = (:b,),
@@ -59,15 +57,13 @@ model = NonhydrostaticModel(; grid,
                             )
 @show model
 ## ICs
-u_f = 0.001
-r(x, y, z) = (1+randn(Xoshiro())) * exp(z/4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 : T0 + dTdz * (z + initial_mixed_layer_depth)+dTdz * model.grid.Lz * 1e-6 * r(x, y, z)
+r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
 
 σ = 10.0 # m
-c0 = mass/(molar_calcite*(Lx/Nx)*(Ly/Ny)*(Lz/Nz)) # mol/m3
-CaCO3ᵢ(x, y, z) = c0/sqrt(2*pi* σ^2) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? plume(x, y, z) : g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
 
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
@@ -92,19 +88,17 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, min_Δt = 1.0, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
 output_interval = 0.25hours
-path = "localoutputs/no tracer for NBP/simple case/"
+path = "localoutputs/no tracer for NBP/simple case flux b tracer greater mag 1/"
 u, v, w = model.velocities
 b = model.tracers.b
-CaCO3 = model.tracers.CaCO3
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
                                                     dir = path,  with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "NBP_fields.jld2", #$(rank)
-                                                    overwrite_existing = true,
-                                                    init = save_IC!)
+                                                    filename = "fields.jld2", #$(rank)
+                                                    overwrite_existing = true)
 
 # running the simulation
 run!(simulation)

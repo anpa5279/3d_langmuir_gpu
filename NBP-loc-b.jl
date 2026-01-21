@@ -41,7 +41,7 @@ buoyancy = BuoyancyTracer()
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 #defining model
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+model = NonhydrostaticModel(grid;  buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:b,),
                             timestepper = :RungeKutta3,

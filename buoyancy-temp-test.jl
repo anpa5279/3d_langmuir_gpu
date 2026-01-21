@@ -30,7 +30,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),
                                 bottom = GradientBoundaryCondition(dTdz))
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid; 
                             timestepper = :RungeKutta3,
                             tracers = :T,
                             buoyancy = buoyancy,

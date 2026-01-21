@@ -30,7 +30,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## defining forcing (coriolis, buoyancy, etc.)
     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
     ## defining model
-    global model = NonhydrostaticModel(; grid, buoyancy, 
+    global model = NonhydrostaticModel(grid;  buoyancy, 
                                 advection = WENO(),
                                 tracers = (:T),
                                 timestepper = :RungeKutta3,
@@ -139,7 +139,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## defining forcing (coriolis, buoyancy, etc.)
     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
     ## defining model
-    global model = NonhydrostaticModel(; grid, buoyancy, 
+    global model = NonhydrostaticModel(grid;  buoyancy, 
                                 advection = WENO(),
                                 tracers = (:T),
                                 timestepper = :RungeKutta3,

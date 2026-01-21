@@ -79,7 +79,7 @@ uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
 T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
 ## defining model
-model = NonhydrostaticModel(; grid, coriolis, buoyancy, 
+model = NonhydrostaticModel(grid;  coriolis, buoyancy, 
                             advection = WENO(),
                             tracers = (:T),
                             timestepper = :RungeKutta3,

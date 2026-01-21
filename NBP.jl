@@ -55,7 +55,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
 
 #defining model
-model = NonhydrostaticModel(; grid, buoyancy, coriolis,
+model = NonhydrostaticModel(grid;  buoyancy, coriolis,
                             advection = WENO(),
                             tracers = (:T, ),
                             timestepper = :RungeKutta3,
