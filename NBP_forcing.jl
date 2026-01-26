@@ -1,7 +1,5 @@
-using Oceananigans.Operators: ℑzᵃᵃᶠ, ℑxzᶜᵃᶜ
+using Oceananigans.Operators: ℑzᵃᵃᶠ
 
-
-using KernelAbstractions: @kernel, @index
 #####
 ##### density calculation
 #####
@@ -35,5 +33,6 @@ function densescalar(i, j, k, grid, clock, model_fields, parameters)
     densities = parameters.densities
     reference_density = parameters.reference_density
     thermal_expansion  = parameters.thermal_expansion
-    return @inbounds -ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, model_fields, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
+    g_mod = @inbounds -ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbation, model_fields, molar_masses, densities, reference_density, thermal_expansion) #interpolation to get face values
+    return g_mod
 end 
