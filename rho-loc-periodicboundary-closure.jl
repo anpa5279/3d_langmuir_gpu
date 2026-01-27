@@ -18,6 +18,7 @@ initial_mixed_layer_depth = 30.0 # m
 dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 
+path = "localoutputs/b tracer for NBP/with closure only visc Re 1000"
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -49,18 +50,18 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
                 g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
-for res in ("horizontal fixed", "vertical fixed")
-    for N in (16, 32, 64, 128)
-        if res == "horizontal fixed"
-            Nx = 32
-            Ny = 32
-            Nz = N
-        elseif res == "vertical fixed"
-            Nx = N
-            Ny = N
-            Nz = 32
-        end
-        println("Running simulation with $res and Nx = $Nx, Ny = $Ny, Nz = $Nz")
+
+# closure
+Re = 1000.0
+w_max = 0.10747783287769483
+visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
+sgs = ScalarDiffusivity(ν=visc)
+@show sgs
+for N in (128,)
+    Nx = N
+    Ny = N
+    for Nz in (16, 32, 64, 128)
+        println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
         ## referring to files with desiraed functions
         grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         @show grid
@@ -71,6 +72,7 @@ for res in ("horizontal fixed", "vertical fixed")
                                     tracers = (:b,),
                                     timestepper = :RungeKutta3,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b=b_bcs),
+                                    closure = sgs
                                     )
         @show model
         set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -97,13 +99,13 @@ for res in ("horizontal fixed", "vertical fixed")
         ## output files
         output_interval = 0.2hours
 
-        path = "localoutputs/b tracer for NBP/flux b tracer $res Nx = $Nx, Ny = $Ny, Nz = $Nz/"
+        rel_path = "$path/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
         u, v, w = model.velocities
         b = model.tracers.b
         P_static = model.pressures.pHY′
         P_dynamic = model.pressures.pNHS
         simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
-                                                            dir = path,  with_halos=false,
+                                                            dir = rel_path,  with_halos=false,
                                                             array_type = Array{Float64},
                                                             schedule = TimeInterval(output_interval),
                                                             filename = "fields.jld2", #$(rank)
