@@ -37,7 +37,7 @@ Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
         return 0.0
     end
 end
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),#bflux_t), 
                                     bottom = GradientBoundaryCondition(g*β*dTdz))
 
 buoyancy = BuoyancyTracer()
