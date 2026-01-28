@@ -37,7 +37,7 @@ Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
         return 0.0
     end
 end
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),#bflux_t), 
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
                                     bottom = GradientBoundaryCondition(g*β*dTdz))
 
 buoyancy = BuoyancyTracer()
@@ -51,10 +51,10 @@ plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
                 g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
 
-for i in 3:5
+for i in (3,)
     # closure
-    Re = 10^i
-    path = "localoutputs/b tracer for no NBP/with closure only visc Re $Re"
+    Re = 3*10^i
+    path = "localoutputs/b tracer for NBP/with closure only visc Re $Re"
     visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
     sgs = ScalarDiffusivity(ν=visc)
     @show sgs
