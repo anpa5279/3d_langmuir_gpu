@@ -49,18 +49,18 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
                 g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
-for res in ("horizontal fixed", "vertical fixed")
-    for N in (16, 32, 64, 128)
-        if res == "horizontal fixed"
-            Nx = 32
-            Ny = 32
-            Nz = N
-        elseif res == "vertical fixed"
-            Nx = N
-            Ny = N
-            Nz = 32
-        end
-        println("Running simulation with $res and Nx = $Nx, Ny = $Ny, Nz = $Nz")
+for hor in (16, 64, 128)
+    Nx = hor
+    Ny = hor
+    if hor == 16
+        vert = (64, 128)
+    elseif hor == 64
+        vert = (16,)
+    elseif hor == 128
+        vert = (16, 64)
+    end
+    for Nz in vert
+        println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
         ## referring to files with desiraed functions
         grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         @show grid
@@ -97,7 +97,7 @@ for res in ("horizontal fixed", "vertical fixed")
         ## output files
         output_interval = 0.2hours
 
-        path = "localoutputs/b tracer for NBP/flux b tracer $res Nx = $Nx, Ny = $Ny, Nz = $Nz/"
+        path = "localoutputs/b tracer for NBP/resolution testing/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
         u, v, w = model.velocities
         b = model.tracers.b
         P_static = model.pressures.pHY′

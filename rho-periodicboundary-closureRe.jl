@@ -49,17 +49,16 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
                 g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
-
     # closure
 Re = 3000
-path = "localoutputs/b tracer for NBP/with closure Re $Re"
+path = "with closure Re $Re"
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
-for N in (16, 32, 64, 128)
+for N in (16, 32, 64, 128, 256)
     Nx = N
     Ny = N
-    for Nz in (16, 32, 64, 128)#16, 32, 64, 128
+    for Nz in (256, )#16, 32, 64, 128
         println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
         ## referring to files with desiraed functions
         grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -77,7 +76,7 @@ for N in (16, 32, 64, 128)
         set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
         # defining simulation
-        simulation = Simulation(model, Δt=30, stop_time = 24hours) 
+        simulation = Simulation(model, Δt=30, stop_time = 12hours) 
         @show simulation
         ## progress function
         function progress(simulation)
