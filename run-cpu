@@ -3,12 +3,12 @@ nodes=1
 cpus=128
 procs=1
 ntasks=$((nodes*procs))
-jobn=test-dist-cpus
+jobn=nbp-256-closureRe3000
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
-cp langmuir_turb.jl outputs/$jobn/
+cp rho-periodicboundary-closureRe.jl outputs/$jobn/
 
 cd outputs/$jobn/
 
@@ -33,7 +33,7 @@ module list
 
 ##julia --project -e 'import Pkg'
 ##julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project langmuir_turb.jl
+julia --project rho-periodicboundary-closureRe.jl
 
 EXEC
 
