@@ -55,7 +55,7 @@ bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y
 Re = 3000
 path = "with closure Re $Re"
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
-sgs = ScalarDiffusivity(ν=visc, κ=visc)
+sgs = ScalarDiffusivity(ν=visc)#, κ=visc)
 @show sgs
 for N in (128, 256)
     Nx = N

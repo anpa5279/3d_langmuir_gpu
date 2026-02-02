@@ -1,9 +1,9 @@
 #!/bin/bash
 nodes=1
-cpus=32
+cpus=64
 procs=1
 ntasks=$((nodes*procs))
-jobn=nbp-closureRe3000
+jobn=nbp-closureRe3000-onlyvisc
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
