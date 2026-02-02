@@ -18,6 +18,8 @@ dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
 
+arch = CPU()
+
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -55,13 +57,18 @@ path = "with closure Re $Re"
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
-for N in (16, 32, 64, 128, 256)
+for N in (128, 256)
     Nx = N
     Ny = N
-    for Nz in (256, )#16, 32, 64, 128
+    if N == 128
+        vert = (256, )
+    elseif N == 256
+        vert = (128,256)
+    end
+    for Nz in vert #16, 32, 64, 128
         println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
         ## referring to files with desiraed functions
-        grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         @show grid
         ## defining model
         model = NonhydrostaticModel(grid;
