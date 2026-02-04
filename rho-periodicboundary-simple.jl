@@ -5,14 +5,10 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Models: BoundaryAdjacentMean
-using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 
 using Logging
 global_logger(SimpleLogger(stdout, Logging.Info))
-
 ## simulation parameters
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
@@ -20,7 +16,6 @@ Lz = 96    # (m) domain depth
 initial_mixed_layer_depth = 30.0 # m 
 dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
-w_max = 0.10747783287769483
 
 arch = CPU()
 
@@ -55,21 +50,15 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
                 g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
-    # closure
-Re = 3000
-path = "with closure Re $Re"
-visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
-sgs = ScalarDiffusivity(ν=visc)#, κ=visc)
-@show sgs
-for N in (128, 256)
-    Nx = N
-    Ny = N
-    if N == 128
-        vert = (256, )
-    elseif N == 256
-        vert = (128,256)
+for hor in (256, 128)
+    Nx = hor
+    Ny = hor
+    if hor == 256
+        vert = (128,)
+    elseif hor == 128
+        vert = (256,)
     end
-    for Nz in vert #16, 32, 64, 128
+    for Nz in vert
         println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
         ## referring to files with desiraed functions
         grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -82,16 +71,14 @@ for N in (128, 256)
                                     tracers = (:b,),
                                     timestepper = :RungeKutta3,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b=b_bcs),
-                                    closure = sgs
                                     )
         @show model
         flush(stdout)
         set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
         # defining simulation
-        simulation = Simulation(model, Δt=30, stop_time = 12hours) 
+        simulation = Simulation(model, Δt=30, stop_time = 24hours) 
         @show simulation
-        flush(stdout)
         ## progress function
         function progress(simulation)
             u, v, w = simulation.model.velocities
@@ -103,6 +90,7 @@ for N in (128, 256)
                         maximum(abs, u), maximum(abs, v), maximum(abs, w),
                         prettytime(simulation.run_wall_time))
             @info msg
+            flush(stdout)
             return nothing
         end
         simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
@@ -111,13 +99,13 @@ for N in (128, 256)
         ## output files
         output_interval = 0.2hours
 
-        rel_path = "$path/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
+        path = "flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
         u, v, w = model.velocities
         b = model.tracers.b
         P_static = model.pressures.pHY′
         P_dynamic = model.pressures.pNHS
         simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
-                                                            dir = rel_path,  with_halos=false,
+                                                            dir = path,  with_halos=false,
                                                             array_type = Array{Float64},
                                                             schedule = TimeInterval(output_interval),
                                                             filename = "fields.jld2", #$(rank)

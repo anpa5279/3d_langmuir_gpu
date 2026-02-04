@@ -3,12 +3,12 @@ nodes=1
 cpus=64
 procs=1
 ntasks=$((nodes*procs))
-jobn=nbp-closureRe3000-onlyvisc
+jobn=nbp-simple
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
 
-cp rho-periodicboundary-closureRe.jl outputs/$jobn/
+cp rho-periodicboundary-simple.jl outputs/$jobn/
 
 cd outputs/$jobn/
 
@@ -33,7 +33,7 @@ module list
 
 julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project rho-periodicboundary-closureRe.jl
+julia --project rho-periodicboundary-simple.jl
 
 EXEC
 
