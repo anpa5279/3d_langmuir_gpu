@@ -77,7 +77,7 @@ for hor in (256, 128)
         set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
         # defining simulation
-        simulation = Simulation(model, Δt=30, stop_time = 24hours) 
+        simulation = Simulation(model, Δt=30, stop_time = 12hours) 
         @show simulation
         ## progress function
         function progress(simulation)

@@ -5,11 +5,8 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Models: BoundaryAdjacentMean
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: ℑzᵃᵃᶠ
-using Oceananigans.TurbulenceClosures: Smagorinsky
 ## simulation parameters
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
@@ -42,22 +39,22 @@ b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t),
 buoyancy = BuoyancyTracer()
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = u_f * r(x, y, z)
-vᵢ(x, y, z) = -u_f * r(x, y, z)
+uᵢ(x, y, z) = u_f #* r(x, y, z)
+vᵢ(x, y, z) = -u_f #* r(x, y, z)
 
 σ = 10.0 # m
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
-for hor in (16, 64, 128)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 :#g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*β*dTdz * (z + initial_mixed_layer_depth) #+ g*β*dTdz * Lz * 1e-6 * r(x, y, z)
+for hor in (256, 128,)
     Nx = hor
     Ny = hor
-    if hor == 16
-        vert = (64, 128)
+    if hor == 256
+        vert = (128, )
     elseif hor == 64
         vert = (16,)
     elseif hor == 128
-        vert = (16, 64)
+        vert = (128, 256)
     end
     for Nz in vert
         println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
@@ -76,7 +73,7 @@ for hor in (16, 64, 128)
         set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
         # defining simulation
-        simulation = Simulation(model, Δt=30, stop_time = 24hours) 
+        simulation = Simulation(model, Δt=30, stop_time = 12hours) 
         @show simulation
         ## progress function
         function progress(simulation)
@@ -97,7 +94,7 @@ for hor in (16, 64, 128)
         ## output files
         output_interval = 0.2hours
 
-        path = "localoutputs/b tracer for NBP/resolution testing/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
+        path = "localoutputs/b tracer for NBP/no noise and no closure/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
         u, v, w = model.velocities
         b = model.tracers.b
         P_static = model.pressures.pHY′
