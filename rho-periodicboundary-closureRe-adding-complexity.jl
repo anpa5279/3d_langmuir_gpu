@@ -20,9 +20,9 @@ using Logging
 global_logger(SimpleLogger(stdout, Logging.Info))
 
 ## simulation parameters
-Nx = 8
-Ny = 8
-Nz = 8
+Nx = 256
+Ny = 256
+Nz = 256
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
