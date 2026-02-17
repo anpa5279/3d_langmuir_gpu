@@ -3,6 +3,7 @@ nodes=1
 cpus=128
 procs=128
 ntasks=$((nodes*procs))
+threads=$((cpus/procs))
 jobn=outputs-tests
 file=rho-periodicboundary-simple.jl
 
@@ -16,7 +17,7 @@ cd outputs/$jobns/
 cat > EXEC_STEP << EXEC
 #!/bin/sh
 
-#PBS -A UCUB0166 
+#PBS -A UCUB0166
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
@@ -24,8 +25,8 @@ cat > EXEC_STEP << EXEC
 #PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
-export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_PRECOMPILE_TASKS=$threads
+export JULIA_NUM_THREADS=$threads
 
 module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
