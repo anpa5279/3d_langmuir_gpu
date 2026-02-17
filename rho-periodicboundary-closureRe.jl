@@ -1,3 +1,9 @@
+using ThreadPinning
+using MPI
+MPI.Init()
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+nthreads = Threads.nthreads()
+#mpi_pinthreads(:numa)
 using Pkg
 using Statistics
 using Printf
@@ -22,7 +28,7 @@ dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
 
-arch = CPU()
+arch = Distributed(CPU())
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -58,8 +64,8 @@ bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y
     # closure
 Re = 3000
 path = "with closure Re $Re"
-visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
-sgs = ScalarDiffusivity(ν=visc)#, κ=visc)
+visc = w_max*Lz/Re 
+sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
 for N in (128, 256)
     Nx = N
