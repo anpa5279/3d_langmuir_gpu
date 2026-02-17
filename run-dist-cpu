@@ -1,0 +1,41 @@
+#!/bin/bash
+nodes=1
+cpus=64
+procs=1
+ntasks=$((nodes*procs))
+jobn=outputs-tests
+file=rho-periodicboundary-simple.jl
+
+rm -rf outputs/$jobn/
+mkdir outputs/$jobn/
+
+cp $file outputs/$jobn/
+
+cd outputs/$jobns/
+
+cat > EXEC_STEP << EXEC
+#!/bin/sh
+
+#PBS -A UCUB0166 
+#PBS -N $jobn
+#PBS -q main 
+#PBS -j oe
+#PBS -l job_priority=economy
+#PBS -l walltime=4:00:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
+
+export JULIA_NUM_PRECOMPILE_TASKS=$cpus
+export JULIA_NUM_THREADS=$cpus
+
+module --force purge
+module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
+
+module list
+
+julia --project -e 'import Pkg'
+julia --project -e 'using Pkg; Pkg.instantiate()'
+mpiexec -n $ntasks -ppn $procs julia --project $file
+
+EXEC
+
+qsub < EXEC_STEP

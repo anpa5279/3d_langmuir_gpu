@@ -1,3 +1,9 @@
+using ThreadPinning
+using MPI
+MPI.Init()
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+nthreads = Threads.nthreads()
+#mpi_pinthreads(:numa)
 using Pkg
 using Statistics
 using Printf
@@ -6,6 +12,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.DistributedComputations
 
 using Logging
 global_logger(SimpleLogger(stdout, Logging.Info))
@@ -17,7 +24,7 @@ initial_mixed_layer_depth = 30.0 # m
 dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 
-arch = CPU()
+arch = Distributed(CPU())
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -42,14 +49,14 @@ b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t),
 
 buoyancy = BuoyancyTracer()
 ## ICs
-r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = u_f * r(x, y, z)
-vᵢ(x, y, z) = -u_f * r(x, y, z)
+#r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
+uᵢ(x, y, z) = u_f #* r(x, y, z)
+vᵢ(x, y, z) = -u_f #* r(x, y, z)
 
 σ = 10.0 # m
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 : #g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*β*dTdz * (z + initial_mixed_layer_depth) #+ g*β*dTdz * Lz * 1e-6 * r(x, y, z)
 for hor in (256, 128)
     Nx = hor
     Ny = hor
