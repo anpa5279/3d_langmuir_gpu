@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
-cpus=64
-procs=1
+cpus=128
+procs=128
 ntasks=$((nodes*procs))
 jobn=outputs-tests
 file=rho-periodicboundary-simple.jl
