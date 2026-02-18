@@ -3,8 +3,8 @@ nodes=1
 cpus=64
 procs=1
 ntasks=$((nodes*procs))
-jobn=nbp-adding-complexity
-file=rho-periodicboundary-closureRe-adding-complexity.jl
+jobn=nbp-simple
+file=rho-periodicboundary-simple.jl
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
