@@ -138,7 +138,7 @@ for path in paths
     set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
     # defining simulation
-    simulation = Simulation(model, Δt=30, stop_time = 12hours, wall_time_limit = 4hours) 
+    simulation = Simulation(model, Δt=30, stop_time = 12hours) 
     @show simulation
     flush(stdout)
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
