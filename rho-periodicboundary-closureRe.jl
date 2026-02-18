@@ -1,8 +1,8 @@
-using ThreadPinning
-using MPI
-MPI.Init()
-rank = MPI.Comm_rank(MPI.COMM_WORLD)
-nthreads = Threads.nthreads()
+#using ThreadPinning
+#using MPI
+#MPI.Init()
+#rank = MPI.Comm_rank(MPI.COMM_WORLD)
+#nthreads = Threads.nthreads()
 #mpi_pinthreads(:numa)
 using Pkg
 using Statistics
@@ -28,7 +28,7 @@ dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
 
-arch = Distributed(CPU())
+arch = CPU() #Distributed(CPU())
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -67,13 +67,13 @@ path = "with closure Re $Re"
 visc = w_max*Lz/Re 
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
-for N in (128, 256)
+for N in (256, )
     Nx = N
     Ny = N
     if N == 128
         vert = (256, )
     elseif N == 256
-        vert = (128,256)
+        vert = (256, )
     end
     for Nz in vert #16, 32, 64, 128
         println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")

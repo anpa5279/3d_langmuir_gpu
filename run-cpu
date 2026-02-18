@@ -3,8 +3,8 @@ nodes=1
 cpus=64
 procs=1
 ntasks=$((nodes*procs))
-jobn=nbp-adding-complexity
-file=rho-periodicboundary-closureRe-adding-complexity.jl
+jobn=nbp-256-3
+file=rho-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn
 mkdir outputs/$jobn
@@ -21,7 +21,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l walltime=8:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$cpus
