@@ -125,5 +125,4 @@ simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "NBP_averages.jld2",
                                                     overwrite_existing = true)
-
 run!(simulation)#; pickup = true)
