@@ -158,6 +158,6 @@ for path in paths
                                                         overwrite_existing = true)
 
     # running the simulation
-    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(3hours), prefix="$path/model_checkpoint")
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(3hours), dir = rel_path, prefix="model_checkpoint")
     run!(simulation)
 end
