@@ -22,7 +22,6 @@ global_logger(SimpleLogger(stdout, Logging.Info))
 Lx = 320    # (m) domain horizontal extents
 Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
-initial_mixed_layer_depth = 30.0 # m 
 dTdz = 0.01  # K m⁻¹, temperature gradient
 β = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
@@ -35,31 +34,30 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 g = Oceananigans.defaults.gravitational_acceleration
 
 u_f = 0.001
+b0 = -4*10^(-1) # m s⁻²
+Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
+@inline function bflux_t(x, y, t) 
+    σ = 10.0 # m
+    return Jᵇ/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+end
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
+                                    bottom = GradientBoundaryCondition(g*β*dTdz))
 
 buoyancy = BuoyancyTracer()
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
 uᵢ(x, y, z) = u_f * r(x, y, z)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
 
-    # closure
+# closure
 Re = 3000
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
-for mag in (0, -1, -2, )
-    b0 = -4*10^(mag) # m s⁻²
-    path = "localoutputs/b tracer for NBP/buoyancy = -4*10^$mag/with closure Re $Re"
-    Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
-    @inline function bflux_t(x, y, t) 
-        σ = 10.0 # m
-        return Jᵇ/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-    end
-    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
-                                        bottom = GradientBoundaryCondition(g*β*dTdz))
-                                        
+for MLD in (15, 45) # m, mixed layer depth
+    path = "with closure Re $Re/MLD = $MLD m/"
+    bᵢ(x, y, z) = z > - MLD ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*β*dTdz * (z + MLD) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
     for N in (256, )
         Nx = N
         Ny = N
@@ -96,7 +94,7 @@ for mag in (0, -1, -2, )
                 @info msg
                 return nothing
             end
-            simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+            simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
             ## updating cfl every time step
             conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, min_Δt = 1.0, max_Δt=30seconds) #ensrues cfl is updated ever iteration
             ## output files

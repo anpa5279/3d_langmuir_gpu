@@ -3,7 +3,7 @@ nodes=1
 cpus=64
 procs=1
 ntasks=$((nodes*procs))
-jobn=nbp-variedflux-closureRe-continuous
+jobn=nbp-variedMLD-closureRe-continuous
 file=rho-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn
