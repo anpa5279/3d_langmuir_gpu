@@ -5,7 +5,7 @@ procs=128
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 jobn=outputs-tests
-file=rho-periodicboundary-closureRe.jl
+file=T-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn/
 mkdir outputs/$jobn/
