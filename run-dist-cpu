@@ -1,0 +1,44 @@
+#!/bin/bash
+nodes=1
+cpus=128
+procs=32
+ntasks=$((nodes*procs))
+threads=$((cpus/procs))
+jobn=stokes-bc-test
+output_dir=outputs/
+project_dir=/glade/work/apauls/.julia/environments/v1.10/
+file_name=langmuir_turb.jl
+rm -rf $output_dir$jobn
+mkdir $output_dir$jobn
+
+cp $file_name $output_dir$jobn/
+cp stokes.jl $output_dir$jobn/
+
+cd $output_dir$jobn/
+
+cat > EXEC_STEP << EXEC
+#!/bin/sh
+
+#PBS -A UCUB0166
+#PBS -N $jobn
+#PBS -q main
+#PBS -j oe
+#PBS -l job_priority=economy
+#PBS -l walltime=6:00:00
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
+
+export JULIA_NUM_PRECOMPILE_TASKS=$threads
+export JULIA_NUM_THREADS=$threads
+
+module --force purge
+module load ncarenv nvhpc cray-mpich
+
+module list
+
+##julia --project=$project_dir -e 'import Pkg'
+##julia --project=$project_dir -e 'using Pkg; Pkg.resolve()'
+
+mpiexec -n $ntasks -ppn $procs ./launch.sh julia --project=$project_dir $file_name
+EXEC
+
+qsub < EXEC_STEP

@@ -1,9 +1,9 @@
-using Pkg
-using CUDA
+using ThreadPinning
 using MPI
-@show MPI.has_cuda()
-@show CUDA.has_cuda()
-MPI.Init() # Initialize MPI
+MPI.Init()
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+nthreads = Threads.nthreads()
+mpi_pinthreads(:numa)
 using Random
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours, seconds
@@ -11,7 +11,7 @@ using Printf
 using Oceananigans.DistributedComputations
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, Smagorinsky
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-Pkg.status()
+
 const Nx = 128        # number of points in each of x direction
 const Ny = 128        # number of points in each of y direction
 const Nz = 128        # number of points in the vertical direction
@@ -29,12 +29,7 @@ const β = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3084  # Langmuir turbulence number
 # Automatically distribute among available processors
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-arch = Nranks > 1 ? Distributed(GPU()) : GPU()
-
-# Determine rank safely depending on architecture
-rank = arch isa Distributed ? arch.local_rank : 0
-Nranks = arch isa Distributed ? MPI.Comm_size(arch.communicator) : 1
+arch = Distributed(CPU())
 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid
@@ -88,10 +83,10 @@ izi = Nz - Int(initial_mixed_layer_depth / Lz * Nz) + 1
 
 # --- RANDOM STREAM FUNCTION ψ(x,y) ---
 N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
-rand_maxtrix = CUDA.randn(Nx, Ny, N_ml)              # same as Fortran random_number()
+rand_maxtrix = randn(Nx, Ny, N_ml)              # same as Fortran random_number()
 @show "random matrix is made"
 # Extend ψ vertically but only in mixed layer
-Ψ = CUDA.zeros(Nx, Ny, Nz)
+Ψ = zeros(Nx, Ny, Nz)
 @show "ψ defined "
 Ψ[:, :, izi:Nz] .= rand_maxtrix
 @show "ψ updated"
@@ -120,16 +115,15 @@ vprime .*= fac
 
 # --- FULL INITIAL CONDITIONS ---
 # Add mean profile us(z) just like your existing code
-us_gpu = CuArray(us)                      # Nz
-us3 = reshape(us_gpu, 1, 1, Nz)           # (1,1,Nz)
+us3 = reshape(us, 1, 1, Nz)           # (1,1,Nz)
 u_i = us3 .+ uprime                       # GPU + GPU
 @show "u_i defined"
 v_i = vprime
 @show "v_i defined"
 
 # Temperature IC
-T_i = CUDA.fill(T0, Nx, Ny, Nz)
-@views T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
+T_i = fill(T0, Nx, Ny, Nz)
+T_i[:, :, izi:Nz] .+= ampt .* Ψ[:, :, izi:Nz]
 for k in 1:izi-1
     z_loc = grid.z.cᵃᵃᶜ[k]
     T_i[:, :, k] .+= dTdz*(z_loc + initial_mixed_layer_depth)
