@@ -22,17 +22,16 @@ global_logger(SimpleLogger(stdout, Logging.Info))
 Nx = 256
 Ny = 256
 Nz = 256
-Lx = 320           # (m) domain horizontal extents
-Ly = 320           # (m) domain horizontal extents
-Lz = 96            # (m) domain depth 
-MLD = 30.0         # m, mixed layer depth
-dTdz = 0.01        # K m⁻¹, temperature gradient
-alpha = 2.0e-4     # 1/K, thermal expansion coefficient
-rp = 10.0          # m, radius of surface buoyancy flux
+Lx = 320            # (m) domain horizontal extents
+Ly = 320            # (m) domain horizontal extents
+Lz = 96             # (m) domain depth 
+MLD = 30.0          # m, mixed layer depth
+dTdz = 0.01         # K m⁻¹, temperature gradient
+alpha = 2.0e-4      # 1/K, thermal expansion coefficient
+rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
-u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
-w_max = 0.10747783287769483
+u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
 
 # defining grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -46,7 +45,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = 0.001
-Sj = 1.0e-3 # mol m⁻², surface tracer concentration
+Sj = 100.0 # kg, tracer mass
 area = 2*pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
@@ -62,6 +61,7 @@ S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux),
 
 # closure
 Re = 3000
+w_max = 0.10747783287769483
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 
@@ -74,14 +74,12 @@ g = Oceananigans.defaults.gravitational_acceleration
 include("stokes.jl")
 dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
 dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
-us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
+dusdz_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
                                 bottom = ValueBoundaryCondition(dusdz_bot))
-dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = dusdz_bcs)
 dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-
-# coriolis
-coriolis = FPlane(f=1e-4) # s⁻¹
+us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
@@ -103,12 +101,29 @@ function progress(simulation)
     @info msg
     return nothing
 end
+## output file inputs
+function save_IC!(file, model)
+    file["IC/friction_velocity"] = u_f
+    file["IC/stokes_velocity"] = us
+    file["IC/wind_speed"] = u₁₀
+    return nothing
+end
+
 # for loop variations 
 # Langmuir number ---> changes wind stress (u flux BC)
+#for La_t in [0.2, 0.3, 0.4]
+#uf = La_t^2 * us[Nz]
+#τx = -(uf^2)
+#u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), bottom = GradientBoundaryCondition(0.0))
 # turn stokes on or off
+# for stokes in [nothing, UniformStokesDrift(∂z_uˢ=dusdz)]
 # turn coriolis on or off
+# for coriolis in [nothing, FPlane(f=1e-4)]
+
 ## defining model
 model = NonhydrostaticModel(grid;
+                            coriolis,
+                            stokes_drift = stokes,
                             buoyancy, 
                             advection = WENO(),
                             tracers = (:T, :S,),
@@ -117,6 +132,9 @@ model = NonhydrostaticModel(grid;
                             closure = sgs
                             )
 @show model
+if stokes !== nothing
+    uᵢ(x, y, z) = wp * r(x, y, z) + stokes_velocity(z, u₁₀)
+end
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
 # defining simulation
 simulation = Simulation(model, Δt=30, stop_time = 12hours) 
@@ -135,7 +153,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "fields.jld2", #$(rank)
+                                                    filename = "fields.jld2",
+                                                    init = save_IC!
                                                     overwrite_existing = true)
 
 # running the simulation
