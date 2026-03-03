@@ -15,7 +15,7 @@ Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
 dTdz = 0.01  # K m⁻¹, temperature gradient
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
 
 # BCs
@@ -35,85 +35,77 @@ vᵢ(x, y, z) = -u_f * r(x, y, z)
 
 σ = 10.0 # m
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*alpha*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*alpha*dTdz * (z + initial_mixed_layer_depth) + g*alpha*dTdz * Lz * 1e-6 * r(x, y, z)
 
     # closure
 Re = 3000
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 @show sgs
-for mag in (0, -2, )
-    b0 = -4*10^(mag) # m s⁻²
-    path = "localoutputs/b tracer for NBP/buoyancy = -4*10^$mag/with closure Re $Re"
-    Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
-    @inline function bflux_t(x, y, t) 
-        if (t <= 6hours)
-            σ = 10.0 # m
-            return Jᵇ/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-        else
-            return 0.0
-        end
-    end
-    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
-                                        bottom = GradientBoundaryCondition(g*β*dTdz))
-                                        
-    for N in (256, )
-        Nx = N
-        Ny = N
-        for Nz in (128, )#16, 32, 64, 128
-            println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
-            ## referring to files with desiraed functions
-            grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-            @show grid
-            ## defining model
-            model = NonhydrostaticModel(grid;
-                                        buoyancy, 
-                                        advection = WENO(),
-                                        tracers = (:b,),
-                                        timestepper = :RungeKutta3,
-                                        boundary_conditions = (u = u_bcs, v = v_bcs, b=b_bcs),
-                                        closure = sgs
-                                        )
-            @show model
-            set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
+mag = -1
+b0 = -4.0*10.0^(mag) # m s⁻²
+path = "localoutputs/b tracer for NBP/buoyancy = -4*10^$mag/with closure Re $Re"
+Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
+σ = 10.0 # m
+bflux_t(x, y, t) = Jᵇ/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
 
-            # defining simulation
-            simulation = Simulation(model, Δt=30, stop_time = 12hours) 
-            @show simulation
-            ## progress function
-            function progress(simulation)
-                u, v, w = simulation.model.velocities
-                # Print a progress message
-                msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                            iteration(simulation),
-                            prettytime(time(simulation)),
-                            prettytime(simulation.Δt),
-                            maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                            prettytime(simulation.run_wall_time))
-                @info msg
-                return nothing
-            end
-            simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-            ## updating cfl every time step
-            conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, min_Δt = 1.0, max_Δt=30seconds) #ensrues cfl is updated ever iteration
-            ## output files
-            output_interval = 0.2hours
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
+                            bottom = GradientBoundaryCondition(g*alpha*dTdz))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(1.0),)
 
-            rel_path = "$path/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
-            u, v, w = model.velocities
-            b = model.tracers.b
-            P_static = model.pressures.pHY′
-            P_dynamic = model.pressures.pNHS
-            simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
-                                                                dir = rel_path,  with_halos=false,
-                                                                array_type = Array{Float64},
-                                                                schedule = TimeInterval(output_interval),
-                                                                filename = "fields.jld2", #$(rank)
-                                                                overwrite_existing = true)
+Nx = 32
+Ny = 32
+Nz = 32
+println("Running simulation with Nx = $Nx, Ny = $Ny, Nz = $Nz")
+## referring to files with desiraed functions
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+@show grid
+## defining model
+model = NonhydrostaticModel(grid;
+                            buoyancy, 
+                            advection = WENO(),
+                            tracers = (:b,),
+                            timestepper = :RungeKutta3,
+                            boundary_conditions = (u = u_bcs, v = v_bcs, w = w_bcs, b=b_bcs),
+                            closure = sgs
+                            )
+@show model
+set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
-            # running the simulation
-            run!(simulation)
-        end
-    end
-end 
+# defining simulation
+simulation = Simulation(model, Δt=30, stop_time = 12hours) 
+@show simulation
+## progress function
+function progress(simulation)
+    u, v, w = simulation.model.velocities
+    # Print a progress message
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+                iteration(simulation),
+                prettytime(time(simulation)),
+                prettytime(simulation.Δt),
+                maximum(abs, u), maximum(abs, v), maximum(abs, w),
+                prettytime(simulation.run_wall_time))
+    @info msg
+    return nothing
+end
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+## updating cfl every time step
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, min_Δt = 1.0, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+## output files
+output_interval = 0.2hours
+
+rel_path = "$path/flux b tracer Nx = $Nx, Ny = $Ny, Nz = $Nz/"
+u, v, w = model.velocities
+b = model.tracers.b
+P_static = model.pressures.pHY′
+P_dynamic = model.pressures.pNHS
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, P_static, P_dynamic),
+                                                    dir = rel_path,  with_halos=false,
+                                                    array_type = Array{Float64},
+                                                    schedule = TimeInterval(output_interval),
+                                                    filename = "fields.jld2", #$(rank)
+                                                    overwrite_existing = true)
+
+# running the simulation
+run!(simulation)

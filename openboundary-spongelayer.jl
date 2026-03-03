@@ -22,7 +22,7 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 ## referring to files with desiraed functions
@@ -50,7 +50,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q/(ρₒ*cᴾ)),
                                 
 ## defining forcing (coriolis, buoyancy, etc.)
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
 ## defining user input forcing functions
 struct EdgeMask{D, T}
      A :: T

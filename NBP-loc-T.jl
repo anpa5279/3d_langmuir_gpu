@@ -18,15 +18,16 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
 include("stokes.jl")
+dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
 dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
-us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = GradientBoundaryCondition(0.0), 
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
                                 bottom = ValueBoundaryCondition(dusdz_bot))
 dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
 dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
@@ -40,7 +41,7 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 #additional parameters
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
 #defining model
 model = NonhydrostaticModel(grid;  buoyancy, coriolis,
                             advection = WENO(),
@@ -86,7 +87,7 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 T = model.tracers.T
-b = T * g * β
+b = T * g * alpha
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, b),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "T-NBP_fields.jld2", #$(rank)

@@ -28,7 +28,7 @@ Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
 dTdz = 0.01  # K m⁻¹, temperature gradient
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 w_max = 0.10747783287769483
 La_t = 0.3  # Langmuir turbulence number
 
@@ -69,15 +69,15 @@ Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
     end
 end
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
-                                    bottom = GradientBoundaryCondition(g*β*dTdz))
+                                    bottom = GradientBoundaryCondition(g*alpha*dTdz))
 
 buoyancy = BuoyancyTracer()
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
 vᵢ(x, y, z) = -u_f * r(x, y, z)
 
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) + g*β*dTdz * Lz * 1e-6 * r(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? g*alpha*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*alpha*dTdz * (z + initial_mixed_layer_depth) + g*alpha*dTdz * Lz * 1e-6 * r(x, y, z)
 
 # closure
 Re = 3000

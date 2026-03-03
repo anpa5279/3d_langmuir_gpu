@@ -19,18 +19,20 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 #referring to files with desiraed functions
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 #stokes drift
 include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
+dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
 #BCs
 u_f = La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 τx = -(u_f^2)
@@ -51,7 +53,7 @@ model = NonhydrostaticModel(grid;  buoyancy, coriolis,
 @show model
 # ICs
 r(x, y, z) = randn(Xoshiro(1234), (grid.Nx + grid.Ny + grid.Nz+3))[Int(1 + round(grid.Nx*x/grid.Lx+grid.Ny*y/grid.Ly-grid.Nz*z/grid.Lz))] * exp(z / 4)
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 * g * β : T0 * g * β + dTdz * g * β * (z + initial_mixed_layer_depth) #bᵢ(x, y, z) = (-T0)*g*β/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g*β
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? T0 * g * alpha : T0 * g * alpha + dTdz * g * alpha * (z + initial_mixed_layer_depth) #bᵢ(x, y, z) = (-T0)*g*alpha/(2*pi* (Lx/Nx)) * exp(-z^2 / (2 * (Lx/Nx)^2)) * exp(-(x-Lx/2)^2 / (2 * (Lx/Nx)^2)) * exp(-(y-Ly/2)^2 / (2 * (Lx/Nx)^2))+ 1e-1 * r(x, y, z) * dTdz *g*alpha
 uᵢ(x, y, z) = u_f * 1e-1 * r(x, y, z)
 vᵢ(x, y, z) = -u_f * 1e-1 * r(x, y, z)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -83,7 +85,7 @@ end
 output_interval = 0.25hours
 u, v, w = model.velocities
 b = model.tracers.b
-T = b / (g * β)
+T = b / (g * alpha)
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, b, T),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "b-NBP_fields.jld2", 
@@ -93,7 +95,7 @@ W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
 B = Average(b, dims=(1, 2))
-T = Average(b / (g * β), dims=(1, 2))
+T = Average(b / (g * alpha), dims=(1, 2))
                                                       
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, B, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),

@@ -23,7 +23,7 @@ const ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world
 const dTdz = 0.01  # K m⁻¹, temperature gradient
 const T0 = 25.0    # C, temperature at the surface  
 const S₀ = 35.0    # ppt, salinity 
-const β = 2.0e-4     # 1/K, thermal expansion coefficient
+const alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 const u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 const La_t = 0.3  # Langmuir turbulence number
 # Automatically distribute among available processors
@@ -38,11 +38,13 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 #stokes drift
 include("stokes.jl")
-dusdz = Field{Nothing, Nothing, Center}(grid)
-z_d = collect(-Lz + grid.z.Δᵃᵃᶜ/2 : grid.z.Δᵃᵃᶜ : -grid.z.Δᵃᵃᶜ/2)
-dusdz_1d = dstokes_dz.(z_d, u₁₀)
+dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show dusdz
 
 #BCs
 us = stokes_velocity(z_d[end], u₁₀)
@@ -52,7 +54,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @inline surface_heat_flux(x, y, t, p) = p.q / ( p.c *  p.ρ *  p.lx *  p.ly)/sqrt(2*pi* (p.σ^2)) * exp(-((x -  p.lx/2)^2 + (y -  p.ly/2)^2) / (2 * (p.σ)^2))
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(surface_heat_flux, parameters = (q = Q, c = cᴾ, ρ = ρₒ, lx = Lx, ly = Ly, σ = 10.0)), bottom = GradientBoundaryCondition(0.0))
 coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
 
 #defining model
 model = NonhydrostaticModel(grid;  buoyancy, coriolis,

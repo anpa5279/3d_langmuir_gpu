@@ -18,13 +18,13 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S0 = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3084  # Langmuir turbulence number
 
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 # other forcing
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S0)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S0)
 
 # BCs
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Q / (cᴾ * ρₒ)),

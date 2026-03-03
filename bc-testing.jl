@@ -22,13 +22,13 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 ## running and plotting  function                                
 function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## defining forcing (coriolis, buoyancy, etc.)
-    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
     ## defining model
     global model = NonhydrostaticModel(grid;  buoyancy, 
                                 advection = WENO(),
@@ -137,7 +137,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
 end
 function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     ## defining forcing (coriolis, buoyancy, etc.)
-    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
     ## defining model
     global model = NonhydrostaticModel(grid;  buoyancy, 
                                 advection = WENO(),

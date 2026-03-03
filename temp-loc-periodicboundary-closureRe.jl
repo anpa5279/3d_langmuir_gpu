@@ -17,7 +17,7 @@ w_max = 0.10747783287769483
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 Q = 5.0     # W m⁻², surface heat flux. cooling is positive
 cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 ρₒ = 1026.0    # kg m⁻³, average density at the surface of the world ocean
@@ -31,7 +31,7 @@ g = Oceananigans.defaults.gravitational_acceleration
 
 u_f = 0.001
 b0 = -4e-1 # m s⁻²
-T0_flux = (b0/(g*β)+T0) # K, surface temperature
+T0_flux = (b0/(g*alpha)+T0) # K, surface temperature
 Jᵇ = -u_f*T0_flux # m² s⁻³, surface temperature flux
 @inline function Tflux_t(x, y, t) 
     if (t <= 6hours)
@@ -44,7 +44,7 @@ end
 T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Tflux_t), 
                                     bottom = GradientBoundaryCondition(dTdz))
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
 uᵢ(x, y, z) = u_f * r(x, y, z)

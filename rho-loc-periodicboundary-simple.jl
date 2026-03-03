@@ -13,7 +13,7 @@ Ly = 320    # (m) domain horizontal extents
 Lz = 96    # (m) domain depth 
 initial_mixed_layer_depth = 30.0 # m 
 dTdz = 0.01  # K m⁻¹, temperature gradient
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -34,7 +34,7 @@ Jᵇ = -u_f*b0 # m² s⁻³, surface buoyancy flux
     end
 end
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(bflux_t), 
-                                    bottom = GradientBoundaryCondition(g*β*dTdz))
+                                    bottom = GradientBoundaryCondition(g*alpha*dTdz))
 
 buoyancy = BuoyancyTracer()
 ## ICs
@@ -44,8 +44,8 @@ vᵢ(x, y, z) = -u_f #* r(x, y, z)
 
 σ = 10.0 # m
 plume(x, y, z) = b0/sqrt((2*pi)^3* (σ^2)^3) * exp(-z^2 / (2 * σ^2)) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
-bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 :#g*β*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-                g*β*dTdz * (z + initial_mixed_layer_depth) #+ g*β*dTdz * Lz * 1e-6 * r(x, y, z)
+bᵢ(x, y, z) = z > - initial_mixed_layer_depth ? 0.0 :#g*alpha*dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
+                g*alpha*dTdz * (z + initial_mixed_layer_depth) #+ g*alpha*dTdz * Lz * 1e-6 * r(x, y, z)
 for hor in (256, 128,)
     Nx = hor
     Ny = hor

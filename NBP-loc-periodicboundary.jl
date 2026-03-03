@@ -24,7 +24,7 @@ cᴾ = 4200.0    # J kg⁻¹ K⁻¹, specific heat capacity of seawater
 dTdz = 0.01  # K m⁻¹, temperature gradient
 T0 = 25.0    # C, temperature at the surface  
 S₀ = 35.0    # ppt, salinity 
-β = 2.0e-4     # 1/K, thermal expansion coefficient
+alpha = 2.0e-4     # 1/K, thermal expansion coefficient
 u₁₀ = 5.75   # (m s⁻¹) wind speed at 10 meters above the ocean
 La_t = 0.3  # Langmuir turbulence number
 
@@ -36,6 +36,14 @@ mass = 20000 # kg
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
 include("stokes.jl")
+dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = us_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+
 u_f = 0.001#La_t^2 * (stokes_velocity(-grid.z.Δᵃᵃᶜ/2, u₁₀)[1])
 #τx = -(u_f^2)
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), #top = FluxBoundaryCondition(τx), 
@@ -58,10 +66,10 @@ CaCO3_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(CaCO3_t),
 
 ## defining forcing (coriolis, buoyancy, etc.)
 #coriolis = FPlane(f=1e-4) # s⁻¹
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = β), constant_salinity = S₀)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha), constant_salinity = S₀)
 # defining forcing functions
 include("NBP_forcing.jl")
-w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = β))
+w_NBP = Forcing(densescalar, discrete_form=true, parameters=(molar_masses = (molar_calcite,), densities = (ρ_calcite,), reference_density = ρₒ, thermal_expansion = alpha))
 
 ## defining model
 model = NonhydrostaticModel(grid;  #coriolis, 
