@@ -3,7 +3,7 @@ using MPI
 MPI.Init()
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
-#mpi_pinthreads(:numa)
+mpi_pinthreads(:numa)
 using Pkg
 using Statistics
 using Printf
@@ -11,9 +11,6 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-
-using Logging
-global_logger(SimpleLogger(stdout, Logging.Info))
 ## simulation parameters
 Nx = 256
 Ny = 256
@@ -28,9 +25,9 @@ rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
-
+arch = Distributed(CPU())
 # defining grid
-grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid
 
 # BCs
@@ -112,7 +109,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    init = save_IC!,
                                                     overwrite_existing = true)
 
 # running the simulation
