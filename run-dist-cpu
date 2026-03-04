@@ -4,7 +4,7 @@ cpus=128
 procs=1328
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=outputs-tests
+jobn=temp-sal-nbp
 file=T-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn/
@@ -21,7 +21,7 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-#PBS -l job_priority=economy
+###PBS -l job_priority=economy
 #PBS -l walltime=8:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
