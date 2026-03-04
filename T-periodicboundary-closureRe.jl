@@ -40,8 +40,7 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
 b0 = -4*10^(-1) # m s⁻²
-rho_ratio = (rho_tracer-rho0) / (rho0) 
-Sj = -(g*rho_ratio)/b0 # amount of tracer flux needed to achieve the desired buoyancy flux
+Sj = (-b0/g)*rho0 # kg/m^3 = the concentration of the dense tracer at the jet
 Jᵇ = wp*Sj
 @inline function sflux(x, y, t) 
     σ = 10.0 # m
@@ -57,7 +56,7 @@ visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
 
 # buoyancy
-beta = (rho_tracer - rho0) / (rho0 * Sj) 
+beta = 1/rho_tracer # kg⁻¹ m³, haline contraction coefficient
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha, haline_contraction = beta))
 
 ## defining model
