@@ -1,8 +1,8 @@
-#using ThreadPinning
-#using MPI
-#MPI.Init()
-#rank = MPI.Comm_rank(MPI.COMM_WORLD)
-#nthreads = Threads.nthreads()
+using ThreadPinning
+using MPI
+MPI.Init()
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+nthreads = Threads.nthreads()
 #mpi_pinthreads(:numa)
 using Pkg
 using Statistics
@@ -11,10 +11,6 @@ using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-using Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
-using Oceananigans.Models: BoundaryAdjacentMean
-using Oceananigans.Utils: launch!
-using Oceananigans.Operators: ℑzᵃᵃᶠ
 
 using Logging
 global_logger(SimpleLogger(stdout, Logging.Info))
@@ -48,7 +44,7 @@ g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
 b0 = -4*10^(-1) # m s⁻²
 rho_ratio = (rho_tracer-rho0) / (rho0) 
-Sj = -b0/(g*rho_ratio) # amount of tracer flux needed to achieve the desired buoyancy flux
+Sj = -(g*rho_ratio)/b0 # amount of tracer flux needed to achieve the desired buoyancy flux
 Jᵇ = wp*Sj
 @inline function sflux(x, y, t) 
     σ = 10.0 # m
