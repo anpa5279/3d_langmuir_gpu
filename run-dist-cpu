@@ -12,7 +12,7 @@ mkdir outputs/$jobn/
 
 cp $file outputs/$jobn/
 
-cd outputs/$jobns/
+cd outputs/$jobn/
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
