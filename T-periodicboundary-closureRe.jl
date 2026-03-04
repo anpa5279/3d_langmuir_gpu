@@ -112,7 +112,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    init = save_IC!
+                                                    init = save_IC!,
                                                     overwrite_existing = true)
 
 # running the simulation
