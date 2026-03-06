@@ -44,7 +44,7 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
-Sj = 10.0 # salinity tracer ppm
+Sj = 20.0 # salinity tracer ppm
 area = 2*pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
