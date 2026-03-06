@@ -24,11 +24,16 @@ alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
+T0 = 25.0           # C, temperature at the surface
 u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
 arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 @show grid
+
+# buoyancy
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
+#beta = buoyancy.equation_of_state.haline_contraction
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -39,12 +44,16 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
-b0 = -4*10^(-1) # m s⁻²
-Sj = (-b0/g)*rho0 # kg/m^3 = the concentration of the dense tracer at the jet
-Jᵇ = wp*Sj
+Sj = 10.0 # salinity tracer ppm
+area = 2*pi*rp^2 # m², area for tracer
+x_area = [Lx/2-rp, Lx/2+rp]
+y_area = [Ly/2-rp, Ly/2+rp]
 @inline function sflux(x, y, t) 
-    σ = 10.0 # m
-    return wp*Sj/(2*pi* σ^2) * exp(-(x-Lx/2)^2 / (2 * σ^2)) * exp(-(y-Ly/2)^2 / (2 * σ^2)) 
+    if x >= x_area[1] && x <= x_area[2] && y >= y_area[1] && y <= y_area[2]
+        return -wp*Sj
+    else
+        return 0.0
+    end
 end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -54,10 +63,6 @@ Re = 3000
 w_max = 0.10747783287769483
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
-
-# buoyancy
-beta = 1/rho_tracer # kg⁻¹ m³, haline contraction coefficient
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha, haline_contraction = beta))
 
 ## defining model
 model = NonhydrostaticModel(grid;
@@ -73,8 +78,9 @@ model = NonhydrostaticModel(grid;
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
 uᵢ(x, y, z) = wp * r(x, y, z)
 vᵢ(x, y, z) = -wp * r(x, y, z)
-Tᵢ(x, y, z) = z > - MLD ? dTdz * Lz * 1e-6 * r(x, y, z) : #random noise in the mixed layer
-            dTdz * (z + MLD) + dTdz * Lz * 1e-6 * r(x, y, z)
+Tᵢ(x, y, z) = z > - MLD ? T0 : 
+                T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
+
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
 
 # defining simulation
