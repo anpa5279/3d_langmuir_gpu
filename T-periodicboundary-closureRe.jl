@@ -26,6 +26,7 @@ rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 T0 = 25.0           # C, temperature at the surface
 u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
+min_step = 0.2
 arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -84,7 +85,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 :
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=30, stop_time = 12hours) 
+simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
 @show simulation
 ## progress function
 function progress(simulation)
@@ -101,7 +102,7 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 ## updating cfl every time step
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = 1.0, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
 output_interval = 0.2hours
 u, v, w = model.velocities
