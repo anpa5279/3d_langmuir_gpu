@@ -51,7 +51,7 @@ x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
 @inline function sflux(x, y, t) 
     if x >= x_area[1] && x <= x_area[2] && y >= y_area[1] && y <= y_area[2]
-        return -wp*Sj
+        return wp*Sj
     else
         return 0.0
     end
