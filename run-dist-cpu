@@ -4,7 +4,7 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sal-nbp-wind-stress
+jobn=sal-nbp-Langmuir
 file=T-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn/
@@ -19,10 +19,10 @@ cat > EXEC_STEP << EXEC
 
 #PBS -A UCUB0166
 #PBS -N $jobn
-#PBS -q main 
+#PBS -q develop 
 #PBS -j oe
 ####PBS -l job_priority=economy
-#PBS -l walltime=8:00:00
+#PBS -l walltime=1:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads

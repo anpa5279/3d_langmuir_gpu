@@ -25,7 +25,7 @@ rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 T0 = 25.0           # C, temperature at the surface
-u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
+const u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
 min_step = 0.2
 La_t = 0.3
 arch = Distributed(CPU())
@@ -82,6 +82,7 @@ sgs = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
                             advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
@@ -91,7 +92,7 @@ model = NonhydrostaticModel(grid;
 @show model
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = wp * r(x, y, z)
+uᵢ(x, y, z) = wp * r(x, y, z) + stokes_velocity(z, u₁₀)
 vᵢ(x, y, z) = -wp * r(x, y, z)
 Tᵢ(x, y, z) = z > - MLD ? T0 : 
                 T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
