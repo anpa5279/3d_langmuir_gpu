@@ -71,19 +71,17 @@ y_area = [Ly/2-rp, Ly/2+rp]
 end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
-@show "BCs defined"
 
 # closure
 Re = 3000
 w_max = 0.10747783287769483
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
-@show "Closure defined"
 
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
