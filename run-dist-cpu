@@ -4,7 +4,7 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sal-nbp-0.2
+jobn=sal-nbp-wind-stress
 file=T-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn/

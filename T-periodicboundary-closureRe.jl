@@ -27,6 +27,7 @@ rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 T0 = 25.0           # C, temperature at the surface
 u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
 min_step = 0.2
+La_t = 0.3
 arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -36,16 +37,29 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 #beta = buoyancy.equation_of_state.haline_contraction
 
+# stokes drift
+g = Oceananigans.defaults.gravitational_acceleration
+include("stokes.jl")
+dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
+dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+dusdz_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
+                                bottom = ValueBoundaryCondition(dusdz_bot))
+dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = dusdz_bcs)
+dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+
 # BCs
-u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+uf = La_t^2 * us[Nz]
+τx = -(uf^2)
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),, 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
-Sj = 0.2
+Sj = 0.1
 area = pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
