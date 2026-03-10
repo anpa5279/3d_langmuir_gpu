@@ -11,6 +11,7 @@ rm -rf outputs/$jobn/
 mkdir outputs/$jobn/
 
 cp $file outputs/$jobn/
+cp stokes.jl outputs/$jobn/
 
 cd outputs/$jobn/
 

@@ -41,18 +41,23 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 g = Oceananigans.defaults.gravitational_acceleration
 include("stokes.jl")
 dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
+@show "Stokes as top BC defined"
 dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
+@show "Stokes as bottom BC defined"
 dusdz_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
                                 bottom = ValueBoundaryCondition(dusdz_bot))
 dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = dusdz_bcs)
+@show "create Stokes field"
 dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
+@show "Stokes field defined"
 us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
+@show "Stokes defined"
 
 # BCs
 uf = La_t^2 * us[Nz]
 τx = -(uf^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx),, 
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -72,12 +77,14 @@ y_area = [Ly/2-rp, Ly/2+rp]
 end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
+@show "BCs defined"
 
 # closure
 Re = 3000
 w_max = 0.10747783287769483
 visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
 sgs = ScalarDiffusivity(ν=visc, κ=visc)
+@show "Closure defined"
 
 ## defining model
 model = NonhydrostaticModel(grid;
