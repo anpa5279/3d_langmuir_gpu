@@ -25,7 +25,6 @@ rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 T0 = 25.0           # C, temperature at the surface
-const u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
 min_step = 0.2
 La_t = 0.3
 arch = Distributed(CPU())
@@ -39,23 +38,18 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # stokes drift
 g = Oceananigans.defaults.gravitational_acceleration
-include("stokes.jl")
-dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
-@show "Stokes as top BC defined"
-dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
-@show "Stokes as bottom BC defined"
-dusdz_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
-                                bottom = ValueBoundaryCondition(dusdz_bot))
-dusdz = Field{Nothing, Nothing, Center}(grid; boundary_conditions = dusdz_bcs)
-@show "create Stokes field"
-dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
-set!(dusdz, reshape(dusdz_1d, 1, 1, :))
-@show "Stokes field defined"
-us = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
-@show "Stokes defined"
+amplitude = 0.8 # m
+wavelength = 60  # m
+wavenumber = 2π / wavelength # m⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
+const vertical_scale = wavelength / 4π
+# Stokes drift velocity at the surface
+const us = amplitude^2 * wavenumber * frequency # m s⁻¹
+uˢ(z) = us * exp(z / vertical_scale)
+∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
 
 # BCs
-uf = La_t^2 * us[Nz]
+uf = La_t^2 * us
 τx = -(uf^2)
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -89,7 +83,7 @@ sgs = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=dusdz),
+                            #stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
@@ -99,7 +93,7 @@ model = NonhydrostaticModel(grid;
 @show model
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = wp * r(x, y, z) + stokes_velocity(z, u₁₀)
+uᵢ(x, y, z) = wp * r(x, y, z) + uˢ(z)
 vᵢ(x, y, z) = -wp * r(x, y, z)
 Tᵢ(x, y, z) = z > - MLD ? T0 : 
                 T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
