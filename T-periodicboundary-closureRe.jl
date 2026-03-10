@@ -19,7 +19,7 @@ Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
 MLD = 30.0          # m, mixed layer depth
-dTdz = 0.1         # K m⁻¹, temperature gradient
+dTdz = 0.01         # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
@@ -45,7 +45,7 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 g = Oceananigans.defaults.gravitational_acceleration
 wp = -0.001
-Sj = 0.1
+Sj = 0.2
 area = pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
