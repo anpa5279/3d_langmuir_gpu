@@ -44,7 +44,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = -0.001
-Sj = 0.15
+Sj = 0.05
 area = pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
