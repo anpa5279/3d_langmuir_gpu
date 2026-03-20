@@ -36,29 +36,15 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 #beta = buoyancy.equation_of_state.haline_contraction
 
-# stokes drift
-g = Oceananigans.defaults.gravitational_acceleration
-amplitude = 0.8 # m
-wavelength = 60  # m
-wavenumber = 2π / wavelength # m⁻¹
-frequency = sqrt(g * wavenumber) # s⁻¹
-const vertical_scale = wavelength / 4π
-# Stokes drift velocity at the surface
-const us = amplitude^2 * wavenumber * frequency # m s⁻¹
-uˢ(z) = us * exp(z / vertical_scale)
-∂z_uˢ(z, t) = 1 / vertical_scale * us * exp(z / vertical_scale)
-
 # BCs
-uf = La_t^2 * us
-τx = -(uf^2)
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx), 
+u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = -0.001
-Sj = 0.1
+Sj = 0.15
 area = pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
@@ -81,7 +67,6 @@ sgs = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
@@ -91,7 +76,7 @@ model = NonhydrostaticModel(grid;
 @show model
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = wp * r(x, y, z) + uˢ(z)
+uᵢ(x, y, z) = wp * r(x, y, z)
 vᵢ(x, y, z) = -wp * r(x, y, z)
 Tᵢ(x, y, z) = z > - MLD ? T0 : 
                 T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
