@@ -69,25 +69,28 @@ model = NonhydrostaticModel(grid;
                             )
 @show model
 ## ICs
-# Mixed-layer index (same as your code)
-#izi = Nz - Int(MLD / Lz * Nz) + 1
-
-# --- RANDOM STREAM FUNCTION ψ(x,y) ---
-#N_ml = Nz - izi + 1  # number of vertical levels in mixed layer
-##rand_matrix = randn(Xoshiro(123), Nx, Ny, Nz) .* reshape(exp.(grid.z.cᵃᵃᶜ[1:Nz] ./ 4), 1, 1, Nz)
-#rand_matrix = permutedims(rand_matrix, (2, 1, 3))
-#@show "random matrix is made"
+izi = Nz - Int(MLD / Lz * Nz) + 1 # Mixed-layer index (same as your code)
+rand_matrix = randn(Xoshiro(123), Nx, Ny, Nz) #.* reshape(exp.(grid.z.cᵃᵃᶜ[1:Nz] ./ 4), 1, 1, Nz)
+rand_matrix = permutedims(rand_matrix, (2, 1, 3))
 #uᵢ = wp .* rand_matrix
 #vᵢ = -wp .* rand_matrix
-#r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-#uᵢ(x, y, z) = wp * r(x, y, z)
-#vᵢ(x, y, z) = -wp * r(x, y, z)
-uᵢ(x, y, z) = z > - MLD ? wp : 0.0
-vᵢ(x, y, z) = z > - MLD ? -wp : 0.0
+r(x, y, z) = begin
+    i = clamp(fld(Int(round(x / Lx * Nx)) + 1, 1), 1, Nx)
+    j = clamp(fld(Int(round(y / Ly * Ny)) + 1, 1), 1, Ny)
+    k = clamp(fld(Int(round((-z) / Lz * Nz)) + 1, 1), 1, Nz)
+
+    rand_matrix[i, j, k] * exp(z/4)
+end
+
+#r(x, y, z) = exp(z/4)*(randn(Xoshiro())) 
+uᵢ(x, y, z) = wp * r(x, y, z)
+vᵢ(x, y, z) = -wp * r(x, y, z)
+#uᵢ(x, y, z) = z > - MLD ? wp : 0.0
+#vᵢ(x, y, z) = z > - MLD ? -wp : 0.0
 #Tᵢ = ones(Nx, Ny, Nz) .* T0 +dTdz * Lz * 1e-6 * rand_matrix
 #Tᵢ[:, :, 1:izi-1] = Tᵢ[:, :, 1:izi-1] .+ reshape(dTdz .* grid.z.cᵃᵃᶜ[1:izi-1], 1, 1, izi-1) 
 Tᵢ(x, y, z) = z > - MLD ? T0 : 
-                T0 + dTdz * (z + MLD) #+ dTdz * Lz * 1e-6 * r(x, y, z)
+                T0 + dTdz * (z + MLD) + dTdz * Lz * 1e-6 * r(x, y, z)
 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
 
@@ -117,7 +120,7 @@ T = model.tracers.T
 S = model.tracers.S
 P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
-rel_path = "localoutputs/no rand function/"
+rel_path = "localoutputs/rand function within tranposed xy matrix/"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_static, P_dynamic),
                                                     with_halos=false,
                                                     dir = rel_path, 
