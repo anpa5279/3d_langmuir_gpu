@@ -19,7 +19,7 @@ Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
 MLD = 30.0          # m, mixed layer depth
-dTdz = 0.01         # K m⁻¹, temperature gradient
+dTdz = 0.005        # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
@@ -44,7 +44,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = -0.001
-Sj = 0.2
+Sj = 0.1
 area = pi*rp^2 # m², area for tracer
 x_area = [Lx/2-rp, Lx/2+rp]
 y_area = [Ly/2-rp, Ly/2+rp]
@@ -76,10 +76,10 @@ model = NonhydrostaticModel(grid;
 @show model
 ## ICs
 r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = 0.0 #wp * r(x, y, z)
-vᵢ(x, y, z) = 0.0 #-wp * r(x, y, z)
-Tᵢ(x, y, z) = T0 #z > - MLD ? T0 : 
-                #T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
+uᵢ(x, y, z) = wp * r(x, y, z)
+vᵢ(x, y, z) = -wp * r(x, y, z)
+Tᵢ(x, y, z) = z > - MLD ? T0 : 
+                T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
 
 set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
 
