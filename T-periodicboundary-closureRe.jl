@@ -40,7 +40,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = -0.001
-Sj = 0.05
+Sj = 0.15
 area = pi*rp^2 # m², area for tracer
 @inline function sflux(x, y, t) 
     if x^2+y^2<=rp
