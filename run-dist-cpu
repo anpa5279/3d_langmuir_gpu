@@ -4,7 +4,7 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sj0.1-mld50-dTdz0.01
+jobn=sj0.1-mld70-dTdz0.01
 file=T-periodicboundary-closureRe.jl
 
 rm -rf outputs/$jobn/
