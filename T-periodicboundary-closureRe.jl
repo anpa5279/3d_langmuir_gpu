@@ -18,7 +18,7 @@ Nz = 256
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
-MLD = 70.0          # m, mixed layer depth
+MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01        # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
@@ -40,7 +40,7 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 wp = -0.001
-Sj = 0.1
+Sj = 0.05
 area = pi*rp^2 # m², area for tracer
 @inline function sflux(x, y, t) 
     if x^2+y^2<=rp
