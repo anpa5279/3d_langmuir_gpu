@@ -18,23 +18,19 @@ Nz = 256
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
-MLD = 30.0          # m, mixed layer depth
-dTdz = 0.005        # K m⁻¹, temperature gradient
+MLD = 60.0          # m, mixed layer depth
+dTdz = 0.01        # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 10.0           # m, radius of surface buoyancy flux
-rho0 = 1025.0       # kg m⁻³, seawater density
-rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
+rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
-min_step = 0.2
+min_step = 0.1
 La_t = 0.3
 arch = Distributed(CPU())
 # defining grid
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-@show grid
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
-#beta = buoyancy.equation_of_state.haline_contraction
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -46,10 +42,8 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 wp = -0.001
 Sj = 0.1
 area = pi*rp^2 # m², area for tracer
-x_area = [Lx/2-rp, Lx/2+rp]
-y_area = [Ly/2-rp, Ly/2+rp]
 @inline function sflux(x, y, t) 
-    if x >= x_area[1] && x <= x_area[2] && y >= y_area[1] && y <= y_area[2]
+    if x^2+y^2<=rp
         return wp*Sj
     else
         return 0.0
@@ -58,12 +52,6 @@ end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
 
-# closure
-Re = 3000
-w_max = 0.10747783287769483
-visc = w_max*Lz/Re # 1.0e-5 # m² s⁻¹
-sgs = ScalarDiffusivity(ν=visc, κ=visc)
-
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
@@ -71,17 +59,12 @@ model = NonhydrostaticModel(grid;
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
-                            closure = sgs
                             )
 @show model
 ## ICs
-r(x, y, z) = (randn(Xoshiro())) * exp(z/4)
-uᵢ(x, y, z) = wp * r(x, y, z)
-vᵢ(x, y, z) = -wp * r(x, y, z)
-Tᵢ(x, y, z) = z > - MLD ? T0 : 
-                T0 + dTdz * (z + MLD)+dTdz * Lz * 1e-6 * r(x, y, z)
+Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 
-set!(model, u=uᵢ, v=vᵢ, T=Tᵢ, S=0.0)
+set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
 simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
