@@ -43,7 +43,7 @@ wp = -0.001
 Sj = 0.2
 area = pi*rp^2 # m², area for tracer
 @inline function sflux(x, y, t) 
-    if x^2+y^2<=rp
+    if (x^2+y^2)^(1/2)<=rp
         return wp*Sj
     else
         return 0.0
