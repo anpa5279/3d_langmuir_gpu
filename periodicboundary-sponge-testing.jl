@@ -6,9 +6,9 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 ## simulation parameters
-Nx = 64
-Ny = 64
-Nz = 64
+Nx = 48
+Ny = 48
+Nz = 48
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
@@ -21,7 +21,7 @@ min_step = 0.1
 La_t = 0.3
 # defining grid
 grid = RectilinearGrid(CPU(); size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-
+@show grid
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
@@ -69,19 +69,28 @@ sponge_y_vel2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2)
 sponge_y_T2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2, target = T_target)
 sponge_y_S2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2)
 gaus = [(sponge_x_vel1, sponge_y_vel1, sponge_x_vel2, sponge_y_vel2),
-        (sponge_x_T1, sponge_y_T1, sponge_x_T2, sponge_y_T2), 
-        (sponge_x_S1, sponge_y_S1, sponge_x_S2, sponge_y_S2)]
+        (sponge_x_T1, sponge_y_T1, sponge_x_T2, sponge_y_T2)]#, 
+        #(sponge_x_S1, sponge_y_S1, sponge_x_S2, sponge_y_S2)]
 
 # linear mask
-linear_mask_x = PiecewiseLinearMask{:x}(center = (-Lx/2, Lx/2), width = Lx/16)
-sponge_x_vel = Relaxation(; rate = damp_rate, mask = linear_mask_x)
-sponge_x_T = Relaxation(; rate = damp_rate, mask = linear_mask_x, target = Tᵢ)
-sponge_x_S = Relaxation(; rate = damp_rate, mask = linear_mask_x)
-gaus_mask_y = PiecewiseLinearMask{:y}(center = (-Ly/2, Ly/2), width = Ly/16)
-sponge_y_vel = Relaxation(; rate = damp_rate, mask = linear_mask_x)
-sponge_y_T = Relaxation(; rate = damp_rate, mask = linear_mask_x, target = Tᵢ)
-sponge_y_S = Relaxation(; rate = damp_rate, mask = linear_mask_x)
-linear = [(sponge_x_vel, sponge_y_vel),(sponge_x_T, sponge_y_T), (sponge_x_S, sponge_y_S)]
+linear_mask_x1 = PiecewiseLinearMask{:x}(center = Lx/2, width = Lx/16)
+linear_mask_x2 = PiecewiseLinearMask{:x}(center = -Lx/2, width = Lx/16)
+sponge_x_vel1 = Relaxation(; rate = damp_rate, mask = linear_mask_x1)
+sponge_x_T1 = Relaxation(; rate = damp_rate, mask = linear_mask_x1, target = T_target)
+sponge_x_S1 = Relaxation(; rate = damp_rate, mask = linear_mask_x1)
+sponge_x_vel2 = Relaxation(; rate = damp_rate, mask = linear_mask_x2)
+sponge_x_T2 = Relaxation(; rate = damp_rate, mask = linear_mask_x2, target = T_target)
+sponge_x_S2 = Relaxation(; rate = damp_rate, mask = linear_mask_x2)
+
+linear_mask_y1 = PiecewiseLinearMask{:y}(center = (-Ly/2, Ly/2), width = Ly/16)
+sponge_y_vel1 = Relaxation(; rate = damp_rate, mask = linear_mask_y1)
+sponge_y_T1 = Relaxation(; rate = damp_rate, mask = linear_mask_y1, target = T_target)
+sponge_y_S1 = Relaxation(; rate = damp_rate, mask = linear_mask_y1)
+linear_mask_y2 = PiecewiseLinearMask{:y}(center = (-Ly/2, Ly/2), width = Ly/16)
+sponge_y_vel2 = Relaxation(; rate = damp_rate, mask = linear_mask_y2)
+sponge_y_T2 = Relaxation(; rate = damp_rate, mask = linear_mask_y2, target = T_target)
+sponge_y_S2 = Relaxation(; rate = damp_rate, mask = linear_mask_y2)
+linear = [(sponge_x_vel1, sponge_y_vel1),(sponge_x_T1, sponge_y_T1)]
 for (i, mask) in enumerate([gaus, linear, nothing])
     ## defining model
     if mask == nothing
@@ -99,7 +108,7 @@ for (i, mask) in enumerate([gaus, linear, nothing])
                                     tracers = (:T, :S,),
                                     timestepper = :RungeKutta3,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
-                                    forcing = (T = mask[2], S = mask[3], u = mask[1], v = mask[1], w = mask[1])
+                                    forcing = (T = mask[2], u = mask[1], v = mask[1], w = mask[1])
                                     )
     end
     @show model
@@ -122,7 +131,7 @@ for (i, mask) in enumerate([gaus, linear, nothing])
         @info msg
         return nothing
     end
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
     ## updating cfl every time step
     conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
     ## output files
@@ -132,7 +141,7 @@ for (i, mask) in enumerate([gaus, linear, nothing])
     S = model.tracers.S
     P_static = model.pressures.pHY′
     P_dynamic = model.pressures.pNHS
-    rel_path = "localoutputs/sponge testing all variables/$(mask_str[i])"
+    rel_path = "localoutputs/sponge testing/$(mask_str[i])/width = $(Lx/16), rate = $(damp_rate)/"
     simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_static, P_dynamic),
                                                         with_halos=false,
                                                         dir = rel_path, 
