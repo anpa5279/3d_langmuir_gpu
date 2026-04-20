@@ -47,26 +47,42 @@ S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux),
 Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 
 # types of masks to test
-mask_str = ["none", "default", "gaussian", "piecewise", "linear"]
-rate = 1/3600 # 1/hr, relaxation rate for all masks
-# default relazation mask
-sponge_vel = Relaxation(;rate = rate)
-sponge_T = Relaxation(;rate = rate, target = Tᵢ)
-sponge_S = Relaxation(;rate = rate)
-default = (sponge_vel, sponge_T, sponge_S)
+mask_str = ["gaussian", "linear", "none"]
+damp_rate = 1/3600 # 1/hr, relaxation rate for all masks
+T_target(x, y, z, t) = Tᵢ(0, y, z)
 # gaussian mask
-gaus_mask = GaussianMask{:xy}(center = (-Lx/2, Lx/2), width = Lx/16)
-sponge_vel = Relaxation(; rate = rate, mask = gaus_mask)
-sponge_T = Relaxation(; rate = rate, mask = gaus_mask, target = Tᵢ)
-sponge_S = Relaxation(; rate = rate, mask = gaus_mask)
-gaus = (sponge_vel, sponge_T, sponge_S)
+gaus_mask_x1 = GaussianMask{:x}(center = Lx/2, width = Lx/16)
+gaus_mask_x2 = GaussianMask{:x}(center = -Lx/2, width = Lx/16)
+sponge_x_vel1 = Relaxation(; rate = damp_rate, mask = gaus_mask_x1)
+sponge_x_T1 = Relaxation(; rate = damp_rate, mask = gaus_mask_x1, target = T_target)
+sponge_x_S1 = Relaxation(; rate = damp_rate, mask = gaus_mask_x1)
+sponge_x_vel2 = Relaxation(; rate = damp_rate, mask = gaus_mask_x2)
+sponge_x_T2 = Relaxation(; rate = damp_rate, mask = gaus_mask_x2, target = T_target)
+sponge_x_S2 = Relaxation(; rate = damp_rate, mask = gaus_mask_x2)
+
+gaus_mask_y1 = GaussianMask{:y}(center = Ly/2, width = Ly/16)
+gaus_mask_y2 = GaussianMask{:y}(center = -Ly/2, width = Ly/16)
+sponge_y_vel1 = Relaxation(; rate = damp_rate, mask = gaus_mask_y1)
+sponge_y_T1 = Relaxation(; rate = damp_rate, mask = gaus_mask_y1, target = T_target)
+sponge_y_S1 = Relaxation(; rate = damp_rate, mask = gaus_mask_y1)
+sponge_y_vel2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2)
+sponge_y_T2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2, target = T_target)
+sponge_y_S2 = Relaxation(; rate = damp_rate, mask = gaus_mask_y2)
+gaus = [(sponge_x_vel1, sponge_y_vel1, sponge_x_vel2, sponge_y_vel2),
+        (sponge_x_T1, sponge_y_T1, sponge_x_T2, sponge_y_T2), 
+        (sponge_x_S1, sponge_y_S1, sponge_x_S2, sponge_y_S2)]
+
 # linear mask
-linear_mask = PiecewiseLinearMask{:xy}(center = (-Lx/2, Lx/2), width = Lx/16)
-sponge_vel = Relaxation(; rate = rate, mask = linear_mask)
-sponge_T = Relaxation(; rate = rate, mask = linear_mask, target = Tᵢ)
-sponge_S = Relaxation(; rate = rate, mask = linear_mask)
-linear = (sponge_vel, sponge_T, sponge_S)
-for (i, mask) in enumerate([default, gaus, linear, nothing])
+linear_mask_x = PiecewiseLinearMask{:x}(center = (-Lx/2, Lx/2), width = Lx/16)
+sponge_x_vel = Relaxation(; rate = damp_rate, mask = linear_mask_x)
+sponge_x_T = Relaxation(; rate = damp_rate, mask = linear_mask_x, target = Tᵢ)
+sponge_x_S = Relaxation(; rate = damp_rate, mask = linear_mask_x)
+gaus_mask_y = PiecewiseLinearMask{:y}(center = (-Ly/2, Ly/2), width = Ly/16)
+sponge_y_vel = Relaxation(; rate = damp_rate, mask = linear_mask_x)
+sponge_y_T = Relaxation(; rate = damp_rate, mask = linear_mask_x, target = Tᵢ)
+sponge_y_S = Relaxation(; rate = damp_rate, mask = linear_mask_x)
+linear = [(sponge_x_vel, sponge_y_vel),(sponge_x_T, sponge_y_T), (sponge_x_S, sponge_y_S)]
+for (i, mask) in enumerate([gaus, linear, nothing])
     ## defining model
     if mask == nothing
         model = NonhydrostaticModel(grid;
@@ -85,6 +101,7 @@ for (i, mask) in enumerate([default, gaus, linear, nothing])
                                     boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
                                     forcing = (T = mask[2], S = mask[3], u = mask[1], v = mask[1], w = mask[1])
                                     )
+    end
     @show model
     ## ICs
     set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
@@ -126,3 +143,5 @@ for (i, mask) in enumerate([default, gaus, linear, nothing])
 
     # running the simulation
     run!(simulation)
+end
+
