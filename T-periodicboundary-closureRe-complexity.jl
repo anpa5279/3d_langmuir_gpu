@@ -10,7 +10,7 @@ using Printf
 using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Units: minute, minutes, hours, seconds
+using Oceananigans.Units: minute, minutes, hours, seconds, stokes_velocity, dstokes_dz
 using Oceananigans.BoundaryConditions: fill_halo_regions!, OpenBoundaryCondition
 using Oceananigans.Models: BoundaryAdjacentMean
 using Oceananigans.Utils: launch!
@@ -32,6 +32,8 @@ rp = 10.0           # m, radius of surface buoyancy flux
 rho0 = 1025.0       # kg m⁻³, seawater density
 rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 u₁₀ = 5.75          # (m s⁻¹) wind speed at 10 meters above the ocean
+wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
+Sj = 0.1 # g/kg, tracer mass 
 
 # defining grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -44,18 +46,6 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-wp = 0.001
-Sj = 100.0 # kg, tracer mass
-area = 2*pi*rp^2 # m², area for tracer
-x_area = [Lx/2-rp, Lx/2+rp]
-y_area = [Ly/2-rp, Ly/2+rp]
-@inline function sflux(x, y, t) 
-    if x >= x_area[1] && x <= x_area[2] && y >= y_area[1] && y <= y_area[2]
-        return -wp*Sj
-    else
-        return 0.0
-    end
-end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
 
@@ -71,7 +61,6 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # stokes drift
 g = Oceananigans.defaults.gravitational_acceleration
-include("stokes.jl")
 dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
 dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
 dusdz_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
@@ -155,7 +144,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
                                                     init = save_IC!
-                                                    overwrite_existing = true)
+                                                    overwrite_existing = true, init = save_grid!)
 
 # running the simulation
 run!(simulation)

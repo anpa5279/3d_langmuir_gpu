@@ -3,8 +3,7 @@ using Statistics
 using Printf
 using Random
 using Oceananigans
-using Oceananigans.Units: minute, minutes, hours, seconds
-
+using Oceananigans.Units: minute, minutes, hours, seconds, stokes_velocity, dstokes_dz
 import Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Grids: topology
 using CairoMakie
@@ -76,7 +75,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, T, P_static, P_dynamic),
                                                         schedule = TimeInterval(output_interval),
                                                         filename = field_file, #$(rank)
-                                                        overwrite_existing = true,
+                                                        overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid],
                                                         init = save_IC!)
     avg_file = "$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
@@ -86,7 +85,7 @@ function run_model2D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     simulation.output_writers[:averages] = JLD2Writer(model, (; U, W, T),
                                                         schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                         filename = avg_file,
-                                                        overwrite_existing = true)
+                                                        overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
     run!(simulation)
 
     if plot
@@ -186,7 +185,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                         schedule = TimeInterval(output_interval),
                                                         filename = field_file,
-                                                        overwrite_existing = true,
+                                                        overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid],
                                                         init = save_IC!)
     avg_file = "$(name)_averages.jld2"
     W = Average(w, dims=(1, 2))
@@ -197,7 +196,7 @@ function run_model3D(grid, bcs, stokes; plot=true, stop_time=3hours, name="")
     simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                         schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                         filename = avg_file,
-                                                        overwrite_existing = true)
+                                                        overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
     run!(simulation)
 
     if plot
@@ -259,7 +258,6 @@ grid3d = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, 
 grid3d_periodic = RectilinearGrid(; topology =(Periodic, Periodic, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 
 ## stokes drift
-include("stokes.jl")
 dusdz_2d = Field{Nothing, Nothing, Center}(grid2d)
 dusdz_3d = Field{Nothing, Nothing, Center}(grid3d)
 Nx_local, Ny_local, Nz_local = size(dusdz_2d)

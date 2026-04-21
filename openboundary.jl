@@ -3,11 +3,8 @@ using Statistics
 using Printf
 using Random
 using Oceananigans
-using Oceananigans.Units: minute, minutes, hours, seconds
-
+using Oceananigans.Units: minute, minutes, hours, seconds, stokes_velocity, dstokes_dz
 import Oceananigans.BoundaryConditions: fill_halo_regions!, PerturbationAdvectionOpenBoundaryCondition
-using Oceananigans.Utils: launch!
-using Oceananigans.Operators: ℑzᵃᵃᶠ
 ## simulation parameters
 Nx = 32        # number of points in each of x direction
 Ny = 32        # number of points in each of y direction
@@ -28,7 +25,6 @@ La_t = 0.3  # Langmuir turbulence number
 ## referring to files with desiraed functions
 grid = RectilinearGrid(; topology =(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)) #arch
 ## stokes drift
-include("stokes.jl")
 dusdz_top = dstokes_dz(grid.z.cᵃᵃᶜ[Nz]/2, u₁₀)
 dusdz_bot = dstokes_dz(grid.z.cᵃᵃᶜ[0], u₁₀)
 us_bcs = FieldBoundaryConditions(grid, (nothing, nothing, Center()), top = ValueBoundaryCondition(dusdz_top), 
@@ -38,7 +34,7 @@ dusdz_1d = dstokes_dz.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(dusdz, reshape(dusdz_1d, 1, 1, :))
 
 us = Field{Nothing, Nothing, Center}(grid)
-us_1d = stokes_velocity.(z1d, u₁₀)
+us_1d = stokes_velocity.(grid.z.cᵃᵃᶜ[1:Nz], u₁₀)
 set!(us, us_1d)
 @show dusdz
 ## BCs
@@ -109,9 +105,8 @@ P_static = model.pressures.pHY′
 P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "open_fields.jld2", #$(rank)
-                                                    overwrite_existing = true,
-                                                    init = save_IC!)
+                                                    filename = "open_fields.jld2",
+                                                    overwrite_existing = true, init =save_grid!)
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
 V = Average(v, dims=(1, 2))
@@ -120,6 +115,6 @@ T = Average(T, dims=(1, 2))
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "open_averages.jld2",
-                                                    overwrite_existing = true)
+                                                    overwrite_existing = true, init =save_grid!)
 # running the simulation
 run!(simulation)#; pickup = true)

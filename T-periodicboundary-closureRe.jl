@@ -7,11 +7,9 @@ mpi_pinthreads(:numa)
 using Pkg
 using Statistics
 using Printf
-using Random
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-## simulation parameters
 Nx = 256
 Ny = 256
 Nz = 256
@@ -24,7 +22,10 @@ alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.1
-La_t = 0.3
+wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
+Sj = 0.1 # g/kg, tracer mass 
+import functions: progress, save_grid!, sflux
+
 arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
@@ -39,16 +40,6 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-wp = -0.001
-Sj = 0.1
-area = pi*rp^2 # m², area for tracer
-@inline function sflux(x, y, t) 
-    if (x^2+y^2)^(1/2)<=rp
-        return wp*Sj
-    else
-        return 0.0
-    end
-end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
 
@@ -97,7 +88,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true)
+                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
 
 # running the simulation
 run!(simulation)

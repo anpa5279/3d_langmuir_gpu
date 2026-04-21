@@ -16,11 +16,10 @@ MLD = 30.0          # m, mixed layer depth
 dTdz = 0.01         # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 10.0           # m, radius of surface buoyancy flux
-rho0 = 1025.0       # kg m⁻³, seawater density
-rho_tracer = 1300.0 # kg m⁻³, reference density for tracer
 T0 = 25.0           # C, temperature at the surface
-min_step = 0.2
-La_t = 0.3
+min_step = 0.1
+wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
+Sj = 0.1 # g/kg, tracer mass 
 
 # defining grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -37,18 +36,6 @@ v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-wp = -0.001
-Sj = 0.2
-area = pi*rp^2 # m², area for tracer
-x_area = [Lx/2-rp, Lx/2+rp]
-y_area = [Ly/2-rp, Ly/2+rp]
-@inline function sflux(x, y, t) 
-    if x >= x_area[1] && x <= x_area[2] && y >= y_area[1] && y <= y_area[2]
-        return wp*Sj
-    else
-        return 0.0
-    end
-end
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
 
@@ -127,7 +114,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true)
+                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
 
 # running the simulation
 run!(simulation)
