@@ -29,12 +29,13 @@ function save_grid!(file, model)
     file["grid/Hx"] = grid.Hx
     file["grid/Hy"] = grid.Hy
     file["grid/Hz"] = grid.Hz
-    file["grid/xᶜᵃᵃ"] = grid.xᶜᵃᵃ.parent
-    file["grid/yᵃᶜᵃ"] = grid.yᵃᶜᵃ.parent
-    file["grid/zᵃᵃᶜ"] = grid.z.cᵃᵃᶜ.parent
+    file["grid/xᶜᵃᵃ"] = grid.xᶜᵃᵃ
+    file["grid/yᵃᶜᵃ"] = grid.yᵃᶜᵃ
+    file["grid/zᵃᵃᶜ"] = grid.z.cᵃᵃᶜ
     file["grid/Δxᶜᵃᵃ"] = grid.Δxᶜᵃᵃ
     file["grid/Δyᵃᶜᵃ"] = grid.Δyᵃᶜᵃ
     file["grid/z/Δᵃᵃᶜ"] = grid.z.Δᵃᵃᶜ
+    file["grid/grid"] = grid
     return nothing
 end
 
