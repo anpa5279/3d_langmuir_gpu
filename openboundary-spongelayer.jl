@@ -126,7 +126,7 @@ P_dynamic = model.pressures.pNHS
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, P_static, P_dynamic),
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "sponge-open_fields.jld2", #$(rank)
-                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid],
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid],
                                                     init = save_IC!)
 W = Average(w, dims=(1, 2))
 U = Average(u, dims=(1, 2))
@@ -136,6 +136,6 @@ T = Average(T, dims=(1, 2))
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, W, T),
                                                     schedule = AveragedTimeInterval(output_interval, window=output_interval),
                                                     filename = "sponge-open_averages.jld2",
-                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 # running the simulation
 run!(simulation)#; pickup = true)

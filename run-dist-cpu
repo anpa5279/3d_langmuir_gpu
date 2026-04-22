@@ -4,8 +4,8 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sj0.1-mld60-dTdz0.1
-file=T-periodicboundary-closureRe.jl
+jobn=sj0.1-mld60-dTdz0.01-z96.25
+file=T-periodicboundary.jl
 
 rm -rf outputs/$jobn/
 mkdir outputs/$jobn/
@@ -21,8 +21,8 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-####PBS -l job_priority=economy
-#PBS -l walltime=6:00:00
+#PBS -l job_priority=economy
+#PBS -l walltime=4:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
@@ -35,6 +35,7 @@ module list
 
 julia --project -e 'import Pkg'
 julia --project -e 'using Pkg; Pkg.instantiate()'
+julia --project -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.106.6"))'
 mpiexec -n $ntasks -ppn $procs julia --project $file
 
 EXEC

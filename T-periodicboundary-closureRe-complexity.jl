@@ -144,7 +144,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
                                                     init = save_IC!
-                                                    overwrite_existing = true, init = save_grid!)
+                                                    overwrite_existing = true)#, init = save_grid!)
 
 # running the simulation
 run!(simulation)

@@ -114,7 +114,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 
 # running the simulation
 run!(simulation)

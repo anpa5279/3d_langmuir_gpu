@@ -12,10 +12,10 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 Nx = 256
 Ny = 256
-Nz = 256
+Nz = 77
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
-Lz = 96             # (m) domain depth 
+Lz = 96.25             # (m) domain depth 
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.1       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -24,7 +24,7 @@ T0 = 25.0           # C, temperature at the surface
 min_step = 0.1
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
-import functions: progress, save_grid!, sflux
+#include("functions.jl")
 
 arch = Distributed(CPU())
 # defining grid
@@ -34,6 +34,13 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, L
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
+@inline function sflux(x, y, t) 
+    if (x^2+y^2)^(1/2)<=rp
+        return wp*Sj
+    else
+        return 0.0
+    end
+end
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -88,7 +95,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true, init =save_grid!)# including = [default_included_properties(model), grid])
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 
 # running the simulation
 run!(simulation)
