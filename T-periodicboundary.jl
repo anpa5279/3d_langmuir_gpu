@@ -12,7 +12,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 Nx = 256
 Ny = 256
-Nz = 77
+Nz = 256
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96.25             # (m) domain depth 
@@ -53,7 +53,7 @@ S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(),
+                            advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
