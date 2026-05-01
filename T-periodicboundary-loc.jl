@@ -4,6 +4,7 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite, TendencyCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
+using Oceananigans.Utils: KernelParameters, launch!
 using KernelAbstractions: @kernel, @index
 Nx = 48
 Ny = 48
@@ -59,22 +60,24 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 # defining simulation
 simulation = Simulation(model, Δt=min_step, stop_time = 1hours) 
 ## no negative tracer function
-@kernel function update_tracer!(Gc, grid)
+"""
+@kernel function update_tracer!(S)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = ifelse(Gc[i, j, k] < 0.0, 10^(-16), Gc[i, j, k])
-end
-function zero_tracer(simulation)
-    model = simulation.model
-    arch = model.architecture
-    grid = simulation.model.grid
-    S = model.tracers.S
-    launch!(arch, grid, update_tracer!,
-                grid;
-                active_cells_map)
-    return nothing
+    @inbounds S[i, j, k] = ifelse(S[i, j, k] < 0.0, 0.0, S[i, j, k])
 end
 
-simulation.callbacks[:zero_tracer] = Callback(neg_tracer, UpdateStateCallsite())
+function zero_tracer(model)
+    arch = model.architecture
+    grid = model.grid
+    S = model.tracers.S
+    launch!(arch, grid, :xyz, update_tracer!, S)
+    return nothing
+end
+"""
+# from https://github.com/CliMA/Oceananigans.jl/discussions/2409
+#zero_tracer(sim) = map!(S -> ifelse(S < 0, 0.0, S), parent(model.tracers.S), parent(model.tracers.S))
+zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
+simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities

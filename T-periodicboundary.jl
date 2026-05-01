@@ -69,7 +69,9 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
 simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
-@show simulation
+# correcting tracer to ensure no negative values
+zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
+simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -84,6 +86,7 @@ function progress(simulation)
     return nothing
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
+@show simulation
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
