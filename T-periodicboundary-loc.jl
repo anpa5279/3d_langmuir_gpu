@@ -63,7 +63,7 @@ simulation = Simulation(model, Δt=min_step, stop_time = 1hours)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = ifelse(Gc[i, j, k] < 0.0, 10^(-16), Gc[i, j, k])
 end
-function neg_tracer(simulation)
+function zero_tracer(simulation)
     model = simulation.model
     arch = model.architecture
     grid = simulation.model.grid
@@ -74,7 +74,7 @@ function neg_tracer(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(neg_tracer, UpdateStateCallsite())
+simulation.callbacks[:zero_tracer] = Callback(neg_tracer, UpdateStateCallsite())
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
