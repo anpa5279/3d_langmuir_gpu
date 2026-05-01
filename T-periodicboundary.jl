@@ -15,13 +15,13 @@ Ny = 256
 Nz = 256
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
-Lz = 96.25             # (m) domain depth 
+Lz = 96             # (m) domain depth 
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
-min_step = 0.1
+min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 #include("functions.jl")
@@ -49,7 +49,9 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
-
+## forcing functions
+@inbounds S_neg(i, j, k, grid, clock, model_fields) = model_fields.S[i, j, k] < 0 ? 0.0: model_fields.S[i, j, k]
+S_force = Forcing(S_neg, discrete_form=true)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
@@ -57,6 +59,7 @@ model = NonhydrostaticModel(grid;
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
+                            forcing=(S=S_force,)
                             )
 @show model
 ## ICs
