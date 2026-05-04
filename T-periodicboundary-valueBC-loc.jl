@@ -3,6 +3,7 @@ using Statistics
 using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
+#using Oceananigans.BoundaryConditions: OpenBoundaryCondition, PerturbationAdvection
 using Oceananigans.Units: minute, minutes, hours, seconds
 Nx = 48
 Ny = 48
@@ -16,8 +17,6 @@ alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.1
-wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
-Sj = 0.1 # g/kg, tracer mass 
 #include("functions.jl")
 # defining grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
@@ -26,9 +25,16 @@ grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2)
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function sflux(x, y, t) 
+@inline function s_value(x, y, t) 
     if (x^2+y^2)^(1/2)<=rp
-        return wp*Sj
+        return 0.1
+    else
+        return 0.0
+    end
+end
+@inline function w_value(x, y, t) 
+    if (x^2+y^2)^(1/2)<=rp
+        return -0.001
     else
         return 0.0
     end
@@ -37,9 +43,10 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value))#; scheme = PerturbationAdvection(;)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
 ## defining model
 model = NonhydrostaticModel(grid;
@@ -47,7 +54,7 @@ model = NonhydrostaticModel(grid;
                             advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
-                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
+                            boundary_conditions = (u = u_bcs, v = v_bcs, w = w_bcs, S=S_bcs, T=T_bcs),
                             )
 @show model
 ## ICs
@@ -89,7 +96,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_stati
                                                     with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    dir = "localoutputs/fluxbc/",
+                                                    dir = "localoutputs/valuebc/",
                                                     filename = "fields.jld2",
                                                     overwrite_existing = true)
 

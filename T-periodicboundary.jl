@@ -49,9 +49,6 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
-## forcing functions
-@inbounds S_neg(i, j, k, grid, clock, model_fields) = model_fields.S[i, j, k] < 0 ? 0.0: model_fields.S[i, j, k]
-S_force = Forcing(S_neg, discrete_form=true)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
@@ -59,7 +56,6 @@ model = NonhydrostaticModel(grid;
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
-                            forcing=(S=S_force,)
                             )
 @show model
 ## ICs
