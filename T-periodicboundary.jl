@@ -52,7 +52,7 @@ S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            #advection = WENO(; minimum_buffer_upwind_order = 1),
+                            advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
@@ -67,7 +67,24 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
 # correcting tracer to ensure no negative values
 #zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
-#simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
+function zero_tracer(model)
+    S = model.tracers.S
+
+    # Total mass before clipping
+    total_before = sum(S)
+    
+    # Clip negatives
+    S .= max.(0, S)
+    
+    # How much mass was removed?
+    total_after = sum(S)
+    deficit = total_before - total_after
+    
+    # Redistribute deficit uniformly across all cells
+    n = length(S)
+    S .+= deficit / n
+end
+simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
