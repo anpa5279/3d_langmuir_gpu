@@ -52,7 +52,7 @@ S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(; minimum_buffer_upwind_order = 1),
+                            #advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
