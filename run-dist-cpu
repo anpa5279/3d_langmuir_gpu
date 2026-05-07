@@ -4,7 +4,7 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sj0.1-mld60-dTdz0.01-z96-nz128
+jobn=sj0.1-mld60-dTdz0.01-z96-nz64
 file=T-periodicboundary.jl
 
 rm -rf outputs/resolution_test/$jobn/
