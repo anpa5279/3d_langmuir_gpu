@@ -12,7 +12,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 Nx = 256
 Ny = 256
-Nz = 256
+Nz = 128
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
@@ -67,24 +67,7 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
 # correcting tracer to ensure no negative values
 #zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
-function zero_tracer(model)
-    S = model.tracers.S
-
-    # Total mass before clipping
-    total_before = sum(S)
-    
-    # Clip negatives
-    S .= max.(0, S)
-    
-    # How much mass was removed?
-    total_after = sum(S)
-    deficit = total_before - total_after
-    
-    # Redistribute deficit uniformly across all cells
-    n = length(S)
-    S .+= deficit / n
-end
-simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
+#simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
