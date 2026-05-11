@@ -4,15 +4,16 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-jobn=sj0.1-mld60-dTdz0.01-z96-nz192
+archive_folder=dz0.5_updated_Lz
+jobn=sj0.1-mld60-dTdz0.01-z160
 file=T-periodicboundary.jl
 
-rm -rf outputs/resolution_test/$jobn/
-mkdir outputs/resolution_test/$jobn/
+rm -rf outputs/$archive_folder/$jobn/
+mkdir outputs/$archive_folder/$jobn/
 
-cp $file outputs/resolution_test/$jobn/
+cp $file outputs/$archive_folder/$jobn/
 
-cd outputs/resolution_test/$jobn/
+cd outputs/$archive_folder/$jobn/
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
