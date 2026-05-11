@@ -23,7 +23,7 @@ rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
-Sj = 0.1 # g/kg, tracer mass 
+Sj = 0.2 # g/kg, tracer mass 
 #include("functions.jl")
 
 arch = Distributed(CPU())
