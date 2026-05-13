@@ -16,14 +16,14 @@ Nz = 192
 Lx = 320            # (m) domain horizontal extents
 Ly = 320            # (m) domain horizontal extents
 Lz = 96             # (m) domain depth 
-MLD = 60.0          # m, mixed layer depth
+MLD = 70.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
-Sj = 0.2 # g/kg, tracer mass 
+Sj = 0.1 # g/kg, tracer mass 
 #include("functions.jl")
 
 arch = Distributed(CPU())
