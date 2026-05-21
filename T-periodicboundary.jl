@@ -10,12 +10,12 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Nx = 256
-Ny = 256
-Nz = 192
-Lx = 320            # (m) domain horizontal extents
-Ly = 320            # (m) domain horizontal extents
-Lz = 96             # (m) domain depth 
+Nx = 320
+Ny = 320
+Nz = 320
+Lx = Nx*1.25            # (m) domain horizontal extents
+Ly = Nx*1.25            # (m) domain horizontal extents
+Lz = 160             # (m) domain depth 
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -65,9 +65,7 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
 simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
-# correcting tracer to ensure no negative values
-#zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
-#simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
+
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
