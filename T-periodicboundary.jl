@@ -13,8 +13,8 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 Nx = 320
 Ny = 320
 Nz = 320
-Lx = Nx*1.25            # (m) domain horizontal extents
-Ly = Nx*1.25            # (m) domain horizontal extents
+Lx = Nx*1.5            # (m) domain horizontal extents
+Ly = Nx*1.5            # (m) domain horizontal extents
 Lz = 160             # (m) domain depth 
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
