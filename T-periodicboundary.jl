@@ -10,12 +10,10 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Nx = 320
-Ny = 320
-Nz = 320
-Lx = Nx*1.5            # (m) domain horizontal extents
-Ly = Nx*1.5            # (m) domain horizontal extents
+Lx = Ly = 320            # (m) domain horizontal extents
 Lz = 160             # (m) domain depth 
+Nx = Ny = Lx*1.25
+Nz = 320
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
