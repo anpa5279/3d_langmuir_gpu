@@ -1,11 +1,11 @@
 #!/bin/bash
-nodes=2
+nodes=1
 cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-archive_folder=res-horizontal
-jobn=sj0.1-mld60-dTdz0.01-lx320-nx640
+archive_folder=horizontal-domain
+jobn=sj0.1-mld60-dTdz0.01-lx-480-nx384
 file=T-periodicboundary.jl
 
 rm -rf outputs/$archive_folder/$jobn/
