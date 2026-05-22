@@ -5,7 +5,7 @@ procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 archive_folder=horizontal-domain
-jobn=sj0.1-mld60-dTdz0.01-lx-400-nx320
+jobn=sj0.1-mld60-dTdz0.01-lx-560-nx448
 file=T-periodicboundary.jl
 
 rm -rf outputs/$archive_folder/$jobn/
