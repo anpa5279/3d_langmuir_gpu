@@ -5,7 +5,7 @@ procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 archive_folder=horizontal-domain
-jobn=sj0.1-mld60-dTdz0.01-lx-640-nx512
+jobn=sj0.1-mld60-dTdz0.01-lx-400-nx320
 file=T-periodicboundary.jl
 
 rm -rf outputs/$archive_folder/$jobn/
@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 ###PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l walltime=9:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
