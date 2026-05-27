@@ -1,19 +1,20 @@
 #!/bin/bash
-nodes=1
+nodes=4
 cpus=128
-procs=32
+procs=128
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-archive_folder=horizontal-domain
-jobn=sj0.1-mld60-dTdz0.01-lx-560-nx448
+base_dir=/glade/derecho/scratch/apauls/outputs
+archive_folder=res-horizontal
+jobn=sj0.1-mld60-dTdz0.01-lx-320-nx640
 file=T-periodicboundary.jl
 
-rm -rf outputs/$archive_folder/$jobn/
-mkdir outputs/$archive_folder/$jobn/
+rm -rf $base_dir/$archive_folder/$jobn/
+mkdir $base_dir/$archive_folder/$jobn/
 
-cp $file outputs/$archive_folder/$jobn/
+cp $file $base_dir/$archive_folder/$jobn/
 
-cd outputs/$archive_folder/$jobn/
+cd $base_dir/$archive_folder/$jobn/
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh

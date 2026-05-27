@@ -10,9 +10,9 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 560            # (m) domain horizontal extents
+Lx = Ly = 320            # (m) domain horizontal extents
 Lz = 160             # (m) domain depth 
-Nx = Ny = 448
+Nx = Ny = 640
 Nz = 320
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
@@ -77,7 +77,7 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 @show simulation
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
@@ -86,14 +86,13 @@ output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-P_static = model.pressures.pHY′
-P_dynamic = model.pressures.pNHS
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_static, P_dynamic),
+
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "fields.jld2",
-                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
+                                                    filename = "fields.jld2")#,
+                                                    #overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 
 # running the simulation
 run!(simulation)
