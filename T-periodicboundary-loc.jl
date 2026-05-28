@@ -4,24 +4,22 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Nx = 48
-Ny = 48
-Nz = 256
-Lx = 60            # (m) domain horizontal extents
-Ly = 60            # (m) domain horizontal extents
-Lz = 96             # (m) domain depth 
+Lx = Ly = 640            # (m) domain horizontal extents
+Lz = 160             # (m) domain depth 
+Nx = Ny = 32
+Nz = 32
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
-min_step = 0.1
+min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 #include("functions.jl")
 # defining grid
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-@show grid
+
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
@@ -56,42 +54,40 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 1hours) 
-## no negative tracer function
-zero_tracer(model) = parent(model.tracers.S) .= max.(0, parent(model.tracers.S))
-simulation.callbacks[:correcting_tracer] = Callback(zero_tracer, IterationInterval(1), callsite = UpdateStateCallsite())
+simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
+
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
-    S = simulation.model.tracers.S
     # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, Smin = %.1e, Smax = %.1e, wall time: %s\n",
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                 iteration(simulation),
                 prettytime(time(simulation)),
                 prettytime(simulation.Δt),
                 maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                minimum(S), maximum(S), prettytime(simulation.run_wall_time))
+                prettytime(simulation.run_wall_time))
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 @show simulation
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
-output_interval = 0.05hours
+output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-P_static = model.pressures.pHY′
-P_dynamic = model.pressures.pNHS
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P_static, P_dynamic),
+
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    dir = "localoutputs/fluxbc/",
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true)
-
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
+# adding check point incase pickup is required later
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(0.05hours), cleanup = true)
+@show model
+@show simulation
 # running the simulation
 run!(simulation)

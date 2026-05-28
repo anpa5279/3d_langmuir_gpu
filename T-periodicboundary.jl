@@ -10,9 +10,9 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 640            # (m) domain horizontal extents
+Lx = Ly = 320            # (m) domain horizontal extents
 Lz = 160             # (m) domain depth 
-Nx = Ny = 512
+Nx = Ny = 640
 Nz = 320
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
@@ -91,8 +91,9 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     with_halos=false,
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
-                                                    filename = "fields.jld2")#,
-                                                    #overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
-
+                                                    filename = "fields.jld2",
+                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
+# adding check point incase pickup is required later
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(2hours), cleanup = true)
 # running the simulation
 run!(simulation)
