@@ -12,7 +12,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 Lx = Ly = 128           # (m) domain horizontal extents
 Lz = 128             # (m) domain depth 
-Nx = Ny = 256 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 512 #ensure it is only powers of 2 (maybe 3)
 Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
