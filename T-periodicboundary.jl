@@ -10,10 +10,10 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 320            # (m) domain horizontal extents
-Lz = 160             # (m) domain depth 
-Nx = Ny = 640
-Nz = 320
+Lx = Ly = 128            # (m) domain horizontal extents
+Lz = 128             # (m) domain depth 
+Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -62,7 +62,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
+simulation = Simulation(model, Δt=min_step, stop_time = 4hours) 
 
 ## progress function
 function progress(simulation)
