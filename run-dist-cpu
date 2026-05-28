@@ -6,7 +6,7 @@ ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs
 archive_folder=small-horizontal-domain
-jobn=coarse2
+jobn=coarse1
 file=T-periodicboundary.jl
 
 rm -rf $base_dir/$archive_folder/$jobn/
@@ -15,8 +15,6 @@ mkdir $base_dir/$archive_folder/$jobn/
 cp $file $base_dir/$archive_folder/$jobn/
 
 cd $base_dir/$archive_folder/$jobn/
-
-pwd
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
