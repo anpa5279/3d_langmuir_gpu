@@ -1,12 +1,12 @@
 #!/bin/bash
-nodes=2
+nodes=1
 cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109
-archive_folder=horizontal-domain
-jobn=fine4
+archive_folder=vertical-domain
+jobn=vert-fine1
 file=T-periodicboundary.jl
 
 rm -rf $base_dir/$archive_folder/$jobn/
@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l walltime=02:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
