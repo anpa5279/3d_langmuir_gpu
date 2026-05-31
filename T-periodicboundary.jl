@@ -5,6 +5,7 @@ rank = MPI.Comm_rank(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
 using Pkg
+using JLD2
 using Statistics
 using Printf
 using Oceananigans
@@ -13,7 +14,7 @@ using Oceananigans.Units: minute, minutes, hours, seconds
 Lx = Ly = 160           # (m) domain horizontal extents
 Lz = 128             # (m) domain depth 
 Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
-Nz = 1024
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -27,7 +28,25 @@ Sj = 0.1 # g/kg, tracer mass
 arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-
+# Save grid metadata to a separate file (rank 0 only)
+if rank == 0
+    jldopen("grid_info.jld2", "w") do file
+        file["grid/x"]      = collect(model.grid.xᶜᵃᵃ)
+        file["grid/y"]      = collect(model.grid.yᵃᶜᵃ)
+        file["grid/z"]      = collect(model.grid.z.cᵃᵃᶜ)
+        file["grid/Δx"]     = collect(model.grid.Δxᶜᵃᵃ)
+        file["grid/Δy"]     = collect(model.grid.Δyᵃᶜᵃ)
+        file["grid/Δz"]     = collect(model.grid.z.Δᵃᵃᶜ)
+        file["grid/Nx"]     = model.grid.Nx
+        file["grid/Ny"]     = model.grid.Ny
+        file["grid/Nz"]     = model.grid.Nz
+        file["grid/Lx"]     = model.grid.Lx
+        file["grid/Ly"]     = model.grid.Ly
+        file["grid/Lz"]     = model.grid.Lz
+        file["grid/arch"]   = string(model.grid.architecture)
+        file["grid/Nranks"] = MPI.Comm_size(MPI.COMM_WORLD)
+    end
+end
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
@@ -82,25 +101,6 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
-function save_grid!(file, model)
-    if rank == 0
-        file["grid/x"] = model.grid.xᶜᵃᵃ
-        file["grid/y"] = model.grid.yᵃᶜᵃ
-        file["grid/z"] = model.grid.z.cᵃᵃᶜ
-        file["grid/Δx"] = model.grid.Δxᶜᵃᵃ
-        file["grid/Δy"] = model.grid.Δyᵃᶜᵃ
-        file["grid/Δz"] = model.grid.z.Δᵃᵃᶜ
-        file["grid/Nx"] = model.grid.Nx
-        file["grid/Ny"] = model.grid.Ny
-        file["grid/Nz"] = model.grid.Nz
-        file["grid/Lx"] = model.grid.Lx
-        file["grid/Ly"] = model.grid.Ly
-        file["grid/Lz"] = model.grid.Lz
-        file["grid/arch"] = string(model.grid.architecture)
-        file["grid/Nranks"] = MPI.Comm_size(MPI.COMM_WORLD)
-    end
-    return nothing
-end
 output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
@@ -111,7 +111,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    init = save_grid!,
                                                     overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 # adding check point incase pickup is required later
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(2hours), cleanup = true)
