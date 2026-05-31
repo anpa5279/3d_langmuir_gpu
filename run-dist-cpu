@@ -6,7 +6,7 @@ ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109
 archive_folder=horizontal-domain
-jobn=mod-default
+jobn=fine4
 file=T-periodicboundary.jl
 
 rm -rf $base_dir/$archive_folder/$jobn/
@@ -35,9 +35,9 @@ module load ncarenv/23.09 nvhpc/24.7 cray-mpich/8.1.29
 
 module list
 
-julia --project -e 'import Pkg'
-julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project -e 'using Pkg; Pkg.add("Oceananigans")'
+###julia --project -e 'import Pkg'
+###julia --project -e 'using Pkg; Pkg.instantiate()'
+###julia --project -e 'using Pkg; Pkg.add("Oceananigans")'
 mpiexec -n $ntasks -ppn $procs julia --project $file
 
 EXEC
