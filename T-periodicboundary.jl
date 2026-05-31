@@ -11,9 +11,9 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 128           # (m) domain horizontal extents
+Lx = Ly = 160           # (m) domain horizontal extents
 Lz = 128             # (m) domain depth 
-Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
@@ -31,19 +31,19 @@ grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, L
 # Save grid metadata to a separate file (rank 0 only)
 if rank == 0
     jldopen("grid_info.jld2", "w") do file
-        file["grid/x"]      = collect(model.grid.xᶜᵃᵃ)
-        file["grid/y"]      = collect(model.grid.yᵃᶜᵃ)
-        file["grid/z"]      = collect(model.grid.z.cᵃᵃᶜ)
-        file["grid/Δx"]     = collect(model.grid.Δxᶜᵃᵃ)
-        file["grid/Δy"]     = collect(model.grid.Δyᵃᶜᵃ)
-        file["grid/Δz"]     = collect(model.grid.z.Δᵃᵃᶜ)
-        file["grid/Nx"]     = model.grid.Nx
-        file["grid/Ny"]     = model.grid.Ny
-        file["grid/Nz"]     = model.grid.Nz
-        file["grid/Lx"]     = model.grid.Lx
-        file["grid/Ly"]     = model.grid.Ly
-        file["grid/Lz"]     = model.grid.Lz
-        file["grid/arch"]   = string(model.grid.architecture)
+        file["grid/x"]      = grid.xᶜᵃᵃ
+        file["grid/y"]      = grid.yᵃᶜᵃ
+        file["grid/z"]      = grid.z.cᵃᵃᶜ
+        file["grid/Δx"]     = grid.Δxᶜᵃᵃ
+        file["grid/Δy"]     = grid.Δyᵃᶜᵃ
+        file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
+        file["grid/Nx"]     = Nx
+        file["grid/Ny"]     = Ny
+        file["grid/Nz"]     = Nz
+        file["grid/Lx"]     = Lx
+        file["grid/Ly"]     = Ly
+        file["grid/Lz"]     = Lz
+        file["grid/arch"]   = string(arch)
         file["grid/Nranks"] = MPI.Comm_size(MPI.COMM_WORLD)
     end
 end
@@ -113,6 +113,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     filename = "fields.jld2",
                                                     overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 # adding check point incase pickup is required later
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(2hours), cleanup = true)
+#simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(2hours))
 # running the simulation
 run!(simulation)
