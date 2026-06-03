@@ -1,13 +1,14 @@
 using Pkg
+using JLD2
 using Statistics
 using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 640            # (m) domain horizontal extents
+Lx = Ly = 160            # (m) domain horizontal extents
 Lz = 160             # (m) domain depth 
-Nx = Ny = 32
-Nz = 32
+Nx = Ny = 96
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -21,6 +22,24 @@ Sj = 0.1 # g/kg, tracer mass
 rank = 0
 grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 @show grid 
+if rank == 0
+    jldopen("grid_info.jld2", "w") do file
+        file["grid/x"]      = grid.xᶜᵃᵃ
+        file["grid/y"]      = grid.yᵃᶜᵃ
+        file["grid/z"]      = grid.z.cᵃᵃᶜ
+        file["grid/Δx"]     = grid.Δxᶜᵃᵃ
+        file["grid/Δy"]     = grid.Δyᵃᶜᵃ
+        file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
+        file["grid/Nx"]     = Nx
+        file["grid/Ny"]     = Ny
+        file["grid/Nz"]     = Nz
+        file["grid/Lx"]     = Lx
+        file["grid/Ly"]     = Ly
+        file["grid/Lz"]     = Lz
+        #file["grid/arch"]   = string(arch)
+        file["grid/Nranks"] = 32#MPI.Comm_size(MPI.COMM_WORLD)
+    end
+end
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
@@ -75,25 +94,6 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
-function save_grid!(file, model)
-    if rank == 0
-        file["grid/x"] = model.grid.xᶜᵃᵃ
-        file["grid/y"] = model.grid.yᵃᶜᵃ
-        file["grid/z"] = model.grid.z.cᵃᵃᶜ
-        file["grid/Δx"] = model.grid.Δxᶜᵃᵃ
-        file["grid/Δy"] = model.grid.Δyᵃᶜᵃ
-        file["grid/Δz"] = model.grid.z.Δᵃᵃᶜ
-        file["grid/Nx"] = model.grid.Nx
-        file["grid/Ny"] = model.grid.Ny
-        file["grid/Nz"] = model.grid.Nz
-        file["grid/Lx"] = model.grid.Lx
-        file["grid/Ly"] = model.grid.Ly
-        file["grid/Lz"] = model.grid.Lz
-        file["grid/arch"] = string(model.grid.architecture)
-        #file["grid/Nranks"] = MPI.Comm_size(MPI.COMM_WORLD)
-    end
-    return nothing
-end
 output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
@@ -104,7 +104,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    init = save_grid!,
                                                     overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 # adding check point incase pickup is required later
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(0.05hours), cleanup = true)
