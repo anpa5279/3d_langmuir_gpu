@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=128
-procs=16
+procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=00:40:00
+#PBS -l walltime=00:50:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
