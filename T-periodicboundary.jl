@@ -11,7 +11,7 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 160           # (m) domain horizontal extents
+Lx = Ly = 128           # (m) domain horizontal extents
 Lz = 128             # (m) domain depth 
 Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 Nz = 256
