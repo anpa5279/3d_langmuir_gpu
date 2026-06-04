@@ -23,8 +23,8 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-###PBS -l job_priority=economy
-#PBS -l walltime=04:00:00
+#PBS -l job_priority=economy
+#PBS -l walltime=01:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
