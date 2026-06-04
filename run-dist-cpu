@@ -4,7 +4,7 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
+base_dir=/glade/derecho/scratch/apauls/outputs/version109/flux-res-match
 archive_folder=default/horizontal-domain
 jobn=fine3
 file=T-periodicboundary.jl
@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-#PBS -l job_priority=economy
+###PBS -l job_priority=economy
 #PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 

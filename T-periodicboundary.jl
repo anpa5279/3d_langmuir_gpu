@@ -18,7 +18,7 @@ Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 6.0           # m, radius of surface buoyancy flux
+rp = 5.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
@@ -51,9 +51,30 @@ end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
+function count_centers(r, d)
+    count = 0
+
+    kmin = floor(Int, -r/d - 1/2)
+    kmax = floor(Int,  r/d - 1/2)
+
+    for k in kmin:kmax
+        for l in kmin:kmax
+            x = (k + 0.5) * d
+            y = (l + 0.5) * d
+
+            if x^2 + y^2 <= r^2
+                count += 1
+            end
+        end
+    end
+
+    return count
+end
+Nr = count_centers(rp, grid.Δxᶜᵃᵃ)
+factor = π * rp^2 / (Nr * grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ) # correction factor to ensure the total flux is correct
 @inline function sflux(x, y, t) 
-    if abs(x)<=rp && abs(y)<=rp #(x^2+y^2)^(1/2)<=rp
-        return wp*Sj
+    if (x^2+y^2)^(1/2)<=rp
+        return wp*Sj*factor
     else
         return 0.0
     end
