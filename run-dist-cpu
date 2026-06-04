@@ -6,7 +6,7 @@ ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/flux-res-match
 archive_folder=default/horizontal-domain
-jobn=fine2
+jobn=fine1
 file=T-periodicboundary.jl
 
 rm -rf $base_dir/$archive_folder/$jobn/
