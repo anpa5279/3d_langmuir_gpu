@@ -2,6 +2,7 @@ using ThreadPinning
 using MPI
 MPI.Init()
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
+size = MPI.Comm_size(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
 using Pkg
@@ -11,19 +12,20 @@ using Printf
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
+
 Lx = Ly = 128           # (m) domain horizontal extents
-Lz = 128             # (m) domain depth 
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
+
+Lz = 128             # (m) domain depth 
 Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 5.0           # m, radius of surface buoyancy flux
+rp = 2.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
-#include("functions.jl")
 
 arch = Distributed(CPU())
 # defining grid
@@ -51,30 +53,9 @@ end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-function count_centers(r, d)
-    count = 0
-
-    kmin = floor(Int, -r/d - 1/2)
-    kmax = floor(Int,  r/d - 1/2)
-
-    for k in kmin:kmax
-        for l in kmin:kmax
-            x = (k + 0.5) * d
-            y = (l + 0.5) * d
-
-            if x^2 + y^2 <= r^2
-                count += 1
-            end
-        end
-    end
-
-    return count
-end
-Nr = count_centers(rp, grid.Δxᶜᵃᵃ)
-factor = π * rp^2 / (Nr * grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ) # correction factor to ensure the total flux is correct
 @inline function sflux(x, y, t) 
-    if (x^2+y^2)^(1/2)<=rp
-        return wp*Sj*factor
+    if x<=rp && y<=rp
+        return wp*Sj
     else
         return 0.0
     end
@@ -102,7 +83,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 4hours) 
+simulation = Simulation(model, Δt=min_step, stop_time = 4hours, minimum_relative_step = 0.01) 
 
 ## progress function
 function progress(simulation)
@@ -132,7 +113,47 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval),
                                                     filename = "fields.jld2",
-                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
+                                                    overwrite_existing = true)
+if rank == 0
+    simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                    with_halos=false,
+                                                    indices = (Nx/2-1:Nx/2, Ny/2-1:Ny/2, :), 
+                                                    array_type = Array{Float64},
+                                                    schedule = TimeInterval(output_interval/100),
+                                                    filename = "centerline.jld2",
+                                                    overwrite_existing = true)
+    u_avg = Average(u, dims=(1, 2))
+    v_avg = Average(v, dims=(1, 2))
+    w_avg = Average(w, dims=(1, 2))
+    T_avg = Average(T, dims=(1, 2))
+    S_avg = Average(S, dims=(1, 2))
+
+    function rms(var, var_avg)
+        return sqrt.(Average((var .- var_avg) .^ 2), dims=(1, 2))
+    end
+
+    u_rms = rms(u, u_avg)
+    v_rms = rms(v, v_avg)
+    w_rms = rms(w, w_avg)
+
+
+    simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                        with_halos=false,
+                                                        indices = (Nx/2-1:Nx/2, Ny/2-1:Ny/2, :), 
+                                                        array_type = Array{Float64},
+                                                        schedule = TimeInterval(output_interval/100),
+                                                        filename = "centerline.jld2",
+                                                        overwrite_existing = true)
+    simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T_avg, S_avg, u_rms, v_rms, w_rms), # test within if statement and outside of 
+                                                        with_halos=false,
+                                                        array_type = Array{Float64},
+                                                        schedule = TimeInterval(output_interval/100),
+                                                        filename = "xy_avg.jld2",
+                                                        overwrite_existing = true)
+end 
+
+
+
 # adding check point incase pickup is required later
 #simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(2hours))
 # running the simulation
