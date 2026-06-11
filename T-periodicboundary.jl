@@ -14,14 +14,14 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64*2 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 2.0           # m, radius of surface buoyancy flux
+rp = 4.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
