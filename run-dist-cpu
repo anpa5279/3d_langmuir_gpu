@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=128
-procs=16
+procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/
