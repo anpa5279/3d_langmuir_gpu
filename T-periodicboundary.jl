@@ -14,7 +14,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -164,7 +164,7 @@ function global_avg!(simulation)
 end
 simulation.callbacks[:global_avg] = Callback(global_avg!, TimeInterval(output_interval / 100))
 
-function global_fluc_sq_avg_twopass!(simulation)
+function global_fluc_sq_avg!(simulation)
     u, v, w = simulation.model.velocities
     T = simulation.model.tracers.T
     S = simulation.model.tracers.S
