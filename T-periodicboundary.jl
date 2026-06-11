@@ -14,7 +14,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^4 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64*2^0 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -83,24 +83,23 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 4hours, minimum_relative_step = 0.01) 
-if rank == 0 
-    ## progress function
-    function progress(simulation)
-        u, v, w = simulation.model.velocities
-        # Print a progress message
-        msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                    iteration(simulation),
-                    prettytime(time(simulation)),
-                    prettytime(simulation.Δt),
-                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                    prettytime(simulation.run_wall_time))
-        @info msg
-        return nothing
-    end
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-    @show simulation
+simulation = Simulation(model, Δt=min_step, stop_time = 4hours)#, minimum_relative_step = 0.01) 
+## progress function
+function progress(simulation)
+    u, v, w = simulation.model.velocities
+    # Print a progress message
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+                iteration(simulation),
+                prettytime(time(simulation)),
+                prettytime(simulation.Δt),
+                maximum(abs, u), maximum(abs, v), maximum(abs, w),
+                prettytime(simulation.run_wall_time))
+    @info msg
+    return nothing
 end
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+@show simulation
+
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
@@ -110,107 +109,36 @@ T = model.tracers.T
 S = model.tracers.S
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
-                                                    with_halos=false,
-                                                    array_type = Array{Float64},
-                                                    schedule = TimeInterval(output_interval),
-                                                    filename = "fields.jld2",
-                                                    overwrite_existing = true)
-
-v_avg_oc = Average(v, dims=(1, 2))
-w_avg_oc = Average(w, dims=(1, 2))
-T_avg_oc = Average(T, dims=(1, 2))
-u_avg_oc = Average(u, dims=(1, 2))
-simulation.output_writers[:xy_avg_oc] = JLD2Writer(model, (; u_avg_oc, v_avg_oc, w_avg_oc, T_avg_oc), # test within if statement and outside of
-                                                    with_halos=false,
+                                                with_halos=false,
+                                                array_type = Array{Float64},
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "fields.jld2",
+                                                overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
+                                                with_halos=false,
+                                                array_type = Array{Float64},
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "fields.jld2",
+                                                overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
+if rank == size/2
+    @show Int(Ny/2)
+    @show Int(Ny/2+1)
+    simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                    indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
                                                     array_type = Array{Float64},
                                                     schedule = TimeInterval(output_interval/100),
-                                                    filename = "xy_avg_oc.jld2",
+                                                    filename = "centerline.jld2",
                                                     overwrite_existing = true)
-# ---- Global average storage (rank 0 only needs the final result) ----
-# These live outside callbacks so they persist between calls
-u_avg_global = zeros(Float64, 1, 1, Nz)   # shape matches z-column
-v_avg_global = zeros(Float64, 1, 1, Nz)
-w_avg_global = zeros(Float64, 1, 1, Nz)
-S_avg_global = zeros(Float64, 1, 1, Nz)
-T_avg_global = zeros(Float64, 1, 1, Nz)
-
-function global_avg!(simulation)
-    u, v, w = simulation.model.velocities
-    T = simulation.model.tracers.T
-    S = simulation.model.tracers.S
-
-    # Local horizontal mean — result is (1, 1, Nz)
-    u_avg_local = mean(interior(u), dims=(1, 2))
-    v_avg_local = mean(interior(v), dims=(1, 2))
-    w_avg_local = mean(interior(w), dims=(1, 2))
-    T_avg_local = mean(interior(T), dims=(1, 2))
-    S_avg_local = mean(interior(S), dims=(1, 2))
-
-    # MPI_Allreduce (or Reduce to rank 0) sums across all ranks,
-    # then divide by number of ranks to get the true mean
-    MPI.Allreduce!(u_avg_local, u_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(v_avg_local, v_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(w_avg_local, w_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(T_avg_local, T_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(S_avg_local, S_avg_global, MPI.SUM, MPI.COMM_WORLD)
-
-    u_avg_global ./= size   # 'size' = MPI.Comm_size(MPI.COMM_WORLD)
-    v_avg_global ./= size
-    w_avg_global ./= size
-    T_avg_global ./= size
-    S_avg_global ./= size
-
-    return nothing
 end
-simulation.callbacks[:global_avg] = Callback(global_avg!, TimeInterval(output_interval / 100))
-
-function global_fluc_sq_avg!(simulation)
-    u, v, w = simulation.model.velocities
-    T = simulation.model.tracers.T
-    S = simulation.model.tracers.S
-
-    # w_mean_global must already be up to date from a prior callback
-    _u_sq_local .= mean((interior(u) .- u_mean_global) .^ 2, dims=(1, 2))
-    _v_sq_local .= mean((interior(v) .- v_mean_global) .^ 2, dims=(1, 2))
-    _w_sq_local .= mean((interior(w) .- w_mean_global) .^ 2, dims=(1, 2))
-    _T_sq_local .= mean((interior(T) .- T_mean_global) .^ 2, dims=(1, 2))
-    _S_sq_local .= mean((interior(S) .- S_mean_global) .^ 2, dims=(1, 2))
-
-    MPI.Allreduce!(_u_sq_local, u_fluc_sq_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(_v_sq_local, v_fluc_sq_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(_w_sq_local, w_fluc_sq_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(_T_sq_local, T_fluc_sq_avg_global, MPI.SUM, MPI.COMM_WORLD)
-    MPI.Allreduce!(_S_sq_local, S_fluc_sq_avg_global, MPI.SUM, MPI.COMM_WORLD)
-
-    u_fluc_sq_avg_global ./= size
-    v_fluc_sq_avg_global ./= size
-    w_fluc_sq_avg_global ./= size
-    T_fluc_sq_avg_global ./= size
-    S_fluc_sq_avg_global ./= size
-
-    return nothing
-end
-
-simulation.callbacks[:global_fluc_sq_avg]  = Callback(global_fluc_sq_avg!,  TimeInterval(output_interval/100))
-
-if rank == 0
-    # Wrap the global arrays as FieldTimeSeries-compatible outputs.
-    # The simplest approach: write them as plain arrays via a Dict.
-    simulation.output_writers[:xy_avg] = JLD2Writer(
-        model,
-        Dict("u_avg" => model -> u_avg_global,
-             "v_avg" => model -> v_avg_global,
-             "w_avg" => model -> w_avg_global,
-             "T_avg" => model -> T_avg_global,
-             "S_avg" => model -> S_avg_global, 
-             "u_fluc_sq_avg" => model -> u_fluc_sq_avg_global,
-             "v_fluc_sq_avg" => model -> v_fluc_sq_avg_global,
-             "w_fluc_sq_avg" => model -> w_fluc_sq_avg_global,
-             "T_fluc_sq_avg" => model -> T_fluc_sq_avg_global,
-             "S_fluc_sq_avg" => model -> S_fluc_sq_avg_global),
-        schedule = TimeInterval(output_interval / 100),
-        filename = "xy_avg.jld2",
-        overwrite_existing = true
-    )
-end
+v_avg = Average(v, dims=(1, 2))
+w_avg = Average(w, dims=(1, 2))
+T_avg = Average(T, dims=(1, 2))
+S_avg = Average(S, dims=(1, 2))
+u_avg = Average(u, dims=(1, 2))
+simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T_avg, S_avg), # test within if statement and outside of
+                                                with_halos=false,
+                                                array_type = Array{Float64},
+                                                schedule = TimeInterval(output_interval/100),
+                                                filename = "xy_avg.jld2",
+                                                overwrite_existing = true)
 run!(simulation)
