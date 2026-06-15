@@ -54,7 +54,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # BCs
 @inline function sflux(x, y, t) 
-    if x<=rp && y<=rp
+    if abs(x)<=rp && abs(y)<=rp
         return wp*Sj
     else
         return 0.0
@@ -114,12 +114,6 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields.jld2",
                                                 overwrite_existing = true)
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
-                                                with_halos=false,
-                                                array_type = Array{Float64},
-                                                schedule = TimeInterval(output_interval),
-                                                filename = "fields.jld2",
-                                                overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
 if rank == size/2
     @show Int(Ny/2)
     @show Int(Ny/2+1)
