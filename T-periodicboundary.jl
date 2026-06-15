@@ -14,7 +14,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^4 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64*2^0 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -135,4 +135,5 @@ simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T
                                                 schedule = TimeInterval(output_interval/100),
                                                 filename = "xy_avg.jld2",
                                                 overwrite_existing = true)
+
 run!(simulation)

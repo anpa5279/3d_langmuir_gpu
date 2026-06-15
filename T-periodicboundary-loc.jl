@@ -3,27 +3,30 @@ using JLD2
 using Statistics
 using Printf
 using Oceananigans
-using Oceananigans: UpdateStateCallsite
+import Oceananigans.AbstractOperations: Average
 using Oceananigans.Units: minute, minutes, hours, seconds
-Lx = Ly = 160            # (m) domain horizontal extents
-Lz = 160             # (m) domain depth 
-Nx = Ny = 96
+
+rank = 0
+Lx = Ly = 128           # (m) domain horizontal extents
+Nx = Ny = 64*2^0 #ensure it is only powers of 2 (maybe 3)
+
+Lz = 128             # (m) domain depth 
 Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 5.0           # m, radius of surface buoyancy flux
+rp = 4.0           # m, radius of surface buoyancy flux
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
-#include("functions.jl")
+
+arch = CPU()
 # defining grid
-rank = 0
-grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-@show grid 
+grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
+# Save grid metadata to a separate file (rank 0 only)
 if rank == 0
-    jldopen("grid_info.jld2", "w") do file
+    jldopen("localoutputs/grid_info.jld2", "w") do file
         file["grid/x"]      = grid.xᶜᵃᵃ
         file["grid/y"]      = grid.yᵃᶜᵃ
         file["grid/z"]      = grid.z.cᵃᵃᶜ
@@ -36,8 +39,6 @@ if rank == 0
         file["grid/Lx"]     = Lx
         file["grid/Ly"]     = Ly
         file["grid/Lz"]     = Lz
-        #file["grid/arch"]   = string(arch)
-        file["grid/Nranks"] = 32#MPI.Comm_size(MPI.COMM_WORLD)
     end
 end
 # buoyancy
@@ -45,7 +46,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # BCs
 @inline function sflux(x, y, t) 
-    if (x^2+y^2)^(1/2)<=rp
+    if abs(x)<=rp && abs(y)<=rp
         return wp*Sj
     else
         return 0.0
@@ -74,8 +75,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 12hours) 
-
+simulation = Simulation(model, Δt=min_step, stop_time = 4hours)#, minimum_relative_step = 0.01) 
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -91,23 +91,72 @@ function progress(simulation)
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 @show simulation
+
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
+"""
 output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
-                                                    with_halos=false,
-                                                    array_type = Array{Float64},
-                                                    schedule = TimeInterval(output_interval),
-                                                    filename = "fields.jld2",
-                                                    overwrite_existing = true)#, init = save_grid!)# including = [default_included_properties(model), grid])
-# adding check point incase pickup is required later
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule = TimeInterval(0.05hours), cleanup = true)
-@show model
-@show simulation
-# running the simulation
+v_avg = Average(v, dims=(1, 2))
+w_avg = Average(w, dims=(1, 2))
+T_avg = Average(T, dims=(1, 2))
+S_avg = Average(S, dims=(1, 2))
+u_avg = Average(u, dims=(1, 2))
+simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T_avg, S_avg), # test within if statement and outside of
+                                                with_halos=false,
+                                                array_type = Array{Float64},
+                                                schedule = TimeInterval(output_interval/100),
+                                                filename = "xy_avg.jld2",
+                                                overwrite_existing = true)
+"""
+output_interval = 0.2hours
+test_rms = true 
+if test_rms
+    function find_rms(simulation)
+        # finding it
+        model = simulation.model
+        it = model.clock.iteration
+
+        u, v, w = model.velocities
+        T = model.tracers.T.data
+        S = model.tracers.S.data
+        print("u: ", u)
+        v_avg = Average(v, dims=(1, 2))
+        w_avg = Average(w, dims=(1, 2))
+        T_avg = Average(T, dims=(1, 2))
+        S_avg = Average(S, dims=(1, 2))
+        u_avg = Average(u, dims=(1, 2))
+        println("u_avg: ", u_avg)
+        dir = "localoutputs/"
+        jldopen(dir*"xy_avg_$rank.jld2", "a+") do file
+            file["timeseries/u_avg/$it"] = u_avg
+            file["timeseries/v_avg/$it"] = v_avg
+            file["timeseries/w_avg/$it"] = w_avg
+            file["timeseries/T_avg/$it"] = T_avg
+            file["timeseries/S_avg/$it"] = S_avg
+        end
+        u = u.data
+        v = v.data
+        w = w.data
+        u_rms_squared = mean((u.- u_avg).^2, dims=(1, 2))
+        v_rms_squared = mean((v.- v_avg).^2, dims=(1, 2))
+        w_rms_squared = mean((w.- w_avg).^2, dims=(1, 2))
+        T_rms_squared = mean((T.- T_avg).^2, dims=(1, 2))
+        S_rms_squared = mean((S.- S_avg).^2, dims=(1, 2))
+
+        jldopen(dir*"xy_avg_$rank.jld2", "a+") do file
+            file["timeseries/u_rms_squared/$it"] = u_rms_squared
+            file["timeseries/v_rms_squared/$it"] = v_rms_squared
+            file["timeseries/w_rms_squared/$it"] = w_rms_squared
+            file["timeseries/T_rms_squared/$it"] = T_rms_squared
+            file["timeseries/S_rms_squared/$it"] = S_rms_squared
+        end
+    end
+    simulation.callbacks[:rms] = Callback(find_rms, TimeInterval(output_interval/100))
+end
+
 run!(simulation)
