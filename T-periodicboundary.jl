@@ -9,12 +9,13 @@ using Pkg
 using JLD2
 using Statistics
 using Printf
+using SpecialFunctions
 using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^0 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -78,7 +79,9 @@ model = NonhydrostaticModel(grid;
                             )
 @show model
 ## ICs
-Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
+a = dTdz*sqrt(pi)/2
+T1 = T0 - a
+Tᵢ(x, y, z) = z > - MLD ? a * erf(z + MLD) + T0 - a : T1 + dTdz * (z + MLD)
 
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 

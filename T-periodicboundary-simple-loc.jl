@@ -2,13 +2,13 @@ using Pkg
 using JLD2
 using Statistics
 using Printf
+using SpecialFunctions
 using Oceananigans
-import Oceananigans.AbstractOperations: Average
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-rank = 0
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^0 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -21,26 +21,24 @@ min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 
-arch = CPU()
 # defining grid
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 # Save grid metadata to a separate file (rank 0 only)
-if rank == 0
-    jldopen("localoutputs/grid_info.jld2", "w") do file
-        file["grid/x"]      = grid.xᶜᵃᵃ
-        file["grid/y"]      = grid.yᵃᶜᵃ
-        file["grid/z"]      = grid.z.cᵃᵃᶜ
-        file["grid/Δx"]     = grid.Δxᶜᵃᵃ
-        file["grid/Δy"]     = grid.Δyᵃᶜᵃ
-        file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
-        file["grid/Nx"]     = Nx
-        file["grid/Ny"]     = Ny
-        file["grid/Nz"]     = Nz
-        file["grid/Lx"]     = Lx
-        file["grid/Ly"]     = Ly
-        file["grid/Lz"]     = Lz
-    end
+jldopen("localoutputs/grid_info.jld2", "w") do file
+    file["grid/x"]      = grid.xᶜᵃᵃ
+    file["grid/y"]      = grid.yᵃᶜᵃ
+    file["grid/z"]      = grid.z.cᵃᵃᶜ
+    file["grid/Δx"]     = grid.Δxᶜᵃᵃ
+    file["grid/Δy"]     = grid.Δyᵃᶜᵃ
+    file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
+    file["grid/Nx"]     = Nx
+    file["grid/Ny"]     = Ny
+    file["grid/Nz"]     = Nz
+    file["grid/Lx"]     = Lx
+    file["grid/Ly"]     = Ly
+    file["grid/Lz"]     = Lz
 end
+
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
@@ -70,7 +68,9 @@ model = NonhydrostaticModel(grid;
                             )
 @show model
 ## ICs
-Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
+a = dTdz*sqrt(pi)/2
+T1 = T0 - a
+Tᵢ(x, y, z) = z > - MLD ? a * erf(z + MLD) + T0 - a : T1 + dTdz * (z + MLD)
 
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
@@ -89,7 +89,7 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 @show simulation
 
 ## updating cfl every time step
@@ -104,22 +104,16 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
+                                                dir = "localoutputs",
                                                 filename = "fields.jld2",
                                                 overwrite_existing = true)
 
-v_avg = Average(v, dims=(1, 2))
-w_avg = Average(w, dims=(1, 2))
-T_avg = Average(T, dims=(1, 2))
-S_avg = Average(S, dims=(1, 2))
-u_avg = Average(u, dims=(1, 2))
-simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T_avg, S_avg), # test within if statement and outside of
-                                                with_halos=false,
+simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval/100),
-                                                filename = "xy_avg.jld2",
+                                                dir = "localoutputs",
+                                                filename = "centerline.jld2",
                                                 overwrite_existing = true)
 
-function
-    #
-    Average()
 run!(simulation)
