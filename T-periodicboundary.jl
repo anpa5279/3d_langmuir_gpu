@@ -18,7 +18,7 @@ Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 256
+Nz = 512
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
