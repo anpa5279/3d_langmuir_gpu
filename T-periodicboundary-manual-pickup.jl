@@ -7,15 +7,19 @@ nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
 using Pkg
 using JLD2
+using HDF5
 using Statistics
 using Printf
-using SpecialFunctions
 using Oceananigans
-using Oceananigans: UpdateStateCallsite
+import Oceananigans.AbstractOperations: Average
 using Oceananigans.Units: minute, minutes, hours, seconds
 
+rank = 0
+size = 2
 Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
+idx = Int.(range(1, Nx, step = 1))
+Nx_loc = Nx / size
 
 Lz = 128             # (m) domain depth 
 Nz = 256
@@ -32,6 +36,7 @@ arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 # Save grid metadata to a separate file (rank 0 only)
+# Save grid metadata to a separate file (rank 0 only)
 if rank == 0
     jldopen("grid_info.jld2", "w") do file
         file["grid/x"]      = grid.xᶜᵃᵃ
@@ -46,8 +51,6 @@ if rank == 0
         file["grid/Lx"]     = Lx
         file["grid/Ly"]     = Ly
         file["grid/Lz"]     = Lz
-        file["grid/arch"]   = string(arch)
-        file["grid/Nranks"] = MPI.Comm_size(MPI.COMM_WORLD)
     end
 end
 # buoyancy
@@ -81,16 +84,28 @@ model = NonhydrostaticModel(grid;
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
                             closure = closure,
                             )
-@show model
 ## ICs
-a = dTdz*sqrt(pi)/2
-T1 = T0 - a
-Tᵢ(x, y, z) = z > - MLD ? a * erf(z + MLD) + T0 - a : T1 + dTdz * (z + MLD)
+#T_nt = load(file, "T")
+#u_nt = load(file, "u")
+#v_nt = load(file, "v")
+#w_nt = load(file, "w")
+#S_nt = load(file, "S")
 
-set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
+#set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
+file = "last_time_step.jld2"
+jldopen(file, "r") do file
+    T_nt = file["T"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    u_nt = file["u"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    v_nt = file["v"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    w_nt = file["w"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    S_nt = file["S"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
+end
 
+@show model
 # defining simulation
 simulation = Simulation(model, Δt=min_step, stop_time = 4hours, minimum_relative_step = 0.01) 
+
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -119,16 +134,9 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
-                                                filename = "fields.jld2",
+                                                filename = "fields_pickup.jld2",
                                                 overwrite_existing = true)
-if rank == size/2-1
-    simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
-                                                    indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
-                                                    array_type = Array{Float64},
-                                                    schedule = TimeInterval(output_interval/100),
-                                                    filename = "centerline.jld2",
-                                                    overwrite_existing = true)
-end
+
 v_avg = Average(v, dims=(1, 2))
 w_avg = Average(w, dims=(1, 2))
 T_avg = Average(T, dims=(1, 2))
@@ -138,7 +146,7 @@ simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval/100),
-                                                filename = "xy_avg.jld2",
+                                                filename = "xy_avg_pickup.jld2",
                                                 overwrite_existing = true)
 
 run!(simulation)
