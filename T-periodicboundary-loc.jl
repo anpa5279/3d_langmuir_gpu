@@ -1,17 +1,21 @@
+rank = 0
+size = 1
 using Pkg
 using JLD2
 using Statistics
 using Printf
+using SpecialFunctions
 using Oceananigans
-import Oceananigans.AbstractOperations: Average
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-rank = 0
+dir = "localoutputs/open w top BC"
+
 Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 256
+Nz = 128
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -21,33 +25,22 @@ min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 
-arch = CPU()
 # defining grid
-grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-# Save grid metadata to a separate file (rank 0 only)
-if rank == 0
-    jldopen("localoutputs/grid_info.jld2", "w") do file
-        file["grid/x"]      = grid.xᶜᵃᵃ
-        file["grid/y"]      = grid.yᵃᶜᵃ
-        file["grid/z"]      = grid.z.cᵃᵃᶜ
-        file["grid/Δx"]     = grid.Δxᶜᵃᵃ
-        file["grid/Δy"]     = grid.Δyᵃᶜᵃ
-        file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
-        file["grid/Nx"]     = Nx
-        file["grid/Ny"]     = Ny
-        file["grid/Nz"]     = Nz
-        file["grid/Lx"]     = Lx
-        file["grid/Ly"]     = Ly
-        file["grid/Lz"]     = Lz
-    end
-end
+grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function sflux(x, y, t) 
+@inline function s_value(x, y, t) 
     if abs(x)<=rp && abs(y)<=rp
-        return wp*Sj
+        return Sj
+    else
+        return 0.0
+    end
+end
+@inline function w_value(x, y, t) 
+    if abs(x)<=rp && abs(y)<=rp
+        return wp
     else
         return 0.0
     end
@@ -56,17 +49,23 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))#,
+                                #bottom = OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
+## closure 
+visc = 1e-6
+closure = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
                             advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
-                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
+                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
+                            #closure = closure,
                             )
 @show model
 ## ICs
@@ -75,7 +74,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 4hours)#, minimum_relative_step = 0.01) 
+simulation = Simulation(model, Δt=min_step, stop_time = 12hours, minimum_relative_step = 0.01) 
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -105,6 +104,15 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields.jld2",
+                                                dir = dir,
+                                                overwrite_existing = true)
+
+simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
+                                                array_type = Array{Float64},
+                                                schedule = TimeInterval(output_interval/100),
+                                                filename = "centerline.jld2",
+                                                dir = dir,
                                                 overwrite_existing = true)
 
 v_avg = Average(v, dims=(1, 2))
@@ -117,9 +125,23 @@ simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval/100),
                                                 filename = "xy_avg.jld2",
+                                                dir = dir,
                                                 overwrite_existing = true)
 
-function
-    #
-    Average()
 run!(simulation)
+
+# Save grid metadata to a separate file (rank 0 only)
+jldopen("$(dir)/grid_info.jld2", "w") do file
+    file["grid/x"]      = grid.xᶜᵃᵃ
+    file["grid/y"]      = grid.yᵃᶜᵃ
+    file["grid/z"]      = grid.z.cᵃᵃᶜ
+    file["grid/Δx"]     = grid.Δxᶜᵃᵃ
+    file["grid/Δy"]     = grid.Δyᵃᶜᵃ
+    file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
+    file["grid/Nx"]     = Nx
+    file["grid/Ny"]     = Ny
+    file["grid/Nz"]     = Nz
+    file["grid/Lx"]     = Lx
+    file["grid/Ly"]     = Ly
+    file["grid/Lz"]     = Lz
+end

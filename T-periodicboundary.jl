@@ -18,7 +18,7 @@ Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 1024
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -65,27 +65,22 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
                                 bottom = GradientBoundaryCondition(0.0))
-## closure 
-visc = 1e-6
-closure = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
                             advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
-                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
-                            closure = closure,
+                            boundary_conditions = (u = u_bcs, v = v_bcs, w = w_bcs, S=S_bcs, T=T_bcs),
                             )
 @show model
 ## ICs
-a = dTdz*sqrt(pi)/2
-T1 = T0 - a
-Tᵢ(x, y, z) = z > - MLD ? a * erf(z + MLD) + T0 - a : T1 + dTdz * (z + MLD)
+Tᵢ(x, y, z) = z > - MLD ? T0: T0 + dTdz * (z + MLD)
 
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
