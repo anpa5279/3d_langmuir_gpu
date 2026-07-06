@@ -9,8 +9,8 @@ archive_folder=openBC
 jobn=dz05
 file=T-periodicboundary.jl
 
-rm -rf $base_dir/$archive_folder/$jobn/
-mkdir $base_dir/$archive_folder/$jobn/
+#rm -rf $base_dir/$archive_folder/$jobn/
+mkdir -p $base_dir/$archive_folder/$jobn/
 
 cp $file $base_dir/$archive_folder/$jobn/
 
