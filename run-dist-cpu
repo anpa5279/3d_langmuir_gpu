@@ -4,9 +4,9 @@ cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
-base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet/
+base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
 archive_folder=openBC/
-jobn=dz0125
+jobn=dz05
 file=T-periodicboundary.jl
 
 rm -rf $base_dir/$archive_folder/$jobn/
