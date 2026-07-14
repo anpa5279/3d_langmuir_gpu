@@ -15,7 +15,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 64           # (m) domain horizontal extents
-Nx = Ny = 512 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
 Nz = 256
