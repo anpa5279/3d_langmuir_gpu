@@ -9,7 +9,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/open w gauss BC default scheme"
+dir = "localoutputs/open w scaled gauss BC"
 
 Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
@@ -40,7 +40,14 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
         return 0.0
     end
 end
-@inline w_value(x, y, t) = wp*exp(-(x^2+y^2)/(2*rp^2))
+vol_flow = wp*area
+sigma = rp
+gaus = wp*exp.(-(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny).^2 + transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)).^2)./(2*sigma^2))
+gaus_vol_flow =sum(gaus)*(Lx/Nx)*(Ly/Ny)
+scaling = vol_flow/gaus_vol_flow
+wp_scaled = scaling*wp
+
+@inline w_value(x, y, t) = wp_scaled*exp(-(x^2+y^2)/(2*sigma^2))
 #@inline function w_value(x, y, t) 
 #    if abs(x)<=rp && abs(y)<=rp
 #        return wp
@@ -53,8 +60,8 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection()),
-                                bottom = OpenBoundaryCondition(nothing))#wp_bottom; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection()),#; inflow_timescale = 0.0, outflow_timescale = 0.0)),
+                                bottom = OpenBoundaryCondition(nothing))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
