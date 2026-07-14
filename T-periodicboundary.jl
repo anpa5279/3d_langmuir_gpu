@@ -14,11 +14,11 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
+Lx = Ly = 64           # (m) domain horizontal extents
+Nx = Ny = 256 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 1024
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -54,9 +54,16 @@ end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function sflux(x, y, t) 
+@inline function s_value(x, y, t) 
     if abs(x)<=rp && abs(y)<=rp
-        return wp*Sj
+        return Sj
+    else
+        return 0.0
+    end
+end
+@inline function w_value(x, y, t) 
+    if abs(x)<=rp && abs(y)<=rp
+        return wp
     else
         return 0.0
     end
@@ -65,10 +72,10 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value); scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
 ## defining model
 model = NonhydrostaticModel(grid;

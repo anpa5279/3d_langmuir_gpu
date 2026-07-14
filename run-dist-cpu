@@ -1,12 +1,12 @@
 #!/bin/bash
-nodes=2
+nodes=1
 cpus=128
-procs=8
+procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
 archive_folder=openBC
-jobn=dz0125
+jobn=dx025
 file=T-periodicboundary.jl
 
 #rm -rf $base_dir/$archive_folder/$jobn/

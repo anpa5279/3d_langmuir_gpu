@@ -9,7 +9,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/open w top BC"
+dir = "localoutputs/open w gauss BC default scheme"
 
 Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
@@ -20,9 +20,11 @@ MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 rp = 4.0           # m, radius of surface buoyancy flux
+area = (2*rp)^2 # square inlet condition
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
+wp_bottom = wp*area/(Lx*Ly) # m/s, vertical velocity for bottom boundary condition
 Sj = 0.1 # g/kg, tracer mass 
 
 # defining grid
@@ -38,26 +40,25 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
         return 0.0
     end
 end
-@inline function w_value(x, y, t) 
-    if abs(x)<=rp && abs(y)<=rp
-        return wp
-    else
-        return 0.0
-    end
-end
+@inline w_value(x, y, t) = wp*exp(-(x^2+y^2)/(2*rp^2))
+#@inline function w_value(x, y, t) 
+#    if abs(x)<=rp && abs(y)<=rp
+#        return wp
+#    else
+#        return 0.0
+#    end
+#end
+
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))#,
-                                #bottom = OpenBoundaryCondition(nothing))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection()),
+                                bottom = OpenBoundaryCondition(nothing))#wp_bottom; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
-## closure 
-visc = 1e-6
-closure = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
@@ -65,7 +66,6 @@ model = NonhydrostaticModel(grid;
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
-                            #closure = closure,
                             )
 @show model
 ## ICs
@@ -98,8 +98,10 @@ output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
+P = model.pressures.pNHS
+Pd = model.pressures.pHY′
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P, Pd),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
