@@ -1,5 +1,3 @@
-rank = 0
-size = 1
 using Pkg
 using JLD2
 using Statistics
@@ -9,7 +7,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/open w scaled gauss BC"
+dir = "localoutputs/open w BC default scheme default advection"
 
 Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
@@ -47,21 +45,21 @@ gaus_vol_flow =sum(gaus)*(Lx/Nx)*(Ly/Ny)
 scaling = vol_flow/gaus_vol_flow
 wp_scaled = scaling*wp
 
-@inline w_value(x, y, t) = wp_scaled*exp(-(x^2+y^2)/(2*sigma^2))
-#@inline function w_value(x, y, t) 
-#    if abs(x)<=rp && abs(y)<=rp
-#        return wp
-#    else
-#        return 0.0
-#    end
-#end
+#@inline w_value(x, y, t) = wp_scaled*exp(-(x^2+y^2)/(2*sigma^2))
+@inline function w_value(x, y, t) 
+    if abs(x)<=rp && abs(y)<=rp
+        return wp
+    else
+        return 0.0
+    end
+end
 
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection()),#; inflow_timescale = 0.0, outflow_timescale = 0.0)),
-                                bottom = OpenBoundaryCondition(nothing))
+                                bottom = OpenBoundaryCondition(nothing; scheme = PerturbationAdvection()))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
@@ -69,7 +67,7 @@ S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(; minimum_buffer_upwind_order = 1),
+                            #advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
@@ -96,7 +94,6 @@ function progress(simulation)
     return nothing
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-@show simulation
 
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
@@ -105,10 +102,10 @@ output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-P = model.pressures.pNHS
-Pd = model.pressures.pHY′
+Pd = model.pressures.pNHS
+Ps = model.pressures.pHY′
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, P, Pd),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, Pd, Ps),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),

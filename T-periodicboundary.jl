@@ -15,10 +15,10 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 64           # (m) domain horizontal extents
-Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+Nx = Ny = 256 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 256
+Nz = 512
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -72,7 +72,7 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value); scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
@@ -87,7 +87,7 @@ model = NonhydrostaticModel(grid;
                             )
 @show model
 ## ICs
-Tᵢ(x, y, z) = z > - MLD ? T0: T0 + dTdz * (z + MLD)
+Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
@@ -107,7 +107,6 @@ function progress(simulation)
     return nothing
 end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-@show simulation
 
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
