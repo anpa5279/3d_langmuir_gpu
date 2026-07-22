@@ -78,7 +78,7 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
 ## defining model
-visc = 1e-5
+visc = 1e-4
 closure = ScalarDiffusivity(ν=visc, κ=0.0)
 model = NonhydrostaticModel(grid;
                             buoyancy, 
