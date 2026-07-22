@@ -1,12 +1,12 @@
 #!/bin/bash
-nodes=4
+nodes=1
 cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
-archive_folder=openBC/AR1/
-jobn=dxi0.00625
+archive_folder=closure/visc1e-6/
+jobn=dxi05
 file=T-periodicboundary.jl
 
 #rm -rf $base_dir/$archive_folder/$jobn/
@@ -23,8 +23,8 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-###PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l job_priority=economy
+#PBS -l walltime=1:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$threads
@@ -37,7 +37,7 @@ module list
 
 ###julia --project -e 'import Pkg'
 ###julia --project -e 'using Pkg; Pkg.instantiate()'
-###julia --project -e 'using Pkg; Pkg.add("Oceananigans")'
+###julia --project -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Oceananigans", version="0.109.1"))'
 mpiexec -n $ntasks -ppn $procs julia --project $file
 
 EXEC

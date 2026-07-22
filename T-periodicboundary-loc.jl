@@ -7,7 +7,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/open w BC default scheme default advection"
+dir = "localoutputs/viscosity/visc and diff 1E-4"
 
 Lx = Ly = 128           # (m) domain horizontal extents
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
@@ -38,14 +38,6 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
         return 0.0
     end
 end
-vol_flow = wp*area
-sigma = rp
-gaus = wp*exp.(-(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny).^2 + transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)).^2)./(2*sigma^2))
-gaus_vol_flow =sum(gaus)*(Lx/Nx)*(Ly/Ny)
-scaling = vol_flow/gaus_vol_flow
-wp_scaled = scaling*wp
-
-#@inline w_value(x, y, t) = wp_scaled*exp(-(x^2+y^2)/(2*sigma^2))
 @inline function w_value(x, y, t) 
     if abs(x)<=rp && abs(y)<=rp
         return wp
@@ -58,19 +50,22 @@ u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection()),#; inflow_timescale = 0.0, outflow_timescale = 0.0)),
-                                bottom = OpenBoundaryCondition(nothing; scheme = PerturbationAdvection()))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
+## sgs
+visc = 1e-4
+closure = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            #advection = WENO(; minimum_buffer_upwind_order = 1),
+                            advection = WENO(; minimum_buffer_upwind_order = 1),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
+                            closure = closure,
                             )
 @show model
 ## ICs
@@ -79,7 +74,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 12hours, minimum_relative_step = 0.01) 
+simulation = Simulation(model, Δt=min_step, stop_time = 8hours, minimum_relative_step = 0.01) 
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
