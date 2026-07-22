@@ -6,7 +6,7 @@ ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
 archive_folder=closure/visc-diff1e-4/
-jobn=dxi025
+jobn=dxi05
 file=T-periodicboundary.jl
 
 #rm -rf $base_dir/$archive_folder/$jobn/
