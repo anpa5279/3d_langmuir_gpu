@@ -5,7 +5,7 @@ procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
-archive_folder=closure/visc1e-4/
+archive_folder=closure/visc1e-5/
 jobn=dxi025
 file=T-periodicboundary.jl
 
