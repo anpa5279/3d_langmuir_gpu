@@ -1,12 +1,12 @@
 #!/bin/bash
-nodes=1
+nodes=2
 cpus=128
 procs=32
 ntasks=$((nodes*procs))
 threads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
 archive_folder=open-bottom-BC/AR1
-jobn=dxi025
+jobn=dxi0125
 file=T-periodicboundary.jl
 
 #rm -rf $base_dir/$archive_folder/$jobn/
@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 ##PBS -l job_priority=economy
-#PBS -l walltime=4:30:00
+#PBS -l walltime=10:30:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 module --force purge
