@@ -7,13 +7,13 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/viscosity/visc and diff 1E-4"
+dir = "localoutputs/dx05/no closure bottom PA"
 
-Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
+Lx = Ly = 64           # (m) domain horizontal extents
+Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 128
+Nz = 256
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -22,7 +22,6 @@ area = (2*rp)^2 # square inlet condition
 T0 = 25.0           # C, temperature at the surface
 min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
-wp_bottom = wp*area/(Lx*Ly) # m/s, vertical velocity for bottom boundary condition
 Sj = 0.1 # g/kg, tracer mass 
 
 # defining grid
@@ -38,34 +37,37 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
         return 0.0
     end
 end
-@inline function w_value(x, y, t) 
+
+@inline function w_value(x, y, t)
     if abs(x)<=rp && abs(y)<=rp
         return wp
     else
         return 0.0
     end
 end
+w_scale = (2*rp)^2/(Lx*Ly) * wp 
 
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
+                                bottom = OpenBoundaryCondition(w_scale;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
                                 bottom = GradientBoundaryCondition(0.0))
 ## sgs
-visc = 1e-4
-closure = ScalarDiffusivity(ν=visc, κ=visc)
+#visc = 1e-4
+#closure = ScalarDiffusivity(ν=visc, κ=visc)
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(; minimum_buffer_upwind_order = 1),
+                            advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
-                            closure = closure,
+                            #closure = closure,
                             )
 @show model
 ## ICs
@@ -74,7 +76,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 8hours, minimum_relative_step = 0.01) 
+simulation = Simulation(model, Δt=min_step, stop_time = 1.8hours, minimum_relative_step = 0.01) 
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -97,11 +99,10 @@ output_interval = 0.2hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-Pd = model.pressures.pNHS
-Ps = model.pressures.pHY′
+#Pd = model.pressures.pNHS
+#Ps = model.pressures.pHY′
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, Pd, Ps),
-                                                with_halos=false,
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields.jld2",
@@ -145,4 +146,5 @@ jldopen("$(dir)/grid_info.jld2", "w") do file
     file["grid/Lx"]     = Lx
     file["grid/Ly"]     = Ly
     file["grid/Lz"]     = Lz
+    file["grid/H"]      = grid.Hz
 end
