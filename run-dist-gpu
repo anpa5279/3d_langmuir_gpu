@@ -1,17 +1,19 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=2
+gpus=4
 ntasks=$((nodes*gpus))
-jobn=dxi0125
+nthreads=$((cpus/gpus))
+base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
+archive_folder=open-bottom-BC/AR1
+jobn=dxi00625
 file=T-periodicboundary.jl
 
-rm -rf outputs/$jobn
-mkdir outputs/$jobn
+mkdir -p $base_dir/$archive_folder/$jobn/
 
-cp $file outputs/$jobn/
+cp $file $base_dir/$archive_folder/$jobn/
 
-cd outputs/$jobn/
+cd $base_dir/$archive_folder/$jobn/
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -22,11 +24,10 @@ cat > EXEC_STEP << EXEC
 #PBS -j oe
 #PBS -l job_priority=economy
 #PBS -l walltime=10:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus
-#PBS -l gpu_type=a100
+#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
-export JULIA_NUM_PRECOMPILE_TASKS=$cpus
-export JULIA_NUM_THREADS=$cpus
+export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
+export JULIA_NUM_THREADS=$nthreads
 
 module --force purge
 module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
@@ -39,7 +40,7 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
+###julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
