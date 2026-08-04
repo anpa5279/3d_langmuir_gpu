@@ -5,6 +5,7 @@ rank = MPI.Comm_rank(MPI.COMM_WORLD)
 size = MPI.Comm_size(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
+using CUDA
 using Pkg
 using JLD2
 using Statistics
@@ -28,7 +29,7 @@ min_step = 0.01
 wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 
-arch = Distributed(CPU())
+arch = Distributed(GPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 # Save grid metadata to a separate file (rank 0 only)
