@@ -1,7 +1,7 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=4
+gpus=8
 ntasks=$((nodes*gpus))
 nthreads=$((cpus/gpus))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
