@@ -7,13 +7,13 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-dir = "localoutputs/dx1dz2/no closure default WENO"
+dir = "localoutputs/dx1/gauss"
 
 Lx = Ly = 64           # (m) domain horizontal extents
 Nx = Ny = 64 #ensure it is only powers of 2 (maybe 3)
 
 Lz = 128             # (m) domain depth 
-Nz = 64
+Nz = 128
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -30,36 +30,23 @@ grid = RectilinearGrid(; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2)
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function s_value(x, y, t) 
-    if abs(x)<=rp && abs(y)<=rp
-        return Sj
-    else
-        return 0.0
-    end
-end
+gaus_area_cont = pi*rp^2*erf(Lx/(2*rp))*erf(Ly/(2*rp))
+gaus_area_discr = sum(exp.(-(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny).^2 + transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)).^2)./(rp^2)))*(Lx/Nx)*(Ly/Ny)
+@inline w_surface(x, y, t)=wp*gaus_area_discr/gaus_area_cont*exp(-((x^2 + y^2)/(rp^2))) 
 
-@inline function w_value(x, y, t)
-    if abs(x)<=rp && abs(y)<=rp
-        return wp
-    else
-        return 0.0
-    end
-end
-#w_scale = (2*rp)^2/(Lx*Ly) * wp 
+w_bottom = sum(w_surface.(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny), transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)), 0.0))/(Lx*Ly)
 
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))#, 
-                                #bottom = OpenBoundaryCondition(w_scale;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_surface;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
+                                bottom = OpenBoundaryCondition(w_bottom;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Sj), 
                                 bottom = GradientBoundaryCondition(0.0))
-## sgs
-#visc = 1e-4
-#closure = ScalarDiffusivity(ν=visc, κ=visc)
+
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
@@ -67,7 +54,6 @@ model = NonhydrostaticModel(grid;
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
-                            #closure = closure,
                             )
 @show model
 ## ICs

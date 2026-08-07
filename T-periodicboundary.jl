@@ -5,7 +5,6 @@ rank = MPI.Comm_rank(MPI.COMM_WORLD)
 size = MPI.Comm_size(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
-using CUDA
 using Pkg
 using JLD2
 using Statistics
@@ -15,19 +14,19 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-Lx = Ly = 64           # (m) domain horizontal extents
-Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+const Lx = Ly = 64           # (m) domain horizontal extents
+const Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
 
-Lz = 128             # (m) domain depth 
-Nz = 2048
-MLD = 60.0          # m, mixed layer depth
-dTdz = 0.01       # K m⁻¹, temperature gradient
-alpha = 2.0e-4      # 1/K, thermal expansion coefficient
-rp = 4.0           # m, radius of surface buoyancy flux
-T0 = 25.0           # C, temperature at the surface
-min_step = 0.01
-wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
-Sj = 0.1 # g/kg, tracer mass 
+const Lz = 128             # (m) domain depth 
+const Nz = 2048
+const MLD = 60.0          # m, mixed layer depth
+const dTdz = 0.01       # K m⁻¹, temperature gradient
+const alpha = 2.0e-4      # 1/K, thermal expansion coefficient
+const rp = 4.0           # m, radius of surface buoyancy flux
+const T0 = 25.0           # C, temperature at the surface
+const min_step = 0.01
+const wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
+const Sj = 0.1 # g/kg, tracer mass 
 
 arch = Distributed(GPU())
 # defining grid
@@ -63,21 +62,21 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
     end
 end
 
-@inline function w_value(x, y, t)
+@inline function w_surface(x, y, t)
     if abs(x)<=rp && abs(y)<=rp
         return wp
     else
         return 0.0
     end
 end
-w_scale = (2*rp)^2/(Lx*Ly) * wp 
+const w_bottom = (2*rp)^2/(Lx*Ly) * wp 
 
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
-                                bottom = OpenBoundaryCondition(w_scale;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_surface;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
+                                bottom = OpenBoundaryCondition(w_bottom;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
