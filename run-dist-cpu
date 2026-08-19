@@ -1,11 +1,11 @@
 #!/bin/bash
-nodes=1
+nodes=4
 cpus=128
-procs=32
+procs=16
 ntasks=$((nodes*procs))
 nthreads=$((cpus/procs))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/gaussian
-jobn=dxi025
+jobn=dxi0125
 file=T-periodicboundary.jl
 
 mkdir -p $base_dir/$jobn
@@ -22,7 +22,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main 
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=5:00:00
+#PBS -l walltime=12:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
