@@ -15,10 +15,13 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 const Lx = Ly = 64           # (m) domain horizontal extents
-const Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+const Nx = Ny = 256 #ensure it is only powers of 2 (maybe 3)
+const dx = Lx/Nx
+const dy = Ly/Ny 
+const dz = Lz/Nz
 
 const Lz = 128             # (m) domain depth 
-const Nz = 2048
+const Nz = 512
 const MLD = 60.0          # m, mixed layer depth
 const dTdz = 0.01       # K m⁻¹, temperature gradient
 const alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -28,7 +31,7 @@ const min_step = 0.01
 const wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 const Sj = 0.1 # g/kg, tracer mass 
 
-arch = Distributed(GPU())
+arch = Distributed(CPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
 # Save grid metadata to a separate file (rank 0 only)
@@ -54,33 +57,32 @@ end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function s_value(x, y, t) 
-    if abs(x)<=rp && abs(y)<=rp
-        return Sj
-    else
-        return 0.0
-    end
-end
+gaus_area_cont = pi*rp^2*erf(Lx/(2*rp))*erf(Ly/(2*rp))
+x_center = -Lx/2+dx/2:dx:Lx/2-dx/2
+y_center = -Ly/2+dy/2:dy:Ly/2-dy/2
+gaus_area_discr = sum(exp.(-(repeat(x_center, 1, Ny).^2 + transpose(repeat(y_center, 1, Nx)).^2)./(rp^2)))*(Lx/Nx)*(Ly/Ny)
+const factor = gaus_area_cont/gaus_area_discr
+@show factor
+const mass_factor = pi/2*((2*rp)^2)/gaus_area_discr # matching mass flux into the domain
+@show mass_factor
+@inline w_surface(x, y, t)=wp*factor*mass_factor*exp(-((x^2 + y^2)/(rp^2))) 
 
-@inline function w_surface(x, y, t)
-    if abs(x)<=rp && abs(y)<=rp
-        return wp
-    else
-        return 0.0
-    end
-end
-const w_bottom = (2*rp)^2/(Lx*Ly) * wp 
+w_bottom = sum(w_surface.(repeat(x_center, 1, Ny), transpose(repeat(y_center, 1, Nx)), 0.0))/(Nx*Ny)
+
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_surface;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
+                                bottom = OpenBoundaryCondition(w_bottom;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
+
+@inline S_surface(x, y, t)=Sj*factor*mass_factor*exp(-((x^2 + y^2)/(rp^2)))
+
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(S_surface), 
+                                bottom = GradientBoundaryCondition(0.0))
 
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
 v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
                                 bottom = GradientBoundaryCondition(0.0))
-w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_surface;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
-                                bottom = OpenBoundaryCondition(w_bottom;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value), 
-                                bottom = GradientBoundaryCondition(0.0))
 
 ## defining model
 model = NonhydrostaticModel(grid;

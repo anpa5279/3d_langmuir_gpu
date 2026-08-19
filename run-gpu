@@ -6,7 +6,6 @@ ntasks=$((nodes*gpus))
 jobn=dxi0125
 file=T-periodicboundary.jl
 
-rm -rf outputs/$jobn
 mkdir -p outputs/$jobn
 
 cp $file outputs/$jobn/

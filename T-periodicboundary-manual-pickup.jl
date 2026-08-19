@@ -14,15 +14,11 @@ using Oceananigans
 import Oceananigans.AbstractOperations: Average
 using Oceananigans.Units: minute, minutes, hours, seconds
 
-rank = 0
-size = 2
-Lx = Ly = 128           # (m) domain horizontal extents
-Nx = Ny = 64*2^2 #ensure it is only powers of 2 (maybe 3)
-idx = Int.(range(1, Nx, step = 1))
-Nx_loc = Nx / size
-
+Lx = Ly = 64           # (m) domain horizontal extents
+Nx = Ny = 512 #ensure it is only powers of 2 (maybe 3)
+                
 Lz = 128             # (m) domain depth 
-Nz = 256
+Nz = 1024       
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -33,72 +29,56 @@ wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 Sj = 0.1 # g/kg, tracer mass 
 
 arch = Distributed(CPU())
-# defining grid
+# defining grid 
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
-# Save grid metadata to a separate file (rank 0 only)
-# Save grid metadata to a separate file (rank 0 only)
-if rank == 0
-    jldopen("grid_info.jld2", "w") do file
-        file["grid/x"]      = grid.xᶜᵃᵃ
-        file["grid/y"]      = grid.yᵃᶜᵃ
-        file["grid/z"]      = grid.z.cᵃᵃᶜ
-        file["grid/Δx"]     = grid.Δxᶜᵃᵃ
-        file["grid/Δy"]     = grid.Δyᵃᶜᵃ
-        file["grid/Δz"]     = grid.z.Δᵃᵃᶜ
-        file["grid/Nx"]     = Nx
-        file["grid/Ny"]     = Ny
-        file["grid/Nz"]     = Nz
-        file["grid/Lx"]     = Lx
-        file["grid/Ly"]     = Ly
-        file["grid/Lz"]     = Lz
-    end
-end
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # BCs
-@inline function sflux(x, y, t) 
-    if abs(x)<=rp && abs(y)<=rp
-        return wp*Sj
-    else
+@inline function s_value(x, y, t)               
+    if abs(x)<=rp && abs(y)<=rp                 
+        return Sj                               
+    else                                        
+        return 0.0                              
+    end 
+end 
+
+@inline function w_value(x, y, t)                   
+    if abs(x)<=rp && abs(y)<=rp                     
+        return wp                                   
+    else                                            
         return 0.0
-    end
+    end 
 end
-u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+w_bottom = (2*rp)^2/(Lx*Ly) * wp
+u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
-v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
+v_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(0.0))
+w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_value; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)),
+                                bottom = OpenBoundaryCondition(w_bottom; scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
                                 bottom = GradientBoundaryCondition(dTdz))
-S_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(sflux), 
+S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value),
                                 bottom = GradientBoundaryCondition(0.0))
-## closure 
-visc = 1e-6
-closure = ScalarDiffusivity(ν=visc, κ=visc)
+
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(; minimum_buffer_upwind_order = 1),
+                            advection = WENO(),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
-                            closure = closure,
                             )
 ## ICs
-#T_nt = load(file, "T")
-#u_nt = load(file, "u")
-#v_nt = load(file, "v")
-#w_nt = load(file, "w")
-#S_nt = load(file, "S")
-
-#set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
-file = "last_time_step.jld2"
+file = "../fields_rank$(rank).jld2"
+iter = 11655
 jldopen(file, "r") do file
-    T_nt = file["T"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
-    u_nt = file["u"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
-    v_nt = file["v"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
-    w_nt = file["w"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
-    S_nt = file["S"][idx[Int(rank*Nx_loc+1):Int((rank+1)*Nx_loc)], :, :]
+    T_nt = file["timeseries/T/$(iter)"]
+    u_nt = file["timeseries/u/$(iter)"]
+    v_nt = file["timeseries/v/$(iter)"]
+    w_nt = file["timeseries/w/$(iter)"]
+    S_nt = file["timeseries/S/$(iter)"]
     set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
 end
 

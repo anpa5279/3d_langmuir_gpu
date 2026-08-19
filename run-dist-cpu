@@ -4,17 +4,15 @@ cpus=128
 procs=16
 ntasks=$((nodes*procs))
 nthreads=$((cpus/procs))
-base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
-archive_folder=open-bottom-BC/AR1
-jobn=dxi00625
+base_dir=/glade/derecho/scratch/apauls/outputs/version109/gaussian
+jobn=dxi025
 file=T-periodicboundary.jl
 
-#rm -rf $base_dir/$archive_folder/$jobn/
-mkdir -p $base_dir/$archive_folder/$jobn/cpus/
+mkdir -p $base_dir/$jobn
 
-cp $file $base_dir/$archive_folder/$jobn/cpus/
+cp $file $base_dir/$jobn
 
-cd $base_dir/$archive_folder/$jobn/cpus/
+cd $base_dir/$jobn
 
 cat > EXEC_STEP << EXEC
 #!/bin/sh
@@ -23,8 +21,8 @@ cat > EXEC_STEP << EXEC
 #PBS -N $jobn
 #PBS -q main 
 #PBS -j oe
-##PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l job_priority=economy
+#PBS -l walltime=5:00:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$procs
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
