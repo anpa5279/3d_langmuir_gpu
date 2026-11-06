@@ -1,49 +1,53 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=8
+gpus=1
 ntasks=$((nodes*gpus))
 nthreads=$((cpus/gpus))
-base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
-archive_folder=open-bottom-BC/AR1
-jobn=dxi00625
+jobn=dxi05
 file=T-periodicboundary.jl
 
-mkdir -p $base_dir/$archive_folder/$jobn/
+mkdir -p $jobn/
 
-cp $file $base_dir/$archive_folder/$jobn/
+cp $file $jobn/
 
-cd $base_dir/$archive_folder/$jobn/
+cd $jobn/ | exit 1
 
 cat > EXEC_STEP << EXEC
-#!/bin/sh
-
-#PBS -A UCUB0166 
-#PBS -N $jobn
-#PBS -q main
-#PBS -j oe
-#PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
-#PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
+#!/bin/bash -l
+#SBATCH --export=NONE
+#SBATCH --account=ucb-general
+#SBATCH --partition=aa100
+#SBATCH --qos=gpu-testing
+#SBATCH --job-name=$jobn
+#SBATCH --time=00:30:00
+#SBATCH --nodes=$nodes
+#SBATCH --ntasks=$ntasks
+#SBATCH --gres=gpu:a100-100gb:$gpus
+#SBATCH --output=$jobn-%j.out
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
 export JULIA_NUM_THREADS=$nthreads
 
-module --force purge
-module load ncarenv/23.09 nvhpc/24.7 cuda/12.2.1 cray-mpich/8.1.29
+module load julia/1.11.6 cuda/12.2.1 aocc/3.2.0 openmpi/4.1.4
 
 module list
 
 export MPICH_GPU_SUPPORT_ENABLED=1
 export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
+
 export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray", force=true)'
+julia --project -e 'using Pkg; Pkg.instantiate()'
+
+julia --project -e 'Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans"), Pkg.add("Oceananigans")'
+
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpiexec -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
+mpirun -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
 EXEC
 
-qsub < EXEC_STEP
+sbatch EXEC_STEP

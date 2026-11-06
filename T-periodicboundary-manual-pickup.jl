@@ -2,9 +2,9 @@ using ThreadPinning
 using MPI
 MPI.Init()
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
-size = MPI.Comm_size(MPI.COMM_WORLD)
+nprocs = MPI.Comm_size(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
-mpi_pinthreads(:numa)
+mpi_pinthreads(:sockets)
 using Pkg
 using JLD2
 using HDF5
@@ -15,10 +15,10 @@ import Oceananigans.AbstractOperations: Average
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 Lx = Ly = 64           # (m) domain horizontal extents
-Nx = Ny = 512 #ensure it is only powers of 2 (maybe 3)
-                
+Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+
 Lz = 128             # (m) domain depth 
-Nz = 1024       
+Nz = 2048
 MLD = 60.0          # m, mixed layer depth
 dTdz = 0.01       # K m⁻¹, temperature gradient
 alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -65,26 +65,45 @@ S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(s_value),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(),
+                            advection = WENO(order = 9),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
-                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs),
+                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w = w_bcs),
                             )
+
 ## ICs
-file = "../fields_rank$(rank).jld2"
-iter = 11655
-jldopen(file, "r") do file
-    T_nt = file["timeseries/T/$(iter)"]
-    u_nt = file["timeseries/u/$(iter)"]
-    v_nt = file["timeseries/v/$(iter)"]
-    w_nt = file["timeseries/w/$(iter)"]
-    S_nt = file["timeseries/S/$(iter)"]
-    set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
+iter = 1305
+nprocs1 = 64
+rank_adjusted = ((rank+1) / nprocs) * nprocs1 - 1
+file = "../fields_rank$(Int(round(rank_adjusted))).jld2"
+
+if isinteger(rank_adjusted) #last half of the file
+    jldopen(file, "r") do file
+        T_nt = file["timeseries/T/$(iter)"]
+        x_size = Int(size(T_nt)[1]/2)
+        T_nt = T_nt[x_size+1:end, :, :]
+        u_nt = file["timeseries/u/$(iter)"][x_size+1:end, :, :]
+        v_nt = file["timeseries/v/$(iter)"][x_size+1:end, :, :]
+        w_nt = file["timeseries/w/$(iter)"][x_size+1:end, :, :]
+        S_nt = file["timeseries/S/$(iter)"][x_size+1:end, :, :]
+        set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
+    end
+else #first half of the file
+    jldopen(file, "r") do file
+        T_nt = file["timeseries/T/$(iter)"]
+        x_size = Int(size(T_nt)[1]/2)
+        T_nt = T_nt[1:x_size, :, :]
+        u_nt = file["timeseries/u/$(iter)"][1:x_size, :, :]
+        v_nt = file["timeseries/v/$(iter)"][1:x_size, :, :]
+        w_nt = file["timeseries/w/$(iter)"][1:x_size, :, :]
+        S_nt = file["timeseries/S/$(iter)"][1:x_size, :, :]
+        set!(model, u=u_nt, v=v_nt, w = w_nt, T=T_nt, S=S_nt)
+    end
 end
 
 @show model
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 4hours, minimum_relative_step = 0.01) 
+simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 1.6hours, minimum_relative_step = 0.01) 
 
 ## progress function
 function progress(simulation)
@@ -99,11 +118,11 @@ function progress(simulation)
     @info msg
     return nothing
 end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 @show simulation
 
 ## updating cfl every time step
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_change = 0.1, max_change = 1.5, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
 output_interval = 0.2hours
 u, v, w = model.velocities
@@ -116,7 +135,14 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields_pickup.jld2",
                                                 overwrite_existing = true)
-
+if rank == nprocs/2-1
+    simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
+                                                    indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
+                                                    array_type = Array{Float64},
+                                                    schedule = TimeInterval(output_interval/100),
+                                                    filename = "centerline_pickup.jld2",
+                                                    overwrite_existing = true)
+end
 v_avg = Average(v, dims=(1, 2))
 w_avg = Average(w, dims=(1, 2))
 T_avg = Average(T, dims=(1, 2))

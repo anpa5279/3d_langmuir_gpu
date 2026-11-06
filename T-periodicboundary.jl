@@ -6,6 +6,7 @@ size = MPI.Comm_size(MPI.COMM_WORLD)
 nthreads = Threads.nthreads()
 mpi_pinthreads(:numa)
 using Pkg
+using CUDA
 using JLD2
 using Statistics
 using Printf
@@ -15,13 +16,10 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 const Lx = Ly = 64           # (m) domain horizontal extents
-const Nx = Ny = 512 #ensure it is only powers of 2 (maybe 3)
-const dx = Lx/Nx
-const dy = Ly/Ny 
-const dz = Lz/Nz
+const Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
 
 const Lz = 128             # (m) domain depth 
-const Nz = 1024
+const Nz = 2048
 const MLD = 60.0          # m, mixed layer depth
 const dTdz = 0.01       # K m⁻¹, temperature gradient
 const alpha = 2.0e-4      # 1/K, thermal expansion coefficient
@@ -31,9 +29,10 @@ const min_step = 0.01
 const wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 const Sj = 0.1 # g/kg, tracer mass 
 
-arch = Distributed(CPU())
+arch = Distributed(GPU())
 # defining grid
 grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0))
+
 # Save grid metadata to a separate file (rank 0 only)
 if rank == 0
     jldopen("grid_info.jld2", "w") do file
@@ -99,7 +98,7 @@ Tᵢ(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
-simulation = Simulation(model, Δt=min_step, stop_time = 1.8hours, minimum_relative_step = 0.01) 
+simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 1.8hours, minimum_relative_step = 0.01) 
 ## progress function
 function progress(simulation)
     u, v, w = simulation.model.velocities
@@ -116,7 +115,7 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
 ## updating cfl every time step
-conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_change = 0.1, max_change = 1.5, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
 ## output files
 output_interval = 0.2hours
 u, v, w = model.velocities
@@ -129,7 +128,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields.jld2",
                                                 overwrite_existing = true)
-if rank == size/2-1
+if rank == nprocs/2-1
     simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
                                                     indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
                                                     array_type = Array{Float64},

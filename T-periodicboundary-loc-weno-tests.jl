@@ -68,7 +68,7 @@ for (name, scheme) in zip(names, advection_schemes)
     for dx in dxs
         Nx = Ny = Int(Lx/dx)
         Nz = Int(Lz/dx)
-        dir = "localoutputs/scheme-tests/longer/$(name)/dx$(dx)/"
+        dir = "localoutputs/testing/scheme-tests/longer/$(name)/dx$(dx)/"
         @show dir
         @show "Running simulation with dx=$(dx)(Nx = $(Nx), Ny = $(Ny), Nz = $(Nz)) and scheme=$(scheme)"
 
@@ -88,12 +88,12 @@ for (name, scheme) in zip(names, advection_schemes)
         set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
         # defining simulation
-        simulation = Simulation(model, Δt=min_step, stop_time = 4.0hours, minimum_relative_step = 0.01) 
+        simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 4.0hours, minimum_relative_step = 0.01) 
         ## progress function
         simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
         ## updating cfl every time step
-        conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+        conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_change = 0.1, max_change = 1.5, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
         ## output files
         output_interval = 0.2hours
         u, v, w = model.velocities

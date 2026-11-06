@@ -65,9 +65,9 @@ for (name, scheme) in zip(names, advection_schemes)
         gaus_area_discr = sum(exp.(-(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny).^2 + transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)).^2)./(rp^2)))*(Lx/Nx)*(Ly/Ny)
         factor = gaus_area_cont/gaus_area_discr
         @show factor
-        mass_factor = pi/2*((2*rp)^2)/gaus_area_discr # matching mass flux into the domain
+        mass_factor = 2*((2*rp)^2)/gaus_area_discr # matching mass flux into the domain
         @show mass_factor
-        @inline w_surface(x, y, t)=wp*factor*mass_factor*exp(-((x^2 + y^2)/(rp^2))) 
+        @inline w_surface(x, y, t)=wp*factor*exp(-((x^2 + y^2)/(rp^2))) 
 
         w_bottom = sum(w_surface.(repeat(grid.xᶜᵃᵃ[1:Nx], 1, Ny), transpose(repeat(grid.yᵃᶜᵃ[1:Ny], 1, Nx)), 0.0))/(Nx*Ny)
 
@@ -91,12 +91,12 @@ for (name, scheme) in zip(names, advection_schemes)
         set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
         # defining simulation
-        simulation = Simulation(model, Δt=min_step, stop_time = 4hours, minimum_relative_step = 0.01) 
+        simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 4hours, minimum_relative_step = 0.01) 
         ## progress function
         simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
         ## updating cfl every time step
-        conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
+        conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_change = 0.1, max_change = 1.5, min_Δt = min_step, max_Δt=30seconds) #ensrues cfl is updated ever iteration
         ## output files
         output_interval = 0.2hours
         u, v, w = model.velocities
