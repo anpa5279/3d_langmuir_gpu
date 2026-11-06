@@ -17,7 +17,7 @@ const MLD = 60.0          # m, mixed layer depth
 const dTdz = 0.01       # K m⁻¹, temperature gradient
 const alpha = 2.0e-4      # 1/K, thermal expansion coefficient
 const rp = 4.0           # m, radius of surface buoyancy flux
-const T0 = 25.0           # C, temperature at the surface
+const T0 = 25.0  + 273.15 # K, temperature at the surface
 const min_step = 0.01
 const wp = -0.001 # m/s, vertical velocity for surface buoyancy flux
 const Sj = 0.1 # g/kg, tracer mass 
@@ -77,7 +77,7 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 ## defining model
 model = NonhydrostaticModel(grid;
                             buoyancy, 
-                            advection = WENO(),
+                            advection = WENO(order = 9),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
                             boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),

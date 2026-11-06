@@ -42,7 +42,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
 
-julia --project -e 'Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans"), Pkg.add("Oceananigans")'
+julia --project -e 'Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans")'
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
