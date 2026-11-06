@@ -4,8 +4,8 @@ cpus=64
 gpus=1
 ntasks=$((nodes*gpus))
 nthreads=$((cpus/gpus))
-jobn=dxi05
-file=T-periodicboundary.jl
+jobn=interactive-testing
+file=interactive.jl
 
 mkdir -p $jobn/
 
@@ -47,7 +47,7 @@ julia --project -e 'Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
-mpirun -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
+julia --project $file
 EXEC
 
-sbatch EXEC_STEP
+sinteractive EXEC_STEP
