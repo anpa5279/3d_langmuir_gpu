@@ -24,7 +24,7 @@ cat > EXEC_STEP << EXEC
 #SBATCH --job-name=$jobn
 #SBATCH --time=00:30:00
 #SBATCH --nodes=$nodes
-#SBATCH --ntasks=$ntasks
+#SBATCH --ntasks=$gpus
 #SBATCH --gres=gpu:a100_3g.20gb:$gpus
 #SBATCH --output=$jobn-%j.out
 
@@ -51,7 +51,7 @@ julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 julia --project $file
 
-mpirun -np $ntasks set_gpu_rank julia --project $file
+mpirun -np $ntasks julia --project $file
 EXEC
 
 sbatch EXEC_STEP
