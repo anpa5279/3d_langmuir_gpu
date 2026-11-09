@@ -1,10 +1,10 @@
-using ThreadPinning
+#using ThreadPinning
 using MPI
 MPI.Init()
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
 size = MPI.Comm_size(MPI.COMM_WORLD)
-nthreads = Threads.nthreads()
-mpi_pinthreads(:numa)
+#nthreads = Threads.nthreads()
+#mpi_pinthreads(:numa)
 using Pkg
 using CUDA
 using JLD2
@@ -128,7 +128,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "fields.jld2",
                                                 overwrite_existing = true)
-if rank == nprocs/2-1
+if rank == size/2-1
+    @show grids
     simulation.output_writers[:centerline] = JLD2Writer(model, (; u, v, w, T, S), # test within if statement and outside of 
                                                     indices = (Int(grid.Nx):Int(grid.Nx+1), Int(Ny/2):Int(Ny/2+1), :),
                                                     array_type = Array{Float64},

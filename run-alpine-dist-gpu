@@ -3,7 +3,7 @@ nodes=1
 cpus=32
 gpus=1
 ntasks=$((nodes*gpus))
-nthreads=$((cpus/gpus))
+nthreads=$((cpus/2))
 jobn=dxi05
 file=T-periodicboundary.jl
 
@@ -44,7 +44,7 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
 
-julia --project -e 'using Pkg; Pkg.add("ThreadPinning"); Pkg.add("Oceananigans")' ##Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"); 
+###julia --project -e 'using Pkg; Pkg.add("ThreadPinning"); Pkg.add("Oceananigans")' ##Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"); 
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
