@@ -20,12 +20,12 @@ cat > EXEC_STEP << EXEC
 #SBATCH --export=NONE
 #SBATCH --account=ucb-general
 #SBATCH --partition=aa100
-#SBATCH --qos=gpu-testing
+#SBATCH --qos=gpu-normal
 #SBATCH --job-name=$jobn
 #SBATCH --time=00:30:00
 #SBATCH --nodes=$nodes
 #SBATCH --ntasks=$gpus
-#SBATCH --gres=gpu:a100_3g.20gb:$gpus
+#SBATCH --gres=gpu:a100.20gb:$gpus
 #SBATCH --output=$jobn-%j.out
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
