@@ -11,7 +11,7 @@ mkdir -p $jobn/
 
 cp $file $jobn/
 
-cd $jobn/ | exit 1
+cd $jobn/
 
 pwd
 
