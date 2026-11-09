@@ -28,8 +28,6 @@ cat > EXEC_STEP << EXEC
 #SBATCH --gres=gpu:a100_3g.20gb:$gpus
 #SBATCH --output=$jobn-%j.out
 
-pwd 
-
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
 export JULIA_NUM_THREADS=$nthreads
 
@@ -46,14 +44,14 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
 
-julia --project -e 'using Pkg; Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans")'
+julia --project -e 'using Pkg; Pkg.add("ThreadPinning"); Pkg.add("Oceananigans")' ##Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"); 
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 julia --project $file
 
-mpirun -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
+mpirun -np $ntasks set_gpu_rank julia --project $file
 EXEC
 
 sbatch EXEC_STEP
