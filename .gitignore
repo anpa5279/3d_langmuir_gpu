@@ -13,4 +13,6 @@ data/
 localoutputs/
 localoutputs/*
 .DS_Store
+dxi05*
+EXEC_STEP
 
