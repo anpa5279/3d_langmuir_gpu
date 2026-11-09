@@ -13,6 +13,8 @@ cp $file $jobn/
 
 cd $jobn/ | exit 1
 
+pwd
+
 cat > EXEC_STEP << EXEC
 #!/bin/bash -l
 #SBATCH --export=NONE
@@ -23,8 +25,10 @@ cat > EXEC_STEP << EXEC
 #SBATCH --time=00:30:00
 #SBATCH --nodes=$nodes
 #SBATCH --ntasks=$ntasks
-#SBATCH --gres=gpu:a100-100gb:$gpus
+#SBATCH --gres=gpu:a100_3g.20gb:$gpus
 #SBATCH --output=$jobn-%j.out
+
+pwd 
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
 export JULIA_NUM_THREADS=$nthreads
