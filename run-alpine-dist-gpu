@@ -1,6 +1,6 @@
 #!/bin/bash
 nodes=1
-cpus=64
+cpus=32
 gpus=1
 ntasks=$((nodes*gpus))
 nthreads=$((cpus/gpus))
@@ -48,8 +48,6 @@ julia --project -e 'using Pkg; Pkg.add("ThreadPinning"); Pkg.add("Oceananigans")
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
-
-julia --project $file
 
 mpirun -np $ntasks julia --project $file
 EXEC
