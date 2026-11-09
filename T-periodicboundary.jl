@@ -20,7 +20,7 @@ const Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 
 const Lz = 128             # (m) domain depth 
 const Nz = 256
-const dx = Lx/Nx
+const dx = dy = Lx/Nx
 const MLD = 60.0          # m, mixed layer depth
 const dTdz = 0.01       # K m⁻¹, temperature gradient
 const alpha = 2.0e-4      # 1/K, thermal expansion coefficient
