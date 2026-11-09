@@ -25,7 +25,7 @@ cat > EXEC_STEP << EXEC
 #SBATCH --time=00:30:00
 #SBATCH --nodes=$nodes
 #SBATCH --ntasks=$gpus
-#SBATCH --gres=gpu:a100_20gb.40gb:$gpus
+#SBATCH --gres=gpu:a100-40gb.40gb:$gpus
 #SBATCH --output=$jobn-%j.out
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
