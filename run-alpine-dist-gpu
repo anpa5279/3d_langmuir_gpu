@@ -1,9 +1,9 @@
 #!/bin/bash
 nodes=1
-cpus=32
-gpus=1
+cpus=64
+gpus=2
 ntasks=$((nodes*gpus))
-nthreads=$((cpus/2))
+nthreads=$((cpus/gpus))
 jobn=dxi05
 file=T-periodicboundary.jl
 
