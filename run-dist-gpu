@@ -1,12 +1,12 @@
 #!/bin/bash
 nodes=1
 cpus=64
-gpus=8
+gpus=2
 ntasks=$((nodes*gpus))
 nthreads=$((cpus/gpus))
 base_dir=/glade/derecho/scratch/apauls/outputs/version109/square-inlet
-archive_folder=open-bottom-BC/AR1
-jobn=dxi00625
+archive_folder=open-bottom-BC/gauss-inlet/s
+jobn=dxi0.5
 file=T-periodicboundary.jl
 
 mkdir -p $base_dir/$archive_folder/$jobn/
@@ -23,7 +23,7 @@ cat > EXEC_STEP << EXEC
 #PBS -q main
 #PBS -j oe
 #PBS -l job_priority=economy
-#PBS -l walltime=12:00:00
+#PBS -l walltime=0:30:00
 #PBS -l select=$nodes:ncpus=$cpus:mpiprocs=$gpus:ngpus=$gpus:gpu_type=a100
 
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
