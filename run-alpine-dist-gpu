@@ -42,9 +42,9 @@ export JULIA_MPI_HAS_CUDA=true
 export PALS_TRANSFER=false
 export JULIA_CUDA_MEMORY_POOL=none
 
-julia --project -e 'using Pkg; Pkg.instantiate()'
+###julia --project -e 'using Pkg; Pkg.instantiate()'
 
-###julia --project -e 'using Pkg; Pkg.add("ThreadPinning"); Pkg.add("Oceananigans")' ##Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"); 
+julia --project -e 'using Pkg; Pkg.add("JLD2"); Pkg.add("SpecialFunctions"); Pkg.add("Statistics"); Pkg.add("Printf"); Pkg.add("Oceananigans")''##; Pkg.add("ThreadPinning"); Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"); 
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
