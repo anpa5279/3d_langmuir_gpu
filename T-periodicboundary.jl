@@ -16,10 +16,10 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
 const Lx = Ly = 64           # (m) domain horizontal extents
-const Nx = Ny = 1024 #ensure it is only powers of 2 (maybe 3)
+const Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 
 const Lz = 128             # (m) domain depth 
-const Nz = 2048
+const Nz = 256
 const MLD = 60.0          # m, mixed layer depth
 const dTdz = 0.01       # K m⁻¹, temperature gradient
 const alpha = 2.0e-4      # 1/K, thermal expansion coefficient

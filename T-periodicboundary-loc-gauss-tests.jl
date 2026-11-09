@@ -35,8 +35,8 @@ function progress(simulation)
 end
 T_no_noise(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
 
-r_z(z) = randn(Xoshiro())*exp(-z^2/r^2)
-T_noise(x, y, z) = z > - MLD ? T0 : T0 + dTdz * (z + MLD)
+r_z(z) = randn(Xoshiro())*exp(z/rp)
+T_noise(x, y, z) = z > - MLD ? T0 + dTdz * r_z(z) : T0 + dTdz * (z + MLD)
 
 # buoyancy
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
@@ -52,8 +52,8 @@ T_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0),
 
 #variations
 dxs = [2.0, 1.0, 0.5]
-noise = [true, false]
-noise_names = ["with noise in T IC", "without noise in T IC"]
+noise = [true, ]
+noise_names = ["with noise in T IC", ]
 advection_schemes = [WENO(order = 5), WENO(order = 9)]
 names = ["WENO5", "WENO9"]
 for (noise_name, noise_opt) in zip(noise_names, noise)
@@ -61,6 +61,7 @@ for (noise_name, noise_opt) in zip(noise_names, noise)
         Tᵢ = T_noise
     else
         Tᵢ = T_no_noise
+    end
     for (name, scheme) in zip(names, advection_schemes)
         for dx in dxs
             Nx = Ny = Int(Lx/dx)
@@ -103,7 +104,7 @@ for (noise_name, noise_opt) in zip(noise_names, noise)
             set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
             # defining simulation
-            simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 4hours, minimum_relative_step = 0.01) 
+            simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 2hours, minimum_relative_step = 0.01) 
             ## progress function
             simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
@@ -165,3 +166,4 @@ for (noise_name, noise_opt) in zip(noise_names, noise)
             end
         end
     end
+end

@@ -29,7 +29,7 @@ cat > EXEC_STEP << EXEC
 export JULIA_NUM_PRECOMPILE_TASKS=$nthreads
 export JULIA_NUM_THREADS=$nthreads
 
-module load julia/1.11.6 cuda/12.2.1 aocc/3.2.0 openmpi/4.1.4
+module load julia/1.11.6 cuda/12.1.1 aocc/3.2.0 openmpi/4.1.4
 
 module list
 
@@ -42,10 +42,12 @@ export JULIA_CUDA_MEMORY_POOL=none
 
 julia --project -e 'using Pkg; Pkg.instantiate()'
 
-julia --project -e 'Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans")'
+julia --project -e 'using Pkg; Pkg.add("MPIPreferences"); Pkg.add("MPI"); Pkg.add("CUDA"), Pkg.add("Oceananigans")'
 
 julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
+
+julia --project $file
 
 mpirun -n $ntasks -ppn $gpus set_gpu_rank julia --project $file
 EXEC

@@ -8,6 +8,7 @@ using Oceananigans
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Units: minute, minutes, hours, seconds
 
+#sinteractive --partition=aa100 --time=00:10:00 --ntasks=1 --nodes=1 --qos=gpu-testing --gres=gpu:a100_3g.20gb:1
 const Lx = Ly = 64           # (m) domain horizontal extents
 const Nx = Ny = 128 #ensure it is only powers of 2 (maybe 3)
 
