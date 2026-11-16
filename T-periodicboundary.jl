@@ -56,11 +56,11 @@ end
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = alpha))
 
 # calculating mass relative to morton length scale
-g = buoyancy.gravitational_acceleration
-beta = buoyancy.equation_of_state.haline_contraction
-N = (dTdz * alpha * g)^(1/2)
-F0 = (Ln * N^(3/4))^4
-Sj = F0 / (g * beta * abs(wp) * pi * rp^2)
+const g = buoyancy.gravitational_acceleration
+const beta = buoyancy.equation_of_state.haline_contraction
+const N = sqrt(dTdz * alpha * g)
+const F0 = (Ln * N^(3/4))^4
+const Sj = F0 / (g * beta * abs(wp) * pi * rp^2)
 
 # BCs
 u_bcs = FieldBoundaryConditions(top = GradientBoundaryCondition(0.0), 
@@ -78,7 +78,7 @@ w_bottom = wp * 2*pi*rp^2 / (Lx*Ly)
 w_bcs = FieldBoundaryConditions(top = OpenBoundaryCondition(w_surface;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)), 
                                 bottom = OpenBoundaryCondition(w_bottom;  scheme = PerturbationAdvection(; inflow_timescale = 0.0, outflow_timescale = 0.0)))
 
-@inline S_surface(x, y, t) = Sj * gauss(x, y)
+@inline S_surface(x, y, t)=Sj*gauss(x, y)
 
 S_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(S_surface), 
                                 bottom = GradientBoundaryCondition(0.0))
@@ -89,7 +89,7 @@ model = NonhydrostaticModel(grid;
                             advection = WENO(order = 9),
                             tracers = (:T, :S,),
                             timestepper = :RungeKutta3,
-                            boundary_conditions = (u = u_bcs, v = v_bcs, S=S_bcs, T=T_bcs, w=w_bcs),
+                            boundary_conditions = (u = u_bcs, v = v_bcs, w=w_bcs, S=S_bcs, T=T_bcs),
                             )
 @show model
 ## ICs
@@ -121,8 +121,10 @@ output_interval = 0.04hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
+Δt = simulation.Δt
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
+
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, Δt),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
