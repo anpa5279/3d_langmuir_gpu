@@ -99,20 +99,6 @@ set!(model, u=0.0, v=0.0, T=Tᵢ, S=0.0)
 
 # defining simulation
 simulation = Simulation(model, Δt=0.5/0.1*Lz/Nz, stop_time = 4hours, minimum_relative_step = 0.01) 
-## progress function
-function progress(simulation)
-    u, v, w = simulation.model.velocities
-    # Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                iteration(simulation),
-                prettytime(time(simulation)),
-                prettytime(simulation.Δt),
-                maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                prettytime(simulation.run_wall_time))
-    @info msg
-    return nothing
-end
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
 ## updating cfl every time step
 conjure_time_step_wizard!(simulation, IterationInterval(1); cfl=0.5, diffusive_cfl = 1.0, min_change = 0.1, max_change = 1.5, min_Δt = min_step, max_Δt=30seconds) #ensures cfl is updated ever iteration
@@ -121,10 +107,9 @@ output_interval = 0.04hours
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-Δt = simulation.Δt
 
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S, Δt),
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, v, w, T, S),
                                                 with_halos=false,
                                                 array_type = Array{Float64},
                                                 schedule = TimeInterval(output_interval),
@@ -149,5 +134,19 @@ simulation.output_writers[:xy_avg] = JLD2Writer(model, (; u_avg, v_avg, w_avg, T
                                                 schedule = TimeInterval(output_interval/20),
                                                 filename = "xy_avg.jld2",
                                                 overwrite_existing = true)
+## progress function
+function progress(simulation)
+    u, v, w = simulation.model.velocities
+    # Print a progress message
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+                iteration(simulation),
+                prettytime(time(simulation)),
+                prettytime(simulation.Δt),
+                maximum(abs, u), maximum(abs, v), maximum(abs, w),
+                prettytime(simulation.run_wall_time))
+    @info msg
+    return nothing
+end
+simulation.callbacks[:progress] = Callback(progress, TimeInterval(output_interval/20))
 
 run!(simulation)
